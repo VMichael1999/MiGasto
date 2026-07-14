@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">MisGastos lee las notificaciones y pantallas de aplicaciones de pago como Yape, Plin y Google Pay para registrar automáticamente tus gastos sin ingreso manual.</string>
+</resources>
