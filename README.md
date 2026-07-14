@@ -73,4 +73,4 @@ Para que el registro automático funcione, debes conceder los siguientes permiso
 
 ## 👥 Contribuidores
 
-*   **Víctor Michael** - [@VMichael1999](https://github.com/VMichael1999)
+*   **Michael Anthony** - [@VMichael1999](https://github.com/VMichael1999)
