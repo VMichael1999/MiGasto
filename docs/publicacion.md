@@ -12,7 +12,7 @@ Lista de lo que piden las tiendas y qué responder según lo que la app hace hoy
 
 ## Google Play
 
-**Servicio de accesibilidad (declaración y video).** Play exige un formulario de declaración, un aviso destacado con consentimiento antes de pedirlo y un video que muestre el uso. La app ya muestra el aviso en la primera pantalla ("Qué lee la app y qué no"). Alternativa a evaluar si Play lo rechaza: `NotificationListenerService` (fase 2 del plan), que se confirma en la fase 0 con notificaciones reales.
+**Acceso a notificaciones y servicio de accesibilidad (declaración y video).** Play revisa ambos usos. La app lee las notificaciones con `NotificationListenerService` (vía principal, recibidos) y usa Accesibilidad solo para la constancia de Yape al enviar (opcional). Para cada uno hace falta un aviso destacado con consentimiento antes de pedirlo y, para Accesibilidad, el formulario de declaración y un video que muestre el uso. La app ya explica qué lee y qué no en la primera pantalla y en Ajustes. Si Play rechaza Accesibilidad, la app sigue funcionando con las notificaciones y el registro manual; solo se pierde la lectura de lo que envías.
 
 **Seguridad de los datos (Data safety).**
 
@@ -21,7 +21,7 @@ Lista de lo que piden las tiendas y qué responder según lo que la app hace hoy
 - Ubicación aproximada y precisa: opcional, solo en uso y a petición del usuario; no compartida.
 - ¿Se puede pedir que se borren los datos? Sí, desde la app, o desinstalando.
 
-**Permisos declarados:** accesibilidad (lectura de pagos), mostrar sobre otras apps (ventana de confirmación, opcional), ubicación en primer plano (a petición), biometría (bloqueo).
+**Permisos declarados:** acceso a notificaciones (lectura de pagos recibidos), accesibilidad (constancia de Yape al enviar, opcional), mostrar sobre otras apps (ventana de confirmación, opcional), vibración, ubicación en primer plano (a petición), biometría (bloqueo).
 
 **Páginas de 16 KB.** Con Drift ya no se incluye `libisar.so`. Verifica el APK final con el comprobador de alineación antes de subir.
 

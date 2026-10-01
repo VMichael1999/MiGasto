@@ -24,7 +24,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen>
     with WidgetsBindingObserver {
-  bool _accessibilityOn = false;
+  bool _notificationsOn = false;
+  bool _screenOn = false;
   bool _overlayOn = false;
   final _simController = TextEditingController();
 
@@ -53,11 +54,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   Future<void> _refreshPermissions() async {
     if (!_isAndroid) return;
     final permissions = ref.read(permissionsCheckerProvider);
-    final accessibility = await permissions.isNotificationListenerEnabled();
+    final notifications = await permissions.isNotificationListenerEnabled();
+    final screen = await permissions.isAccessibilityEnabled();
     final overlay = await permissions.isOverlayGranted();
     if (!mounted) return;
     setState(() {
-      _accessibilityOn = accessibility;
+      _notificationsOn = notifications;
+      _screenOn = screen;
       _overlayOn = overlay;
     });
   }
@@ -88,9 +91,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                   icon: AppIcons.bell,
                   title: 'Lectura de pagos',
                   subtitle: 'Lee las notificaciones de Yape, Plin y Google Wallet',
-                  trailing: _status(context, _accessibilityOn),
+                  trailing: _status(context, _notificationsOn),
                   onTap: () async {
                     await permissions.openNotificationListenerSettings();
+                  },
+                ),
+                _SettingRow(
+                  icon: AppIcons.arrowUp,
+                  title: 'Pagos que envías',
+                  subtitle: 'Lee la constancia de Yape al pagar o enviar',
+                  trailing: _status(context, _screenOn),
+                  onTap: () async {
+                    await permissions.openAccessibilitySettings();
                   },
                 ),
                 _SettingRow(

@@ -1,15 +1,19 @@
 # MiGasto
 
-**MiGasto** registra tus gastos e ingresos en el teléfono. En Android lee las notificaciones de **Yape**, **Plin** y **Google Wallet** para anotar cada pago por ti y te deja confirmarlo; todo lo demás se registra a mano. Pensada para quien paga casi todo con el celular en Perú.
+**MiGasto** registra tus gastos e ingresos en el teléfono. En Android lee las notificaciones de **Yape**, **Plin** y **Google Wallet** (lo que recibes) y la constancia de Yape (lo que envías o pagas) para anotar cada pago por ti; todo lo demás se registra a mano. Pensada para quien paga casi todo con el celular en Perú.
 
 Todo se guarda solo en el teléfono, en una base de datos cifrada: no hay servidor ni cuenta.
 
 ## Qué hace
 
-- **Gastos e ingresos.** Los ingresos nunca se guardan solos: esperan tu confirmación y, si los ignoras, quedan en "Por confirmar".
-- **Detección en Android.** Un lector nativo (Kotlin) reconoce el pago, distingue si entra o sale dinero y muestra una ventana flotante. El gasto se guarda a los 4 segundos (puedes pausarla, editarla o descartarla); el ingreso espera tu confirmación.
+- **Gastos e ingresos.** Los gastos se guardan solos. Los ingresos esperan tu confirmación y, si los ignoras, quedan en "Por confirmar". En Ajustes puedes activar **Guardar ingresos automáticamente** (apagado por defecto).
+- **Detección en Android.** Dos fuentes, ambas nativas (Kotlin):
+  - **Acceso a notificaciones** (`PaymentNotificationListener`): lo que recibes (por ejemplo, "te envió un pago por S/ 5"). Es la vía principal.
+  - **Accesibilidad** (`MyAccessibilityService`): la constancia de Yape cuando envías o pagas ("¡Yapeaste!"), porque Yape no avisa al que paga. Es opcional; se activa en Ajustes > "Pagos que envías".
+  Ambas pasan por el mismo lector de reglas y la misma protección contra duplicados.
+- **Ventana flotante.** Aparece sobre cualquier app con el monto, el comercio, la fuente y la categoría. El botón **Guardar** es la cuenta regresiva: se vacía de color fuerte a tenue en 4 segundos y guarda al terminar; tocar la ventana la pausa; deslizarla hacia arriba la descarta. Un ingreso espera tu confirmación, salvo que hayas activado el guardado automático.
 - **Reglas compartidas.** Qué es un pago y de qué categoría es se define en `assets/reader_rules.json` y `assets/category_rules.json`, que leen Kotlin y Dart. Si un banco cambia su texto, se actualiza el JSON.
-- **Sin duplicados.** Mismo monto y fuente dentro de 2 minutos cuenta una sola vez.
+- **Sin duplicados.** Mismo monto y fuente dentro de 2 minutos cuenta una sola vez. Además, una notificación ya leída no se vuelve a procesar aunque el sistema la reenvíe al reiniciar el servicio o reinstalar la app.
 - **Categorías.** Por palabras clave (no es IA) y por lo que cambias a mano ("Aprendidas de tus cambios").
 - **Resumen, Movimientos y Reportes.** Saldo del mes, presupuesto de gastos con estado en texto, filtros por tipo, fuente, categoría y monto, e ingresos frente a gastos por mes.
 - **Ubicación opcional.** Se pide solo al tocar "Agregar ubicación" y con la app en uso. Muestra la dirección y un mapa de Google Maps; puedes quitarla de un movimiento o borrar todas.
@@ -22,12 +26,13 @@ Todo se guarda solo en el teléfono, en una base de datos cifrada: no hay servid
 ## Lo que todavía no hace
 
 - **iPhone:** Yape y Plin no se detectan solos (iOS no lo permite). Se registran compartiendo la captura de la constancia a MiGasto (el texto se lee en el teléfono) o con el botón +. Los pagos con Apple Pay en el POS se registran con la automatización Transacción de Atajos. Hay un widget y un control del Centro de control que abren el registro (`migasto://new`).
-- **Plin dentro de las apps de BBVA, Interbank y Scotiabank:** los nombres de paquete que se escuchan están sin validar con teléfonos reales, igual que el texto exacto de cada notificación (fase 0 del plan).
+- **Validado con un teléfono real (Samsung, Yape):** pago recibido (notificación) y yape enviado (constancia). **Sin validar:** el pago de servicios con Yape, Google Wallet y Plin dentro de las apps de BBVA, Interbank y Scotiabank; los nombres de paquete de esos bancos son suposiciones y el texto exacto de cada notificación falta confirmarlo (fase 0 del plan).
+- **Android:** en algunos teléfonos Samsung el servicio de Accesibilidad no recibe los avisos de notificación; por eso se usa el acceso a notificaciones. Android puede marcar "Configuración restringida" al instalar fuera de Play Store: se permite desde Ajustes > Aplicaciones > MiGasto.
 - **Ubicación automática al pagar** con Apple Pay (iPhone) y desde la ventana flotante de Android.
 
 ## Tecnologías
 
-Flutter 3.47 (Dart 3.13), Riverpod, GoRouter, Drift (SQLite cifrado), fl_chart, google_maps_flutter, geolocator, geocoding, local_auth, flutter_svg. Capa nativa en Kotlin: `MyAccessibilityService` (lector), `OverlayService` (ventana flotante) y `NativeQueue` (cola que Flutter vacía para guardar en la base de datos).
+Flutter 3.47 (Dart 3.13), Riverpod, GoRouter, Drift (SQLite cifrado), fl_chart, google_maps_flutter, geolocator, geocoding, local_auth, flutter_svg. Capa nativa en Kotlin: `PaymentNotificationListener` (notificaciones), `MyAccessibilityService` (pantalla de constancia), `OverlayService` (ventana flotante) y `NativeQueue` (cola que Flutter vacía para guardar en la base de datos).
 
 ## Configuración
 
@@ -55,8 +60,10 @@ La clave también la leen Android (al compilar, desde `.env`) e iOS (por `xcconf
 
 ## Permisos en Android
 
-- **Accesibilidad:** para leer las notificaciones y la pantalla de Yape, Plin y Google Wallet. Solo esas apps (`accessibility_service_config.xml`).
-- **Mostrar sobre otras apps:** para la ventana flotante de confirmación. Es opcional: sin ella, los pagos quedan "Por confirmar" en la app.
+- **Acceso a notificaciones:** para leer los avisos de Yape, Plin y Google Wallet. Solo esas apps (lista en `PaymentNotificationListener`); el resto se ignora.
+- **Accesibilidad (opcional):** para leer la constancia de Yape cuando envías o pagas. Solo escucha esas apps (`accessibility_service_config.xml`).
+- **Mostrar sobre otras apps (opcional):** para la ventana flotante. Sin ella, los pagos quedan "Por confirmar" en la app.
+- **Vibración:** una vibración corta cuando aparece la ventana.
 - **Ubicación (solo en uso):** únicamente cuando tocas "Agregar ubicación".
 
 La app explica qué lee y qué no antes de pedir cualquier permiso, y se puede usar solo con registro manual.
@@ -68,7 +75,7 @@ flutter analyze
 flutter test
 ```
 
-Hay pruebas del cifrado de la base, del lector (gasto o ingreso, montos, textos que no son pagos), categorías, duplicados, migración de datos antiguos, cola nativa, ventana de pago, registro manual, ubicación y bloqueo.
+Hay pruebas del cifrado de la base, del lector (gasto o ingreso, montos, textos que no son pagos, y los textos reales de la notificación y la constancia de Yape), categorías, duplicados, migración de datos antiguos, cola nativa, ventana de pago, guardado automático de ingresos, registro manual, ubicación y bloqueo. Las pruebas no cubren el código nativo de Android (se verificó a mano en un teléfono y un emulador).
 
 ## Contribuidores
 

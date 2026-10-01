@@ -1,6 +1,6 @@
 # Política de privacidad de MiGasto
 
-Última actualización: 1 de octubre de 2026
+Última actualización: 1 de octubre de 2026 (lectura de notificaciones y de la constancia de Yape)
 
 MiGasto registra tus gastos e ingresos. Esta política explica qué datos usa la app, para qué y dónde quedan. Está escrita para que se entienda; si algo no queda claro, escríbenos al contacto del final.
 
@@ -15,14 +15,21 @@ MiGasto registra tus gastos e ingresos. Esta política explica qué datos usa la
 | Dato | Para qué | Dónde queda |
 | --- | --- | --- |
 | Monto, comercio o persona, fuente (Yape, Plin, tarjeta, efectivo), fecha, categoría y notas de cada movimiento | Mostrar tu balance, reportes y presupuesto | En tu teléfono, cifrados |
-| Texto de la notificación o de la pantalla de pago | Detectar el monto, el comercio y si el dinero entra o sale; se guarda como "texto original" en el movimiento | En tu teléfono, cifrado |
+| Texto de la notificación o de la constancia de pago (solo de Yape, Plin y Google Wallet) | Detectar el monto, el comercio y si el dinero entra o sale; se guarda como "texto original" en el movimiento | En tu teléfono, cifrado |
 | Nombre de la tarjeta de Wallet (iPhone) | Mostrar con qué tarjeta pagaste | En tu teléfono, cifrado |
 | Ubicación (latitud, longitud, precisión y dirección) | Mostrar dónde hiciste un pago, solo si la agregas | En tu teléfono, cifrada |
 | Presupuesto y ajustes | Funcionamiento de la app | En tu teléfono |
 
 ## Android: lectura de pagos
 
-Para detectar pagos solos, MiGasto usa el **servicio de accesibilidad** de Android. Solo escucha las apps de Yape, Plin (dentro de las apps de los bancos) y Google Wallet. Lee sus notificaciones y su pantalla únicamente para detectar el monto, el comercio y si el dinero entra o sale. **No lee** tus mensajes, fotos, contactos ni otras apps. Puedes apagarlo cuando quieras en Ajustes del teléfono, y la app sigue funcionando con registro manual.
+Para detectar pagos solos, MiGasto usa dos permisos de Android. Los dos son opcionales: sin ellos la app funciona con registro manual.
+
+- **Acceso a notificaciones.** Lee las notificaciones de **Yape**, **Plin** (dentro de las apps de los bancos) y **Google Wallet**, para detectar el monto, la persona o el comercio y si el dinero entra o sale. Las notificaciones de cualquier otra app se ignoran en el momento: no se leen, no se guardan.
+- **Servicio de accesibilidad.** Solo escucha las apps de Yape, Plin y Google Wallet. Lee el texto de la pantalla de **constancia** de Yape cuando tú envías o pagas, porque Yape no manda notificación al que paga. No toca nada en la pantalla ni escribe por ti.
+
+En ambos casos **no lee** tus mensajes, fotos, contactos, contraseñas ni otras apps, y lo leído se procesa en tu teléfono sin enviarse a ningún servidor. Del texto leído se guarda solo lo necesario para el movimiento (incluido el "texto original"). Puedes apagar cualquiera de los dos permisos cuando quieras en Ajustes del teléfono.
+
+Cuando MiGasto detecta un pago muestra una **ventana flotante** (si diste el permiso "Mostrar sobre otras apps") con el monto, el comercio y la categoría para que lo confirmes, lo edites o lo descartes. Un gasto se guarda solo a los 4 segundos si no lo detienes. Un ingreso espera tu confirmación, salvo que actives en Ajustes **Guardar ingresos automáticamente**; esa opción viene apagada.
 
 ## iPhone
 
