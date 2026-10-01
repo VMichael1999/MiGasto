@@ -65,7 +65,8 @@ enum AppIcons {
       case AppIcons.chart:
         return '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>';
       case AppIcons.gear:
-        return '<circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>';
+        // Tuerca de 8 dientes (antes era un sol).
+        return '<path d="M10.40 5.60 L10.53 2.72 L13.47 2.72 L13.60 5.60 L15.40 6.34 L17.53 4.40 L19.60 6.47 L17.66 8.60 L18.40 10.40 L21.28 10.53 L21.28 13.47 L18.40 13.60 L17.66 15.40 L19.60 17.53 L17.53 19.60 L15.40 17.66 L13.60 18.40 L13.47 21.28 L10.53 21.28 L10.40 18.40 L8.60 17.66 L6.47 19.60 L4.40 17.53 L6.34 15.40 L5.60 13.60 L2.72 13.47 L2.72 10.53 L5.60 10.40 L6.34 8.60 L4.40 6.47 L6.47 4.40 L8.60 6.34z"/><circle cx="12" cy="12" r="2.8"/>';
       case AppIcons.plus:
         return '<path d="M12 5v14M5 12h14"/>';
       case AppIcons.search:
