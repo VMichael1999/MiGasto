@@ -9,6 +9,7 @@ import '../../presentation/providers.dart';
 import '../../shared/widgets/overlay_timer_widget.dart';
 import '../../domain/entities/expense.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../shared/widgets/app_bottom_nav.dart';
 import '../theme/theme.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
@@ -84,49 +85,20 @@ class MainScaffoldWrapper extends ConsumerWidget {
       body: OverlayTimerWidget(
         child: child,
       ),
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: AppBottomNav(
         selectedIndex: selectedIndex,
         onDestinationSelected: (index) {
           if (index == 0) {
             context.go('/dashboard');
           } else if (index == 1) {
             context.go('/expenses');
-          } else if (index == 2) {
-            // Floating Action Button (+) tapped: trigger quick manual add dialog on dashboard
-            _showQuickAddDialog(context, ref);
           } else if (index == 3) {
             context.go('/reports');
           } else if (index == 4) {
             context.go('/settings');
           }
         },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Resumen',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long),
-            label: 'Gastos',
-          ),
-          // We put a custom icon placeholder for the FAB (+)
-          NavigationDestination(
-            icon: Icon(Icons.add_circle, size: 40, color: Colors.greenAccent),
-            label: '',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.bar_chart_outlined),
-            selectedIcon: Icon(Icons.bar_chart),
-            label: 'Reportes',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: 'Ajustes',
-          ),
-        ],
+        onAdd: () => _showQuickAddDialog(context, ref),
       ),
     );
   }

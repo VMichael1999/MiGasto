@@ -240,5 +240,11 @@ class AppColors extends ThemeExtension<AppColors> {
 }
 
 extension AppColorsContext on BuildContext {
-  AppColors get appColors => Theme.of(this).extension<AppColors>()!;
+  /// Si el tema no incluye la extensión (p. ej. un `ThemeData` de prueba),
+  /// usa la paleta que corresponde al brillo.
+  AppColors get appColors {
+    final theme = Theme.of(this);
+    return theme.extension<AppColors>() ??
+        (theme.brightness == Brightness.dark ? AppColors.dark : AppColors.light);
+  }
 }

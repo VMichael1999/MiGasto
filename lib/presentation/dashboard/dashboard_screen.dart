@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -63,101 +62,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final recentMovements = allConfirmed.take(3).toList();
 
     return Scaffold(
-      drawer: Drawer(
-        backgroundColor: AppTheme.cardBg,
-        child: Column(
-          children: [
-            Consumer(
-              builder: (context, ref, child) {
-                final name = ref.watch(profileNameProvider);
-                final email = ref.watch(profileEmailProvider);
-                final initials = name.split(' ').map((e) => e.isNotEmpty ? e[0].toUpperCase() : '').join();
-                final initialsToShow = initials.length > 2 ? initials.substring(0, 2) : initials;
-
-                return UserAccountsDrawerHeader(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF1D1B26),
-                  ),
-                  currentAccountPicture: CircleAvatar(
-                    backgroundColor: AppTheme.neonGreen,
-                    child: Text(
-                      initialsToShow.isNotEmpty ? initialsToShow : 'U',
-                      style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
-                    ),
-                  ),
-                  accountName: Text(
-                    name.isNotEmpty ? name : 'Configurar Nombre',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: name.isNotEmpty ? Colors.white : Colors.grey[500],
-                    ),
-                  ),
-                  accountEmail: Text(
-                    email.isNotEmpty ? email : 'correo@ejemplo.com',
-                    style: TextStyle(
-                      color: email.isNotEmpty ? Colors.grey[400] : Colors.grey[600],
-                    ),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.home, color: AppTheme.neonGreen),
-              title: const Text('Resumen / Inicio', style: TextStyle(color: Colors.white)),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/dashboard');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.receipt_long, color: Colors.white70),
-              title: const Text('Historial de Gastos', style: TextStyle(color: Colors.white)),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/expenses');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.bar_chart, color: Colors.white70),
-              title: const Text('Reportes', style: TextStyle(color: Colors.white)),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/reports');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings, color: Colors.white70),
-              title: const Text('Ajustes del Sistema', style: TextStyle(color: Colors.white)),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/settings');
-              },
-            ),
-            if (kDebugMode)
-              const Divider(color: Color(0xFF2E2B3B)),
-            if (kDebugMode)
-              ListTile(
-                leading: const Icon(Icons.bug_report_outlined, color: Colors.orangeAccent),
-                title: const Text('Simular Transacción', style: TextStyle(color: Colors.white)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _simulateRandomTransaction(context, ref);
-                },
-              ),
-          ],
-        ),
-      ),
       appBar: AppBar(
-        leading: Builder(
-          builder: (context) {
-            return IconButton(
-              icon: const Icon(Icons.menu, color: Colors.white),
-              onPressed: () {
-                Scaffold.of(context).openDrawer();
-              },
-            );
-          },
-        ),
+        automaticallyImplyLeading: false,
         title: const Text('Resumen'),
         actions: [
           IconButton(
@@ -610,29 +516,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           fontWeight: FontWeight.bold,
           fontSize: 14,
         ),
-      ),
-    );
-  }
-
-  void _simulateRandomTransaction(BuildContext context, WidgetRef ref) {
-    final list = [
-      {'amount': 25.50, 'merchant': 'Tambo', 'provider': 'yape', 'rawText': 'Yapeaste S/ 25.50 a Tambo'},
-      {'amount': 15.00, 'merchant': 'Juan Pérez', 'provider': 'plin', 'rawText': 'Juan Pérez te envió S/ 15.00'},
-      {'amount': 8.90, 'merchant': 'Oxxo', 'provider': 'googlePay', 'rawText': 'Pagaste S/ 8.90 en Oxxo'},
-    ];
-    final selected = (list..shuffle()).first;
-    
-    ref.read(expensesStateProvider.notifier).triggerIncomingPayment(
-      amount: selected['amount'] as double,
-      merchant: selected['merchant'] as String,
-      providerStr: selected['provider'] as String,
-      rawText: selected['rawText'] as String,
-    );
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Simulado: ${selected['rawText']}'),
-        backgroundColor: AppTheme.cardBg,
       ),
     );
   }
