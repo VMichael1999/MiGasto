@@ -22,6 +22,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
     with WidgetsBindingObserver {
   bool _accessibilityOn = false;
   bool _overlayOn = false;
+  bool _batteryOn = false;
 
   bool get _isAndroid => defaultTargetPlatform == TargetPlatform.android;
 
@@ -49,8 +50,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
     final permissions = ref.read(permissionsCheckerProvider);
     final accessibility = await permissions.isNotificationListenerEnabled();
     final overlay = await permissions.isOverlayGranted();
+    final battery = await permissions.isBatteryUnrestricted();
     if (!mounted) return;
     setState(() {
+      _batteryOn = battery;
       _accessibilityOn = accessibility;
       _overlayOn = overlay;
     });
@@ -72,6 +75,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
       await permissions.openNotificationListenerSettings();
     } else if (!_overlayOn) {
       await permissions.requestOverlayPermission();
+    } else if (!_batteryOn) {
+      await permissions.openBatterySettings();
     } else {
       await _finish();
     }
@@ -81,6 +86,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
     if (!_isAndroid) return 'Continuar';
     if (!_accessibilityOn) return 'Aceptar y activar la lectura';
     if (!_overlayOn) return 'Permitir la ventana flotante';
+    if (!_batteryOn) return 'Quitar la restricción de batería';
     return 'Empezar';
   }
 
@@ -147,6 +153,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                       const SizedBox(height: 14),
                       _step(context, 2, 'Permite la ventana flotante',
                           'Para confirmar cada pago al instante. Es opcional.', _overlayOn),
+                      const SizedBox(height: 14),
+                      _step(context, 3, 'Evita que el teléfono la duerma',
+                          'En Batería, elige «No restringido». Así no se pierden pagos.', _batteryOn),
                     ],
                   ],
                 ),
@@ -163,7 +172,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                     TextButton(
                       onPressed: _finish,
                       child: Text(
-                        _accessibilityOn ? 'Continuar sin ventana flotante' : 'Usar solo registro manual',
+                        _accessibilityOn ? 'Terminar después' : 'Usar solo registro manual',
                       ),
                     ),
                   ],

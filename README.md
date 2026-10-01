@@ -11,6 +11,7 @@ Todo se guarda solo en el teléfono, en una base de datos cifrada: no hay servid
   - **Acceso a notificaciones** (`PaymentNotificationListener`): lo que recibes (por ejemplo, "te envió un pago por S/ 5"). Es la vía principal.
   - **Accesibilidad** (`MyAccessibilityService`): la constancia de Yape cuando envías o pagas ("¡Yapeaste!"), porque Yape no avisa al que paga. Es opcional; se activa en Ajustes > "Pagos que envías".
   Ambas pasan por el mismo lector de reglas y la misma protección contra duplicados.
+- **Avisos de permisos y batería.** Un aviso en Resumen cuando el acceso a notificaciones está apagado (no se ve ningún pago) y otro cuando la batería de la app está restringida (el teléfono puede dormir la lectura; en Samsung se elige «No restringido»). El de batería se puede posponer 7 días. Ajustes tiene su fila de estado y el onboarding un paso. Al abrir la app se le pide al sistema que reconecte el lector de notificaciones si lo soltó.
 - **Ventana flotante.** Aparece sobre cualquier app con el monto, el comercio, la fuente y la categoría. El botón **Guardar** es la cuenta regresiva: se vacía de color fuerte a tenue en 4 segundos y guarda al terminar; tocar la ventana la pausa; deslizarla hacia arriba la descarta. Un ingreso espera tu confirmación, salvo que hayas activado el guardado automático.
 - **Reglas compartidas.** Qué es un pago y de qué categoría es se define en `assets/reader_rules.json` y `assets/category_rules.json`, que leen Kotlin y Dart. Si un banco cambia su texto, se actualiza el JSON.
 - **Sin duplicados.** Mismo monto y fuente dentro de 2 minutos cuenta una sola vez. Además, una notificación ya leída no se vuelve a procesar aunque el sistema la reenvíe al reiniciar el servicio o reinstalar la app.
@@ -65,6 +66,7 @@ La clave también la leen Android (al compilar, desde `.env`) e iOS (por `xcconf
 - **Acceso a notificaciones:** para leer los avisos de Yape, Plin y Google Wallet. Solo esas apps (lista en `PaymentNotificationListener`); el resto se ignora.
 - **Accesibilidad (opcional):** para leer la constancia de Yape cuando envías o pagas. Solo escucha esas apps (`accessibility_service_config.xml`).
 - **Mostrar sobre otras apps (opcional):** para la ventana flotante. Sin ella, los pagos quedan "Por confirmar" en la app.
+- **Estado de la batería** (sin permiso extra): solo se consulta si la app está restringida y se abre su ficha de ajustes para que tú lo cambies.
 - **Vibración:** una vibración corta cuando aparece la ventana.
 - **Ubicación (solo en uso):** únicamente cuando tocas "Agregar ubicación".
 

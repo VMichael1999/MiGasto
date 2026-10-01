@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +14,7 @@ import '../data/services/backup_service.dart';
 import '../data/services/nlp_classifier_service.dart';
 import '../data/services/location_service.dart';
 import '../domain/duplicate_rule.dart';
+import '../domain/setup_issues.dart';
 
 // 1. SharedPreferences Provider
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
@@ -544,6 +546,24 @@ class PermissionsChecker {
     }
   }
 
+  /// La batería de la app está en "Sin restricciones".
+  Future<bool> isBatteryUnrestricted() async {
+    try {
+      final bool? result = await _channel.invokeMethod('isBatteryUnrestricted');
+      return result ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> openBatterySettings() async {
+    try {
+      await _channel.invokeMethod('openBatterySettings');
+    } catch (_) {
+      // Ignore
+    }
+  }
+
   Future<bool> isOverlayGranted() async {
     try {
       final bool? result = await _channel.invokeMethod('isOverlayPermissionGranted');
@@ -641,3 +661,73 @@ class PasscodeNotifier extends StateNotifier<bool> {
     state = value;
   }
 }
+
+
+// ------------------------------------------------------------ permisos y batería
+
+/// Estado de lo que necesita la lectura de pagos (solo Android).
+class SetupStatus {
+  const SetupStatus({this.notificationsOn = true, this.batteryUnrestricted = true});
+
+  final bool notificationsOn;
+  final bool batteryUnrestricted;
+}
+
+const keyBatteryBannerDismissed = 'migasto_battery_banner_dismissed_at';
+
+/// Vuelve a comprobar los permisos al abrir la app y al volver a ella (por ejemplo,
+/// después de visitar los ajustes del teléfono). Arranca "todo bien" para no mostrar
+/// un aviso falso mientras llega la primera respuesta.
+class SetupStatusNotifier extends StateNotifier<SetupStatus> with WidgetsBindingObserver {
+  SetupStatusNotifier(this._permissions) : super(const SetupStatus()) {
+    refresh();
+    try {
+      WidgetsBinding.instance.addObserver(this);
+    } catch (_) {
+      // Sin binding (algunas pruebas).
+    }
+  }
+
+  final PermissionsChecker _permissions;
+
+  Future<void> refresh() async {
+    final notifications = await _permissions.isNotificationListenerEnabled();
+    final battery = await _permissions.isBatteryUnrestricted();
+    if (!mounted) return;
+    state = SetupStatus(notificationsOn: notifications, batteryUnrestricted: battery);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) refresh();
+  }
+
+  @override
+  void dispose() {
+    try {
+      WidgetsBinding.instance.removeObserver(this);
+    } catch (_) {}
+    super.dispose();
+  }
+}
+
+final setupStatusProvider = StateNotifierProvider<SetupStatusNotifier, SetupStatus>((ref) {
+  return SetupStatusNotifier(ref.read(permissionsCheckerProvider));
+});
+
+/// Cuándo se tocó "Ahora no" en el aviso de batería.
+final batteryBannerDismissedProvider = StateProvider<DateTime?>((ref) {
+  final raw = ref.read(sharedPreferencesProvider).getString(keyBatteryBannerDismissed);
+  return raw == null ? null : DateTime.tryParse(raw);
+});
+
+/// Los avisos que hay que mostrar ahora (vacío en iPhone o si todo está bien).
+final setupIssuesProvider = Provider<List<SetupIssue>>((ref) {
+  final status = ref.watch(setupStatusProvider);
+  return computeSetupIssues(
+    isAndroid: defaultTargetPlatform == TargetPlatform.android,
+    notificationsOn: status.notificationsOn,
+    batteryUnrestricted: status.batteryUnrestricted,
+    batteryDismissedAt: ref.watch(batteryBannerDismissedProvider),
+  );
+});

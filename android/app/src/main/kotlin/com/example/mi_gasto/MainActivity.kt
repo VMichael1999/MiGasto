@@ -35,6 +35,18 @@ class MainActivity : FlutterFragmentActivity() {
                     startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                     result.success(true)
                 }
+                "isBatteryUnrestricted" -> {
+                    // Sin restricciones: el sistema no duerme la app en segundo plano.
+                    val power = getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
+                    result.success(power.isIgnoringBatteryOptimizations(packageName))
+                }
+                "openBatterySettings" -> {
+                    // La ficha de la app: ahí está Batería > Sin restricciones.
+                    startActivity(
+                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")),
+                    )
+                    result.success(true)
+                }
                 "requestOverlayPermission" -> {
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
                         val intent = Intent(
@@ -70,6 +82,22 @@ class MainActivity : FlutterFragmentActivity() {
         }
         
         handleIntent(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Si el sistema soltó el lector de notificaciones (pasa con el ahorro de batería),
+        // se le pide que vuelva a conectarse.
+        val enabled = androidx.core.app.NotificationManagerCompat.getEnabledListenerPackages(this)
+        if (enabled.contains(packageName)) {
+            try {
+                android.service.notification.NotificationListenerService.requestRebind(
+                    android.content.ComponentName(this, PaymentNotificationListener::class.java),
+                )
+            } catch (e: Exception) {
+                // Sin conexión posible por ahora: no es esencial.
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

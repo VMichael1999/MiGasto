@@ -7,6 +7,7 @@ import 'package:percent_indicator/percent_indicator.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../domain/entities/movimiento.dart';
+import '../../domain/setup_issues.dart';
 import '../../shared/format.dart';
 import '../../shared/labels.dart';
 import '../../shared/widgets/app_icons.dart';
@@ -25,6 +26,7 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final expenses = ref.watch(expensesStateProvider);
     final budget = ref.watch(budgetProvider);
+    final issues = ref.watch(setupIssuesProvider);
 
     final now = DateTime.now();
     bool isThisMonth(Movimiento m) => m.date.year == now.year && m.date.month == now.month;
@@ -56,6 +58,10 @@ class DashboardScreen extends ConsumerWidget {
               const SizedBox(height: 14),
               _IncomeExpenseTiles(income: income, spent: spent),
               const SizedBox(height: 14),
+              if (issues.isNotEmpty) ...[
+                _SetupBanner(issue: issues.first),
+                const SizedBox(height: 10),
+              ],
               if (pending.isNotEmpty) ...[
                 _PendingBanner(pending: pending),
               ],
@@ -234,6 +240,92 @@ class _Tile extends StatelessWidget {
               )),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Avisa cuando la lectura de pagos no puede funcionar: permiso apagado o batería restringida.
+class _SetupBanner extends ConsumerWidget {
+  const _SetupBanner({required this.issue});
+
+  final SetupIssue issue;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final colors = context.appColors;
+    final permissions = ref.read(permissionsCheckerProvider);
+    final off = issue == SetupIssue.lecturaApagada;
+
+    final title = off ? 'La lectura de pagos está apagada' : 'Evita que el teléfono cierre la lectura';
+    final body = off
+        ? 'MiGasto no está viendo tus pagos de Yape, Plin ni Wallet. Actívala en Acceso a notificaciones.'
+        : 'Entra a Batería y elige «No restringido» («Sin restricciones» en otras marcas). Si no, el teléfono puede dormir la app y se pierden pagos.';
+    final action = off ? 'Activar' : 'Ajustar';
+
+    return Semantics(
+      container: true,
+      label: '$title. $body',
+      child: Material(
+        color: colors.budgetWarningSoft,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 4, 6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: AppIcon(AppIcons.alert,
+                        size: AppIconSize.small, color: colors.budgetWarning),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(title,
+                              style: theme.textTheme.bodyMedium!
+                                  .copyWith(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 2),
+                          Text(body, style: theme.textTheme.bodySmall),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (!off)
+                    TextButton(
+                      onPressed: () async {
+                        final now = DateTime.now();
+                        await ref
+                            .read(sharedPreferencesProvider)
+                            .setString(keyBatteryBannerDismissed, now.toIso8601String());
+                        ref.read(batteryBannerDismissedProvider.notifier).state = now;
+                      },
+                      child: const Text('Ahora no'),
+                    ),
+                  TextButton(
+                    onPressed: () => off
+                        ? permissions.openNotificationListenerSettings()
+                        : permissions.openBatterySettings(),
+                    child: Text(action),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

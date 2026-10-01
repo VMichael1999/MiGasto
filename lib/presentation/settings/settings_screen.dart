@@ -32,6 +32,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     with WidgetsBindingObserver {
   bool _notificationsOn = false;
   bool _screenOn = false;
+  bool _batteryOn = false;
   bool _overlayOn = false;
   final _simController = TextEditingController();
 
@@ -62,9 +63,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     final permissions = ref.read(permissionsCheckerProvider);
     final notifications = await permissions.isNotificationListenerEnabled();
     final screen = await permissions.isAccessibilityEnabled();
+    final battery = await permissions.isBatteryUnrestricted();
     final overlay = await permissions.isOverlayGranted();
     if (!mounted) return;
     setState(() {
+      _batteryOn = battery;
       _notificationsOn = notifications;
       _screenOn = screen;
       _overlayOn = overlay;
@@ -109,6 +112,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                   trailing: _status(context, _screenOn),
                   onTap: () async {
                     await permissions.openAccessibilitySettings();
+                  },
+                ),
+                _SettingRow(
+                  icon: AppIcons.bolt,
+                  title: 'Batería sin restricciones',
+                  subtitle: 'Evita que el teléfono duerma la lectura y se pierdan pagos',
+                  trailing: _status(context, _batteryOn),
+                  onTap: () async {
+                    await permissions.openBatterySettings();
                   },
                 ),
                 _SettingRow(
