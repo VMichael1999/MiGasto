@@ -1,76 +1,100 @@
-# MiGasto 🪙
+# MiGasto
 
-**MiGasto** es una aplicación móvil desarrollada en Flutter diseñada para automatizar el registro, categorización y control de tus finanzas personales. Pensada especialmente para el mercado peruano, la aplicación detecta transacciones en tiempo real a través de las notificaciones del sistema de servicios como **Yape**, **Plin** y **Google Pay**.
+**MiGasto** registra tus gastos e ingresos en el teléfono. En Android lee las notificaciones de **Yape**, **Plin** y **Google Wallet** (lo que recibes) y la constancia de Yape (lo que envías o pagas) para anotar cada pago por ti; todo lo demás se registra a mano. Pensada para quien paga casi todo con el celular en Perú.
 
----
+Todo se guarda solo en el teléfono, en una base de datos cifrada: no hay servidor ni cuenta.
 
-## 🚀 Características Principales
+## Qué hace
 
-*   **Detección Automática**: Lector nativo en Kotlin que utiliza el Servicio de Accesibilidad de Android para procesar notificaciones en tiempo real sin requerir registros manuales.
-*   **Categorización Inteligente**: Clasificación automática de comercios mediante un sistema híbrido de reglas predefinidas y preferencias aprendidas (IA de anulación de categorías).
-*   **Diseño Premium**: Interfaz moderna de alta calidad con tema oscuro (*Dark Slate* con acentos *Neon Green*).
-*   **Seguridad y Privacidad**: Base de datos local encriptada con Isar DB. Los datos de tus transacciones no salen de tu dispositivo.
-*   **Presupuesto Dinámico**: Indicador visual del límite mensual establecido con código de colores según el nivel de consumo (Verde, Ámbar, Rojo).
-*   **Búsqueda y Filtros Avanzados**: Filtrado preciso por proveedor, categorías y rango de montos.
-*   **Herramientas de Depuración**: Simulador integrado de transacciones y de OCR (solo visible en entornos de desarrollo).
-*   **Exportación de Datos**: Generación y exportación de historiales completos a formato CSV.
+- **Gastos e ingresos.** Los gastos se guardan solos. Los ingresos esperan tu confirmación y, si los ignoras, quedan en "Por confirmar". En Ajustes puedes activar **Guardar ingresos automáticamente** (apagado por defecto).
+- **Detección en Android.** Dos fuentes, ambas nativas (Kotlin):
+  - **Acceso a notificaciones** (`PaymentNotificationListener`): lo que recibes (por ejemplo, "te envió un pago por S/ 5"). Es la vía principal.
+  - **Accesibilidad** (`MyAccessibilityService`): la constancia de Yape cuando envías o pagas ("¡Yapeaste!"), porque Yape no avisa al que paga. Es opcional; se activa en Ajustes > "Pagos que envías". De la pantalla **solo** se lee la constancia (la que trae "DATOS DE LA TRANSACCIÓN"): el inicio de Yape, con el saldo y los últimos movimientos, se ignora.
+  Ambas pasan por el mismo lector de reglas y la misma protección contra duplicados.
+- **Notificación de cada pago.** Cuando la ventana flotante no se puede ver (pantalla apagada o bloqueada, o sin el permiso «Mostrar sobre otras apps») MiGasto guarda el pago según las reglas de siempre y te avisa con una notificación local (no hay servidor ni *push*): un gasto queda guardado y avisa en silencio («Gasto guardado: S/ 3.00 · a Michael · Yape»); un ingreso que espera confirmación avisa con sonido y trae los botones **Guardar** e **Ignorar** para resolverlo sin abrir la app (se ven al desbloquear y bajar la barra; en la pantalla bloqueada no, por privacidad). En la pantalla bloqueada solo dice «Pago detectado», salvo que actives Ajustes > «Monto en pantalla bloqueada». Con el teléfono en uso y desbloqueado sigue saliendo la ventana flotante, sin duplicar el aviso. Android 13 o más pide el permiso de notificaciones.
+- **Avisos de permisos y batería.** Un aviso en Resumen cuando el acceso a notificaciones está apagado (no se ve ningún pago) y otro cuando la batería de la app está restringida (el teléfono puede dormir la lectura; en Samsung se elige «No restringido»). El de batería se puede posponer 7 días. Ajustes tiene su fila de estado y el onboarding un paso. Al abrir la app se le pide al sistema que reconecte el lector de notificaciones si lo soltó.
+- **Ventana flotante.** Aparece sobre cualquier app con el monto, el comercio, la fuente y la categoría. El botón **Guardar** es la cuenta regresiva: se vacía de color fuerte a tenue en 4 segundos y guarda al terminar; tocar la ventana la pausa; deslizarla hacia arriba la descarta. Un ingreso espera tu confirmación, salvo que hayas activado el guardado automático.
+- **Reglas compartidas.** Qué es un pago y de qué categoría es se define en `assets/reader_rules.json` y `assets/category_rules.json`, que leen Kotlin y Dart. Si un banco cambia su texto, se actualiza el JSON.
+- **Sin duplicados.** Un mismo pago que llega por dos vías (la notificación y la pantalla de la constancia, o la accesibilidad y el acceso a notificaciones) cuenta una sola vez: mismo monto, fuente y tipo dentro de 2 minutos **por vías distintas**. Dos yapes iguales seguidos valen los dos, porque cada notificación se identifica por sí sola. Una notificación ya leída no se vuelve a procesar aunque el sistema la reenvíe al reiniciar el servicio o reinstalar la app. Una constancia de Yape ya leída tampoco se repite, aunque el servicio se reinicie con ella abierta: se reconoce por su número de operación o, si no está a la vista, por su fecha y hora. Los descartes quedan anotados en el registro de Android (`logcat`) con su razón.
+- **Nombres (alias).** En un movimiento, toca «De» o «Para» para ponerle un nombre corto a esa persona o comercio («Michael» en vez de «MICHAEL ANTHONY VALDIVIEZO MAZA»). Se aplica a todos los movimientos de ese nombre, en Resumen, Movimientos, el detalle, el mapa y la ventana flotante, y la búsqueda encuentra por el nombre nuevo o por el original. El pago guarda siempre el nombre original; el alias solo cambia cómo se ve. Se administran en Ajustes > Nombres guardados y viajan en el respaldo cifrado.
+- **Categorías.** Por palabras clave (no es IA) y por lo que cambias a mano ("Aprendidas de tus cambios").
+- **Categorías propias.** Al registrar un movimiento (o al cambiar su categoría) toca **Nueva** y elige un nombre y un ícono entre 56. Se ven igual que las demás en Resumen, Movimientos, el detalle, los filtros, Reportes y el CSV. Se administran en Ajustes > Mis categorías y viajan en el respaldo cifrado. Cuentan como Otros / Otros ingresos para los totales y las reglas, así que borrar una no deja movimientos huérfanos.
+- **Ocultar y ver los montos.** El ojo de Resumen oculta el saldo, Ingresos, Gastos, el presupuesto y los montos de Movimientos, Reportes y el detalle (`S/ ••••`). Al volver a mostrarlos, el saldo sube contando desde 0. Se recuerda entre aperturas.
+- **Resumen, Movimientos y Reportes.** Saldo del mes, presupuesto de gastos con estado en texto, filtros por tipo, fuente, categoría y monto, e ingresos frente a gastos por mes.
+- **Ubicación opcional.** Se pide solo al tocar "Agregar ubicación" y con la app en uso. Muestra la dirección y un mapa de Google Maps; puedes quitarla de un movimiento o borrar todas.
+- **iPhone.** Acción de Atajos "Registrar movimiento" para Apple Pay y extensión para compartir capturas de Yape y Plin, con lectura de texto en el teléfono (Vision).
+- **Datos cifrados.** SQLite con cifrado (SQLite3MultipleCiphers). La clave se genera en el teléfono y vive en el almacén seguro del sistema (Keychain en iPhone, Keystore en Android).
+- **Bloqueo.** Huella, rostro o PIN del teléfono.
+- **Claro y oscuro** según el sistema. Tipografía Outfit.
+- **Respaldo cifrado.** Ajustes > Respaldo cifrado crea un archivo `.mgb` con tus movimientos (con ubicaciones y texto original), tu presupuesto, las categorías aprendidas, los nombres guardados y tus categorías propias, cifrado con **AES-256-GCM** y una clave derivada de tu contraseña con PBKDF2-SHA256 (210 000 vueltas). Lo compartes donde quieras (Drive, correo, tu computadora). MiGasto no guarda la contraseña: si la olvidas, el respaldo no se puede abrir. Ajustes > Restaurar un respaldo lo abre y **agrega lo que falta sin borrar nada** (los movimientos que ya están, por id, no se duplican). Una contraseña equivocada o un archivo alterado se detectan.
+- **Exportar a CSV** (sin ubicaciones).
 
----
+## Lo que todavía no hace
 
-## 🛠️ Arquitectura y Tecnologías
+- **iPhone:** Yape y Plin no se detectan solos (iOS no lo permite). Se registran compartiendo la captura de la constancia a MiGasto (el texto se lee en el teléfono) o con el botón +. Los pagos con Apple Pay en el POS se registran con la automatización Transacción de Atajos. Hay un widget y un control del Centro de control que abren el registro (`migasto://new`).
+- **Validado con un teléfono real (Samsung, Yape):** pago recibido (notificación), yape enviado y pago de un servicio (constancia: la empresa es el nombre y cae en la categoría Servicios). **Sin validar:** Google Wallet y Plin dentro de las apps de BBVA, Interbank y Scotiabank; los nombres de paquete de esos bancos son suposiciones y el texto exacto de cada notificación falta confirmarlo (fase 0 del plan).
+- **Android:** en algunos teléfonos Samsung el servicio de Accesibilidad no recibe los avisos de notificación; por eso se usa el acceso a notificaciones. Android puede marcar "Configuración restringida" al instalar fuera de Play Store: se permite desde Ajustes > Aplicaciones > MiGasto.
+- **Respaldo:** es manual; no hay copia automática ni en la nube. Hay que acordarse de crearlo. En Android la copia automática de Google y la transferencia entre teléfonos están desactivadas a propósito (`allowBackup="false"`): la clave de la base no viaja, así que una copia restaurada no se podría abrir. Para pasar tus datos a otro teléfono usa el respaldo cifrado.
+- **Ventana flotante de Android:** todavía no ofrece tus categorías propias (solo las de siempre), y la app no aprende una categoría propia para los pagos futuros de un comercio (solo la aplica a los anteriores si lo pides).
+- **Ubicación automática al pagar** con Apple Pay (iPhone) y desde la ventana flotante de Android.
 
-El proyecto sigue las mejores prácticas de desarrollo móvil y está estructurado bajo principios de arquitectura limpia:
+## Tecnologías
 
-*   **Framework**: [Flutter](https://flutter.dev) (v3.29.1) & [Dart](https://dart.dev).
-*   **Gestión de Estado**: [Flutter Riverpod](https://riverpod.dev) para un manejo reactivo y desacoplado del estado.
-*   **Base de Datos**: [Isar Database](https://isar.dev) como motor de almacenamiento NoSQL local de alto rendimiento.
-*   **Enrutamiento**: [GoRouter](https://pub.dev/packages/go_router) para la navegación declarativa.
-*   **Capa Nativa**: Servicios en Kotlin (`AccessibilityService` y `OverlayService` de Android) para la escucha de notificaciones y renderizado de ventanas emergentes interactivas.
+Flutter 3.47 (Dart 3.13), Riverpod, GoRouter, Drift (SQLite cifrado), fl_chart, percent_indicator, google_maps_flutter, geolocator, geocoding, local_auth, flutter_svg, cryptography (respaldo), share_plus y file_picker. Capa nativa en Kotlin: `PaymentNotificationListener` (notificaciones), `MyAccessibilityService` (pantalla de constancia), `OverlayService` (ventana flotante) y `NativeQueue` (cola que Flutter vacía para guardar en la base de datos).
 
----
+## Configuración
 
-## 📦 Instalación y Configuración
+1. Instala Flutter 3.47 o superior (con `fvm`: `fvm install 3.47.5`).
+2. Copia `.env.example` a `.env` y completa tu clave de Google Maps. El `.env` no se sube al repositorio.
 
-### Prerrequisitos
+   ```bash
+   cp .env.example .env
+   ```
 
-*   Flutter SDK (^3.29.1)
-*   Android SDK (API Level 21+)
-*   Un dispositivo Android físico o emulador con servicios de Google Play.
+3. Instala dependencias y corre las pruebas:
 
-### Pasos para iniciar el proyecto
+   ```bash
+   flutter pub get
+   flutter test
+   ```
 
-1.  Clona este repositorio:
-    ```bash
-    git clone https://github.com/VMichael1999/MiGasto.git
-    cd MiGasto
-    ```
+4. Ejecuta pasando el `.env` (el mapa solo aparece si la clave está presente):
 
-2.  Instala las dependencias de Flutter:
-    ```bash
-    flutter pub get
-    ```
+   ```bash
+   flutter run --dart-define-from-file=.env
+   ```
 
-3.  Ejecuta las pruebas unitarias y de widget para verificar que todo esté en orden:
-    ```bash
-    flutter test
-    ```
+La clave también la leen Android (al compilar, desde `.env`) e iOS (por `xcconfig`). En Google Cloud conviene restringirla por app (ID de paquete y bundle ID) y a la API de Maps SDK.
 
-4.  Compila y ejecuta la aplicación:
-    ```bash
-    flutter run
-    ```
+## Permisos en Android
 
----
+- **Acceso a notificaciones:** para leer los avisos de Yape, Plin y Google Wallet. Solo esas apps (lista en `PaymentNotificationListener`); el resto se ignora.
+- **Accesibilidad (opcional):** para leer la constancia de Yape cuando envías o pagas. Solo escucha esas apps (`accessibility_service_config.xml`).
+- **Mostrar sobre otras apps (opcional):** para la ventana flotante. Sin ella, los pagos quedan "Por confirmar" en la app.
+- **Estado de la batería** (sin permiso extra): solo se consulta si la app está restringida y se abre su ficha de ajustes para que tú lo cambies.
+- **Notificaciones (Android 13 o más):** para avisarte de cada pago detectado cuando la ventana flotante no se puede ver.
+- **Vibración:** una vibración corta cuando aparece la ventana.
+- **Ubicación (solo en uso):** únicamente cuando tocas "Agregar ubicación".
 
-## 🔒 Permisos Requeridos (Android)
+La app explica qué lee y qué no antes de pedir cualquier permiso, y se puede usar solo con registro manual.
 
-Para que el registro automático funcione, debes conceder los siguientes permisos dentro de la aplicación:
+## Pruebas
 
-1.  **Servicio de Accesibilidad**: Requerido por `MyAccessibilityService` para leer el contenido de las notificaciones entrantes de Yape, Plin y Google Pay.
-2.  **Mostrar sobre otras aplicaciones (Overlay)**: Requerido por `OverlayService` para mostrar la ventana flotante de confirmación inmediata al detectar un pago.
+```bash
+flutter analyze
+flutter test
+```
 
----
+Hay 118 pruebas de Flutter: cifrado de la base, lector (gasto o ingreso, montos, textos que no son pagos, y los textos reales de la notificación y la constancia de Yape), categorías y categorías propias, duplicados, migración de datos antiguos, cola nativa (incluidos los botones del aviso), ventana de pago, guardado automático de ingresos, registro manual, ocultar montos, respaldo, ubicación y bloqueo.
 
-## 👥 Contribuidores
+Del código nativo de Android hay 9 pruebas JUnit del freno de duplicados (`DuplicateGuard`):
 
-*   **Michael Anthony** - [@VMichael1999](https://github.com/VMichael1999)
+```bash
+cd android && ./gradlew :app:testDebugUnitTest
+```
+
+El resto de lo nativo (lector de reglas, servicio de notificaciones, accesibilidad, ventana flotante y avisos) se verificó a mano en teléfonos reales y en un emulador.
+
+## Contribuidores
+
+- **Michael Anthony** - [@VMichael1999](https://github.com/VMichael1999)

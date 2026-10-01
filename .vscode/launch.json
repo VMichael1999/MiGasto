@@ -8,18 +8,21 @@
         {
             "name": "mi_gasto",
             "request": "launch",
-            "type": "dart"
+            "type": "dart",
+            "args": ["--dart-define-from-file=.env"]
         },
         {
             "name": "mi_gasto (profile mode)",
             "request": "launch",
             "type": "dart",
+            "args": ["--dart-define-from-file=.env"],
             "flutterMode": "profile"
         },
         {
             "name": "mi_gasto (release mode)",
             "request": "launch",
             "type": "dart",
+            "args": ["--dart-define-from-file=.env"],
             "flutterMode": "release"
         }
     ]

@@ -1,10 +1,17 @@
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mi_gasto/presentation/providers.dart';
-import 'package:mi_gasto/domain/entities/expense.dart';
+import 'package:mi_gasto/data/services/nlp_classifier_service.dart';
+import 'package:mi_gasto/domain/entities/movimiento.dart';
 
 void main() {
+  setUpAll(() {
+    NlpClassifierService.configure(
+        File('assets/category_rules.json').readAsStringSync());
+  });
+
   group('Expenses Notifier & State Tests', () {
     late ProviderContainer container;
 
@@ -52,7 +59,7 @@ void main() {
       expect(pending, isNotNull);
       expect(pending!.amount, 25.50);
       expect(pending.merchant, 'Tambo');
-      expect(pending.category, ExpenseCategory.compras); // Tambo auto-classified as Compras
+      expect(pending.category, Categoria.compras); // Tambo auto-classified as Compras
       expect(pending.isConfirmed, false);
     });
 
@@ -66,7 +73,7 @@ void main() {
 
       // Confirm with category 'compras'
       await container.read(expensesStateProvider.notifier).confirmPendingExpense(
-        ExpenseCategory.compras,
+        Categoria.compras,
         'Nota de prueba',
       );
 
@@ -74,7 +81,7 @@ void main() {
       final list = container.read(expensesStateProvider);
       expect(list.first.merchant, 'Tambo');
       expect(list.first.amount, 35.00);
-      expect(list.first.category, ExpenseCategory.compras);
+      expect(list.first.category, Categoria.compras);
       expect(list.first.isConfirmed, true);
 
       // Verify pending is cleared
@@ -82,7 +89,7 @@ void main() {
 
       // Verify category override is learned
       final learned = await container.read(expenseRepositoryProvider).getCategoryOverride('Tambo');
-      expect(learned, ExpenseCategory.compras);
+      expect(learned, Categoria.compras);
     });
   });
 }

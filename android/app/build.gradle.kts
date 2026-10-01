@@ -4,6 +4,12 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// La clave de Google Maps vive en el .env de la raíz (no se sube al repositorio).
+val mapsApiKey: String = rootProject.file("../.env").takeIf { it.exists() }
+    ?.readLines()
+    ?.firstOrNull { it.trim().startsWith("GOOGLE_MAPS_API_KEY=") }
+    ?.substringAfter("=")?.trim() ?: ""
+
 android {
     namespace = "com.example.mi_gasto"
     compileSdk = flutter.compileSdkVersion
@@ -23,6 +29,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
     buildTypes {
@@ -38,6 +45,10 @@ kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
+}
+
+dependencies {
+    testImplementation("junit:junit:4.13.2")
 }
 
 flutter {

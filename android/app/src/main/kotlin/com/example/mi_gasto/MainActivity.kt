@@ -1,13 +1,13 @@
 package com.example.mi_gasto
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import android.content.Intent
 import android.provider.Settings
 import android.net.Uri
 
-class MainActivity: FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
     private val CHANNEL = "com.example.mi_gasto/accessibility"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -24,6 +24,48 @@ class MainActivity: FlutterActivity() {
                 "openAccessibilitySettings" -> {
                     val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
                     startActivity(intent)
+                    result.success(true)
+                }
+                "isNotificationListenerEnabled" -> {
+                    val enabled = androidx.core.app.NotificationManagerCompat
+                        .getEnabledListenerPackages(this)
+                    result.success(enabled.contains(packageName))
+                }
+                "openNotificationListenerSettings" -> {
+                    startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                    result.success(true)
+                }
+                "isPostNotificationsGranted" -> result.success(PaymentNotifier.canNotify(this))
+                "requestPostNotifications" -> {
+                    // La primera vez se pide el permiso; si ya se pidió y sigue apagado, se abren los ajustes.
+                    val prefs = getSharedPreferences("migasto_native_state", MODE_PRIVATE)
+                    val needsRuntime = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+                        androidx.core.content.ContextCompat.checkSelfPermission(
+                            this, android.Manifest.permission.POST_NOTIFICATIONS,
+                        ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                    if (needsRuntime && !prefs.getBoolean("asked_post_notifications", false)) {
+                        prefs.edit().putBoolean("asked_post_notifications", true).apply()
+                        androidx.core.app.ActivityCompat.requestPermissions(
+                            this, arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1001,
+                        )
+                    } else {
+                        startActivity(
+                            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                .putExtra(Settings.EXTRA_APP_PACKAGE, packageName),
+                        )
+                    }
+                    result.success(true)
+                }
+                "isBatteryUnrestricted" -> {
+                    // Sin restricciones: el sistema no duerme la app en segundo plano.
+                    val power = getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
+                    result.success(power.isIgnoringBatteryOptimizations(packageName))
+                }
+                "openBatterySettings" -> {
+                    // La ficha de la app: ahí está Batería > Sin restricciones.
+                    startActivity(
+                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")),
+                    )
                     result.success(true)
                 }
                 "requestOverlayPermission" -> {
@@ -45,6 +87,10 @@ class MainActivity: FlutterActivity() {
                         result.success(true)
                     }
                 }
+                "takeNativeQueue" -> {
+                    // Pagos que el código nativo detectó mientras la app estaba cerrada.
+                    result.success(NativeQueue.take(this))
+                }
                 "simulateNotification" -> {
                     val text = call.argument<String>("text") ?: ""
                     MyAccessibilityService.simulateNotification(text, this)
@@ -59,6 +105,22 @@ class MainActivity: FlutterActivity() {
         handleIntent(intent)
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Si el sistema soltó el lector de notificaciones (pasa con el ahorro de batería),
+        // se le pide que vuelva a conectarse.
+        val enabled = androidx.core.app.NotificationManagerCompat.getEnabledListenerPackages(this)
+        if (enabled.contains(packageName)) {
+            try {
+                android.service.notification.NotificationListenerService.requestRebind(
+                    android.content.ComponentName(this, PaymentNotificationListener::class.java),
+                )
+            } catch (e: Exception) {
+                // Sin conexión posible por ahora: no es esencial.
+            }
+        }
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleIntent(intent)
@@ -69,6 +131,7 @@ class MainActivity: FlutterActivity() {
             val amount = intent.getDoubleExtra("amount", 0.0)
             val merchant = intent.getStringExtra("merchant") ?: ""
             val provider = intent.getStringExtra("provider") ?: ""
+            val type = intent.getStringExtra("type") ?: "gasto"
             val rawText = intent.getStringExtra("rawText") ?: ""
 
             // Validate inputs
@@ -82,6 +145,7 @@ class MainActivity: FlutterActivity() {
                     "amount" to amount,
                     "peerName" to merchant,
                     "provider" to provider,
+                    "type" to type,
                     "rawText" to rawText
                 ))
             }

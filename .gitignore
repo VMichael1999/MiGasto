@@ -40,6 +40,13 @@ app.*.symbols
 app.*.map.json
 
 # Android Studio will place build artifacts here
+/android/build/
+/android/.gradle/
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Variables de entorno (claves de API). Usa .env.example como plantilla.
+.env
+.env.*
+!.env.example

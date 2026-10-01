@@ -1,867 +1,659 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../providers.dart';
-import '../../core/theme/theme.dart';
-import '../../domain/entities/expense.dart';
-import '../expenses/expense_detail_dialog.dart';
+import 'package:percent_indicator/percent_indicator.dart';
 
-class DashboardScreen extends ConsumerStatefulWidget {
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_tokens.dart';
+import '../../domain/aliases.dart';
+import '../../domain/entities/movimiento.dart';
+import '../../domain/setup_issues.dart';
+import '../../shared/category_display.dart';
+import '../../shared/format.dart';
+import '../../shared/labels.dart';
+import '../../shared/widgets/app_icons.dart';
+import '../../shared/widgets/big_amount.dart';
+import '../../shared/widgets/movement_row.dart';
+import '../expenses/expense_detail_dialog.dart';
+import '../providers.dart';
+
+enum _BudgetState { ok, warning, over }
+
+class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
-  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final expenses = ref.watch(expensesStateProvider);
+    final budget = ref.watch(budgetProvider);
+    final issues = ref.watch(setupIssuesProvider);
+
+    final now = DateTime.now();
+    bool isThisMonth(Movimiento m) => m.date.year == now.year && m.date.month == now.month;
+
+    // Solo lo confirmado suma; lo pendiente se muestra aparte.
+    final confirmedMonth = expenses.where((m) => m.isConfirmed && isThisMonth(m)).toList();
+    final spent = confirmedMonth.where((m) => m.esGasto).fold(0.0, (sum, m) => sum + m.amount);
+    final income = confirmedMonth.where((m) => m.esIngreso).fold(0.0, (sum, m) => sum + m.amount);
+    final balance = income - spent;
+
+    final pending = expenses.where((m) => m.estado == EstadoMovimiento.pendiente).toList();
+    final today = expenses
+        .where((m) =>
+            m.date.year == now.year && m.date.month == now.month && m.date.day == now.day)
+        .toList();
+
+    return Scaffold(
+      body: SafeArea(
+        bottom: false,
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(AppSpacing.xl, 6, AppSpacing.xl, 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _Header(now: now),
+              const SizedBox(height: 14),
+              _Balance(balance: balance),
+              const SizedBox(height: 14),
+              _IncomeExpenseTiles(income: income, spent: spent),
+              const SizedBox(height: 14),
+              if (issues.isNotEmpty) ...[
+                _SetupBanner(issue: issues.first),
+                const SizedBox(height: 10),
+              ],
+              if (pending.isNotEmpty) ...[
+                _PendingBanner(pending: pending),
+              ],
+              if (budget > 0) ...[
+                const SizedBox(height: 14),
+                _BudgetProgress(spent: spent, budget: budget, now: now),
+              ],
+              const SizedBox(height: 14),
+              _TodaySection(movements: today),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-class _DashboardScreenState extends ConsumerState<DashboardScreen> {
-  bool _isBalanceHidden = false;
-  int? touchedIndex;
+class _Header extends ConsumerWidget {
+  const _Header({required this.now});
+
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hidden = ref.watch(balanceHiddenProvider);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final month = toBeginningOfSentenceCase(DateFormat('MMMM', 'es').format(now));
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            Text(month, style: theme.textTheme.headlineMedium),
+            const SizedBox(width: 4),
+            AppIcon(
+              AppIcons.expand,
+              size: AppIconSize.small,
+              color: scheme.onSurfaceVariant,
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            _HeaderButton(
+              label: hidden ? 'Mostrar montos' : 'Ocultar montos',
+              icon: hidden ? AppIcons.eyeOff : AppIcons.eye,
+              onTap: () => ref.read(balanceHiddenProvider.notifier).toggle(),
+            ),
+            const SizedBox(width: 8),
+            _HeaderButton(
+              label: 'Buscar movimientos',
+              icon: AppIcons.search,
+              onTap: () => context.go('/expenses'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _HeaderButton extends StatelessWidget {
+  const _HeaderButton({required this.label, required this.icon, required this.onTap});
+
+  final String label;
+  final AppIcons icon;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final expenses = ref.watch(expensesStateProvider);
-
-    final now = DateTime.now();
-    
-    // Filter confirmed expenses for THIS month
-    final confirmedExpenses = expenses.where((e) {
-      return e.isConfirmed &&
-          e.date.year == now.year &&
-          e.date.month == now.month;
-    }).toList();
-    
-    // Calculate total spent this month
-    final totalSpent = confirmedExpenses.fold(0.0, (sum, e) => sum + e.amount);
-    final budget = ref.watch(budgetProvider);
-
-    // Group by category totals (this month)
-    final categoryMap = <ExpenseCategory, double>{};
-    for (final exp in confirmedExpenses) {
-      categoryMap[exp.category] = (categoryMap[exp.category] ?? 0.0) + exp.amount;
-    }
-
-    // Calculate previous month total spent
-    final lastMonth = now.month == 1 ? 12 : now.month - 1;
-    final lastMonthYear = now.month == 1 ? now.year - 1 : now.year;
-    final lastMonthExpenses = expenses.where((e) {
-      return e.isConfirmed &&
-          e.date.year == lastMonthYear &&
-          e.date.month == lastMonth;
-    }).toList();
-    final lastMonthSpent = lastMonthExpenses.fold(0.0, (sum, e) => sum + e.amount);
-
-    double percentDiff = 0.0;
-    if (lastMonthSpent > 0) {
-      percentDiff = ((totalSpent - lastMonthSpent) / lastMonthSpent) * 100.0;
-    }
-
-    // Top recent movements (confirmed, all-time, up to 3)
-    final allConfirmed = expenses.where((e) => e.isConfirmed).toList();
-    final recentMovements = allConfirmed.take(3).toList();
-
-    return Scaffold(
-      drawer: Drawer(
-        backgroundColor: AppTheme.cardBg,
-        child: Column(
-          children: [
-            Consumer(
-              builder: (context, ref, child) {
-                final name = ref.watch(profileNameProvider);
-                final email = ref.watch(profileEmailProvider);
-                final initials = name.split(' ').map((e) => e.isNotEmpty ? e[0].toUpperCase() : '').join();
-                final initialsToShow = initials.length > 2 ? initials.substring(0, 2) : initials;
-
-                return UserAccountsDrawerHeader(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF1D1B26),
-                  ),
-                  currentAccountPicture: CircleAvatar(
-                    backgroundColor: AppTheme.neonGreen,
-                    child: Text(
-                      initialsToShow.isNotEmpty ? initialsToShow : 'U',
-                      style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
-                    ),
-                  ),
-                  accountName: Text(
-                    name.isNotEmpty ? name : 'Configurar Nombre',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: name.isNotEmpty ? Colors.white : Colors.grey[500],
-                    ),
-                  ),
-                  accountEmail: Text(
-                    email.isNotEmpty ? email : 'correo@ejemplo.com',
-                    style: TextStyle(
-                      color: email.isNotEmpty ? Colors.grey[400] : Colors.grey[600],
-                    ),
-                  ),
-                );
-              },
+    final scheme = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: label,
+      child: Semantics(
+        button: true,
+        label: label,
+        excludeSemantics: true,
+        child: Material(
+          color: scheme.surface,
+          borderRadius: BorderRadius.circular(AppRadius.field),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppRadius.field),
+            onTap: onTap,
+            child: SizedBox(
+              width: AppSizes.iconButton,
+              height: AppSizes.iconButton,
+              child: Center(child: AppIcon(icon, color: scheme.onSurface)),
             ),
-            ListTile(
-              leading: const Icon(Icons.home, color: AppTheme.neonGreen),
-              title: const Text('Resumen / Inicio', style: TextStyle(color: Colors.white)),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/dashboard');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.receipt_long, color: Colors.white70),
-              title: const Text('Historial de Gastos', style: TextStyle(color: Colors.white)),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/expenses');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.bar_chart, color: Colors.white70),
-              title: const Text('Reportes', style: TextStyle(color: Colors.white)),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/reports');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings, color: Colors.white70),
-              title: const Text('Ajustes del Sistema', style: TextStyle(color: Colors.white)),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/settings');
-              },
-            ),
-            if (kDebugMode)
-              const Divider(color: Color(0xFF2E2B3B)),
-            if (kDebugMode)
-              ListTile(
-                leading: const Icon(Icons.bug_report_outlined, color: Colors.orangeAccent),
-                title: const Text('Simular Transacción', style: TextStyle(color: Colors.white)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _simulateRandomTransaction(context, ref);
-                },
-              ),
-          ],
-        ),
-      ),
-      appBar: AppBar(
-        leading: Builder(
-          builder: (context) {
-            return IconButton(
-              icon: const Icon(Icons.menu, color: Colors.white),
-              onPressed: () {
-                Scaffold.of(context).openDrawer();
-              },
-            );
-          },
-        ),
-        title: const Text('Resumen'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-            onPressed: () {
-              _showNotificationStatusDialog(context);
-            },
           ),
-        ],
+        ),
       ),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+    );
+  }
+}
+
+class _Balance extends ConsumerStatefulWidget {
+  const _Balance({required this.balance});
+
+  final double balance;
+
+  @override
+  ConsumerState<_Balance> createState() => _BalanceState();
+}
+
+class _BalanceState extends ConsumerState<_Balance> {
+  /// Cuántas veces se volvió a mostrar el saldo: cada vez el número sube desde 0.
+  int _reveals = 0;
+  bool _wasHidden = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final hidden = ref.watch(balanceHiddenProvider);
+    if (_wasHidden && !hidden) _reveals++;
+    _wasHidden = hidden;
+    final negative = widget.balance < 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Te quedan de este mes',
+          style: theme.textTheme.bodyMedium!.copyWith(
+            fontSize: 13.5,
+            fontWeight: FontWeight.w500,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 4),
+        BigAmount(
+          widget.balance.abs(),
+          key: ValueKey(_reveals),
+          prefix: negative && !hidden ? '− S/' : 'S/',
+          color: negative && !hidden ? context.appColors.budgetOver : null,
+          hidden: hidden,
+          countUpFromZero: _reveals > 0,
+        ),
+      ],
+    );
+  }
+}
+
+class _IncomeExpenseTiles extends StatelessWidget {
+  const _IncomeExpenseTiles({required this.income, required this.spent});
+
+  final double income;
+  final double spent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _Tile(
+            icon: AppIcons.arrowUp,
+            label: 'Ingresos',
+            value: income,
+            iconColor: context.appColors.income,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _Tile(
+            icon: AppIcons.arrowDown,
+            label: 'Gastos',
+            value: spent,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Tile extends ConsumerWidget {
+  const _Tile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.iconColor,
+  });
+
+  final AppIcons icon;
+  final String label;
+  final double value;
+  final Color? iconColor;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hidden = ref.watch(balanceHiddenProvider);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Semantics(
+      label: '$label, ${hidden ? 'monto oculto' : formatSoles(value).replaceAll('S/', 'soles')}',
+      excludeSemantics: true,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+        ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // TOTAL SPENT HEADER CARD
-            _buildTotalSpentCard(context, totalSpent, lastMonthSpent, percentDiff),
-            const SizedBox(height: 20),
-
-            // BUDGET PROGRESS BAR
-            if (budget > 0) ...[
-              _buildBudgetProgressCard(context, totalSpent, budget),
-              const SizedBox(height: 20),
-            ],
-
-            // POR CATEGORÍA PIE CHART CARD
-            if (confirmedExpenses.isNotEmpty) ...[
-              _buildCategoryChartCard(context, categoryMap, totalSpent),
-              const SizedBox(height: 20),
-            ],
-
-            // ÚLTIMOS MOVIMIENTOS CARD
-            _buildRecentMovementsCard(context, recentMovements, now),
-            const SizedBox(height: 24),
+            Row(
+              children: [
+                AppIcon(icon, size: 14, color: iconColor ?? scheme.onSurfaceVariant),
+                const SizedBox(width: 5),
+                Text(label, style: theme.textTheme.labelMedium),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              solesOrHidden(value, hidden),
+              style: AppText.amount(theme.textTheme.titleMedium!.copyWith(
+                fontSize: 17,
+              )),
+            ),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildTotalSpentCard(
-    BuildContext context,
-    double totalSpent,
-    double lastMonthSpent,
-    double percentDiff,
-  ) {
-    return Card(
-      color: AppTheme.cardBg,
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Gasto total este mes',
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(
-                    _isBalanceHidden ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                    color: Colors.grey,
-                    size: 20,
-                  ),
-                  constraints: const BoxConstraints(),
-                  padding: EdgeInsets.zero,
-                  onPressed: () {
-                    setState(() {
-                      _isBalanceHidden = !_isBalanceHidden;
-                    });
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              _isBalanceHidden ? 'S/ ••••' : 'S/ ${totalSpent.toStringAsFixed(2)}',
-              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-                letterSpacing: -1.0,
-              ),
-            ),
-            const SizedBox(height: 6),
-            if (lastMonthSpent > 0) ...[
+/// Avisa cuando la lectura de pagos no puede funcionar: permiso apagado o batería restringida.
+class _SetupBanner extends ConsumerWidget {
+  const _SetupBanner({required this.issue});
+
+  final SetupIssue issue;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final colors = context.appColors;
+    final permissions = ref.read(permissionsCheckerProvider);
+    final off = issue == SetupIssue.lecturaApagada;
+
+    final String title;
+    final String body;
+    final String action;
+    switch (issue) {
+      case SetupIssue.lecturaApagada:
+        title = 'La lectura de pagos está apagada';
+        body = 'MiGasto no está viendo tus pagos de Yape, Plin ni Wallet. Actívala en Acceso a notificaciones.';
+        action = 'Activar';
+      case SetupIssue.avisosApagados:
+        title = 'Activa los avisos de MiGasto';
+        body = 'Con la pantalla apagada o bloqueada, solo así sabrás qué pago se detectó.';
+        action = 'Activar';
+      case SetupIssue.bateriaRestringida:
+        title = 'Evita que el teléfono cierre la lectura';
+        body = 'Entra a Batería y elige «No restringido» («Sin restricciones» en otras marcas). Si no, el teléfono puede dormir la app y se pierden pagos.';
+        action = 'Ajustar';
+    }
+
+    Future<void> dismiss() async {
+      final now = DateTime.now();
+      final prefs = ref.read(sharedPreferencesProvider);
+      if (issue == SetupIssue.avisosApagados) {
+        await prefs.setString(keyAlertsBannerDismissed, now.toIso8601String());
+        ref.read(alertsBannerDismissedProvider.notifier).state = now;
+      } else {
+        await prefs.setString(keyBatteryBannerDismissed, now.toIso8601String());
+        ref.read(batteryBannerDismissedProvider.notifier).state = now;
+      }
+    }
+
+    Future<void> act() async {
+      switch (issue) {
+        case SetupIssue.lecturaApagada:
+          await permissions.openNotificationListenerSettings();
+        case SetupIssue.avisosApagados:
+          await permissions.requestPostNotifications();
+        case SetupIssue.bateriaRestringida:
+          await permissions.openBatterySettings();
+      }
+    }
+
+    return Semantics(
+      container: true,
+      label: '$title. $body',
+      child: Material(
+        color: colors.budgetWarningSoft,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 4, 6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    percentDiff <= 0 ? Icons.arrow_downward : Icons.arrow_upward,
-                    color: percentDiff <= 0 ? Colors.greenAccent : Colors.redAccent,
-                    size: 16,
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: AppIcon(AppIcons.alert,
+                        size: AppIconSize.small, color: colors.budgetWarning),
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${percentDiff <= 0 ? "" : "+"}${percentDiff.toStringAsFixed(1)}%',
-                    style: TextStyle(
-                      color: percentDiff <= 0 ? Colors.greenAccent[400] : Colors.redAccent[400],
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'vs. mes anterior',
-                    style: TextStyle(
-                      color: Colors.grey[400],
-                      fontSize: 12,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(title,
+                              style: theme.textTheme.bodyMedium!
+                                  .copyWith(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 2),
+                          Text(body, style: theme.textTheme.bodySmall),
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
-            ] else ...[
-              Text(
-                'Sin datos del mes anterior',
-                style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 11,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (!off) TextButton(onPressed: dismiss, child: const Text('Ahora no')),
+                  TextButton(onPressed: act, child: Text(action)),
+                ],
               ),
             ],
-          ],
+          ),
         ),
       ),
     );
   }
+}
 
-  Widget _buildCategoryChartCard(
-    BuildContext context,
-    Map<ExpenseCategory, double> categoryMap,
-    double totalSpent,
-  ) {
-    // Generate sections
-    final List<PieChartSectionData> sections = [];
-    int index = 0;
-    categoryMap.forEach((category, amount) {
-      final isTouched = index == touchedIndex;
-      final radius = isTouched ? 38.0 : 32.0;
-      final color = AppTheme.getCategoryColor(category);
+/// Aviso de lo que espera confirmación del usuario. No suma al saldo.
+class _PendingBanner extends ConsumerWidget {
+  const _PendingBanner({required this.pending});
 
-      sections.add(
-        PieChartSectionData(
-          color: color,
-          value: amount,
-          title: '', // Don't show percentages on pie slice to match mockup look
-          radius: radius,
-        ),
-      );
-      index++;
-    });
+  final List<Movimiento> pending;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Por categoría',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                // Pie Chart Container
-                Expanded(
-                  flex: 4,
-                  child: SizedBox(
-                    height: 128,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        PieChart(
-                          PieChartData(
-                            pieTouchData: PieTouchData(
-                              touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                                setState(() {
-                                  if (!event.isInterestedForInteractions ||
-                                      pieTouchResponse == null ||
-                                      pieTouchResponse.touchedSection == null) {
-                                    touchedIndex = -1;
-                                    return;
-                                  }
-                                  touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
-                                });
-                              },
-                            ),
-                            borderData: FlBorderData(show: false),
-                            sectionsSpace: 4,
-                            centerSpaceRadius: 40,
-                            sections: sections,
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hidden = ref.watch(balanceHiddenProvider);
+    final theme = Theme.of(context);
+    final colors = context.appColors;
+    final count = pending.length;
+    final allIncome = pending.every((m) => m.esIngreso);
+    final noun = allIncome
+        ? (count == 1 ? 'ingreso' : 'ingresos')
+        : (count == 1 ? 'movimiento' : 'movimientos');
+    final incomeTotal = pending.where((m) => m.esIngreso).fold(0.0, (s, m) => s + m.amount);
+    final bodyStyle = theme.textTheme.bodyMedium!.copyWith(fontSize: 13);
+
+    return Semantics(
+      button: true,
+      label: '$count $noun por confirmar',
+      excludeSemantics: true,
+      child: Material(
+        color: colors.pendingReviewSoft,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => context.go('/expenses'),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: AppSizes.minTouch),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                children: [
+                  AppIcon(AppIcons.info,
+                      size: AppIconSize.small, color: colors.pendingReview),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text.rich(
+                      TextSpan(
+                        style: bodyStyle,
+                        children: [
+                          TextSpan(
+                            text: '$count $noun',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
-                        ),
-                        // Text in center matching mockup
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              _isBalanceHidden ? 'S/ ••••' : 'S/ ${(totalSpent / 1000).toStringAsFixed(2)}k',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white,
-                              ),
-                            ),
-                            Text(
-                              'Total',
-                              style: TextStyle(
-                                fontSize: 9,
-                                color: Colors.grey[500],
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                          const TextSpan(text: ' por confirmar'),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                
-                // Legend list on the right matching Mockup Screen 2 values
-                Expanded(
-                  flex: 5,
-                  child: Column(
-                    children: ExpenseCategory.values.map((cat) {
-                      final amount = categoryMap[cat] ?? 0.0;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2.5),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: AppTheme.getCategoryColor(cat),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                AppTheme.getCategoryNameEs(cat),
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.white70,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              'S/ ${amount.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ],
+                  if (incomeTotal > 0)
+                    Text(
+                      '+ ${solesOrHidden(incomeTotal, hidden)}',
+                      style: AppText.amount(bodyStyle.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: colors.pendingReview,
+                      )),
+                    ),
+                ],
+              ),
             ),
-          ],
+          ),
         ),
       ),
     );
   }
+}
 
-  Widget _buildRecentMovementsCard(
-    BuildContext context,
-    List<Expense> list,
-    DateTime now,
-  ) {
+class _BudgetProgress extends ConsumerWidget {
+  const _BudgetProgress({
+    required this.spent,
+    required this.budget,
+    required this.now,
+  });
+
+  final double spent;
+  final double budget;
+  final DateTime now;
+
+  _BudgetState get _state {
+    final ratio = spent / budget;
+    if (ratio > 1.0) return _BudgetState.over;
+    if (ratio >= 0.75) return _BudgetState.warning;
+    return _BudgetState.ok;
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hidden = ref.watch(balanceHiddenProvider);
+    final theme = Theme.of(context);
+    final colors = context.appColors;
+    final ratio = spent / budget;
+    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    final monthFraction = (now.day / daysInMonth).clamp(0.0, 1.0);
+    final percent = (ratio * 100).round();
+
+    late Color color;
+    late AppIcons icon;
+    late String status;
+    switch (_state) {
+      case _BudgetState.ok:
+        color = colors.budgetOk;
+        icon = AppIcons.checkCircle;
+        status = 'Gastos: vas bien';
+      case _BudgetState.warning:
+        color = colors.budgetWarning;
+        icon = AppIcons.alert;
+        status = 'Gastos: cerca del límite';
+      case _BudgetState.over:
+        color = colors.budgetOver;
+        icon = AppIcons.alert;
+        status = 'Gastos: te pasaste';
+    }
+
+    // Con los montos ocultos tampoco se ve cuánto del presupuesto va gastado.
+    if (hidden) {
+      icon = AppIcons.wallet;
+      color = theme.colorScheme.onSurfaceVariant;
+      status = 'Presupuesto del mes';
+    }
+
+    final statusStyle = theme.textTheme.bodyMedium!.copyWith(
+      fontSize: 13.5,
+      fontWeight: FontWeight.w600,
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Últimos movimientos',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+            Row(
+              children: [
+                AppIcon(icon, size: AppIconSize.small, color: color),
+                const SizedBox(width: 6),
+                Text(status, style: statusStyle),
+              ],
             ),
-            TextButton(
-              onPressed: () {
-                context.go('/expenses');
-              },
-              child: const Text(
-                'Ver todos',
-                style: TextStyle(color: AppTheme.neonGreen, fontSize: 13, fontWeight: FontWeight.bold),
-              ),
+            Text(
+              hidden
+                  ? '$hiddenAmount % de S/ $hiddenAmount'
+                  : '$percent % de S/ ${NumberFormat('#,##0', 'en').format(budget)}',
+              style: AppText.amount(theme.textTheme.bodySmall!),
             ),
           ],
         ),
         const SizedBox(height: 8),
-        if (list.isEmpty)
-          Card(
-            color: AppTheme.cardBg,
-            child: const Padding(
-              padding: EdgeInsets.all(24.0),
-              child: Center(
-                child: Text('No hay gastos confirmados en el mes.', style: TextStyle(color: Colors.grey)),
-              ),
-            ),
-          )
-        else
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: list.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
-              final exp = list[index];
-              final timeStr = DateFormat('h:mm a', 'es').format(exp.date);
-              final categoryColor = AppTheme.getCategoryColor(exp.category);
-
-              final today = DateTime(now.year, now.month, now.day);
-              final yesterday = today.subtract(const Duration(days: 1));
-              final checkDate = DateTime(exp.date.year, exp.date.month, exp.date.day);
-              
-              String dayText;
-              if (checkDate == today) {
-                dayText = 'Hoy';
-              } else if (checkDate == yesterday) {
-                dayText = 'Ayer';
-              } else {
-                dayText = DateFormat('dd MMM', 'es').format(exp.date);
-              }
-
-              return Dismissible(
-                key: ValueKey(exp.id),
-                direction: DismissDirection.endToStart,
-                background: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.redAccent.withValues(alpha: 0.9),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: const Icon(Icons.delete, color: Colors.white),
-                ),
-                onDismissed: (_) {
-                  final merchant = exp.merchant;
-                  ref.read(expensesStateProvider.notifier).deleteExpense(exp.id);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Gasto en "$merchant" eliminado')),
-                  );
-                },
-                child: Card(
-                  color: AppTheme.cardBg,
-                  child: ListTile(
-                    onTap: () => showExpenseDetailSheet(context, ref, exp),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    leading: _buildBadgeIcon(exp.source),
-                    title: Text(
-                      exp.merchant,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
+        Semantics(
+          label: hidden
+              ? 'presupuesto oculto'
+              : '$percent % del presupuesto de gastos usado, ${(monthFraction * 100).round()} % del mes transcurrido',
+          excludeSemantics: true,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth;
+              return SizedBox(
+                height: AppSizes.track + 4,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    LinearPercentIndicator(
+                      padding: EdgeInsets.zero,
+                      lineHeight: AppSizes.track + 4,
+                      percent: hidden ? 0.0 : ratio.clamp(0.0, 1.0),
+                      barRadius: const Radius.circular(AppSizes.track),
+                      backgroundColor: theme.colorScheme.outline,
+                      progressColor: color,
+                      animation: true,
+                      animationDuration: 700,
+                      curve: Curves.easeOutCubic,
+                      animateFromLastPercent: true,
                     ),
-                    subtitle: Row(
-                      children: [
-                        Text(
-                          '$dayText, $timeStr',
-                          style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                    // Marca de cuánto del mes ya pasó: el paquete no la trae.
+                    if (!hidden)
+                      Positioned(
+                      left: (width * monthFraction - 1).clamp(0.0, width - 2),
+                      top: -4,
+                      bottom: -4,
+                      child: Container(
+                        width: 2,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.onSurface,
+                          borderRadius: BorderRadius.circular(2),
                         ),
-                        const SizedBox(width: 8),
-                        // Styled category chip
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: categoryColor.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: categoryColor.withValues(alpha: 0.3), width: 1),
-                          ),
-                          child: Text(
-                            AppTheme.getCategoryNameEs(exp.category),
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: categoryColor,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    trailing: Text(
-                      'S/ ${exp.amount.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 15,
-                        color: Colors.white,
                       ),
                     ),
-                  ),
+                  ],
                 ),
               );
             },
           ),
+        ),
       ],
     );
   }
+}
 
-  Widget _buildBadgeIcon(PaymentSource source) {
-    Color color;
-    String initial;
-    switch (source) {
-      case PaymentSource.yape:
-        color = AppTheme.yapePurple;
-        initial = 'Y';
-        break;
-      case PaymentSource.plin:
-        color = AppTheme.plinTeal;
-        initial = 'P';
-        break;
-      case PaymentSource.googlePay:
-        color = AppTheme.googlePayBlue;
-        initial = 'G';
-        break;
-      default:
-        color = AppTheme.manualGray;
-        initial = 'M';
-    }
+class _TodaySection extends ConsumerWidget {
+  const _TodaySection({required this.movements});
 
-    return Container(
+  final List<Movimiento> movements;
 
-      width: 32,
-      height: 32,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        initial,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-          fontSize: 14,
-        ),
-      ),
-    );
-  }
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final colors = context.appColors;
+    final timeFormat = DateFormat('HH:mm');
+    final aliases = ref.watch(aliasesProvider);
+    final propias = ref.watch(customCategoriesProvider);
 
-  void _simulateRandomTransaction(BuildContext context, WidgetRef ref) {
-    final list = [
-      {'amount': 25.50, 'merchant': 'Tambo', 'provider': 'yape', 'rawText': 'Yapeaste S/ 25.50 a Tambo'},
-      {'amount': 15.00, 'merchant': 'Juan Pérez', 'provider': 'plin', 'rawText': 'Juan Pérez te envió S/ 15.00'},
-      {'amount': 8.90, 'merchant': 'Oxxo', 'provider': 'googlePay', 'rawText': 'Pagaste S/ 8.90 en Oxxo'},
-    ];
-    final selected = (list..shuffle()).first;
-    
-    ref.read(expensesStateProvider.notifier).triggerIncomingPayment(
-      amount: selected['amount'] as double,
-      merchant: selected['merchant'] as String,
-      providerStr: selected['provider'] as String,
-      rawText: selected['rawText'] as String,
-    );
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Simulado: ${selected['rawText']}'),
-        backgroundColor: AppTheme.cardBg,
-      ),
-    );
-  }
-
-  Widget _buildBudgetProgressCard(BuildContext context, double totalSpent, double budget) {
-    final ratio = totalSpent / budget;
-    final clampedRatio = ratio.clamp(0.0, 1.0);
-    final percentage = (ratio * 100).toStringAsFixed(1);
-
-    Color progressColor;
-    if (ratio > 1.0) {
-      progressColor = Colors.redAccent;
-    } else if (ratio >= 0.75) {
-      progressColor = Colors.amber;
-    } else {
-      progressColor = Colors.greenAccent;
-    }
-
-    return Card(
-      color: AppTheme.cardBg,
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Presupuesto mensual',
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
+            Text('Hoy', style: theme.textTheme.titleMedium),
+            TextButton(
+              onPressed: () => context.go('/expenses'),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
               ),
-            ),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: clampedRatio,
-                minHeight: 8,
-                backgroundColor: const Color(0xFF2E2B3B),
-                valueColor: AlwaysStoppedAnimation<Color>(progressColor),
+              child: Text(
+                'Ver todos',
+                style: theme.textTheme.labelLarge!.copyWith(
+                  fontSize: 13,
+                  color: colors.brandInk,
+                ),
               ),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'S/ ${totalSpent.toStringAsFixed(2)} de S/ ${budget.toStringAsFixed(2)}',
-                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  '$percentage%',
-                  style: TextStyle(
-                    color: progressColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showNotificationStatusDialog(BuildContext context) {
-    final permissions = ref.read(permissionsCheckerProvider);
-    final testerController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return FutureBuilder<List<bool>>(
-              future: Future.wait([
-                permissions.isAccessibilityEnabled(),
-                permissions.isOverlayGranted(),
-              ]),
-              builder: (context, snapshot) {
-                final isAccess = snapshot.data?[0] ?? false;
-                final isOverlay = snapshot.data?[1] ?? false;
-
-                return AlertDialog(
-                  backgroundColor: AppTheme.cardBg,
-                  title: const Row(
-                    children: [
-                      Icon(Icons.notifications_active, color: AppTheme.neonGreen),
-                      SizedBox(width: 10),
-                      Text(
-                        'Lector de Notificaciones',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
-                    ],
-                  ),
-                  content: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1D1B26),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    isAccess ? Icons.check_circle : Icons.error,
-                                    color: isAccess ? Colors.greenAccent : Colors.orangeAccent,
-                                    size: 18,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      isAccess ? 'Servicio de Accesibilidad activo' : 'Servicio de Accesibilidad inactivo',
-                                      style: const TextStyle(color: Colors.white, fontSize: 12),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  Icon(
-                                    isOverlay ? Icons.check_circle : Icons.error,
-                                    color: isOverlay ? Colors.greenAccent : Colors.orangeAccent,
-                                    size: 18,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      isOverlay ? 'Permiso de Superposición concedido' : 'Permiso de Superposición pendiente',
-                                      style: const TextStyle(color: Colors.white, fontSize: 12),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        if (!isAccess)
-                          ElevatedButton.icon(
-                            onPressed: () async {
-                              await permissions.openAccessibilitySettings();
-                              Future.delayed(const Duration(seconds: 1), () {
-                                if (context.mounted) setDialogState(() {});
-                              });
-                            },
-                            icon: const Icon(Icons.settings),
-                            label: const Text('Activar Accesibilidad'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.neonGreen,
-                              foregroundColor: Colors.black,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                          ),
-                        if (!isOverlay) ...[
-                          const SizedBox(height: 8),
-                          ElevatedButton.icon(
-                            onPressed: () async {
-                              await permissions.requestOverlayPermission();
-                              Future.delayed(const Duration(seconds: 1), () {
-                                if (context.mounted) setDialogState(() {});
-                              });
-                            },
-                            icon: const Icon(Icons.layers_outlined),
-                            label: const Text('Conceder Superposición'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.neonGreen,
-                              foregroundColor: Colors.black,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 20),
-                        const Text(
-                          'Simular Entrada de Notificación',
-                          style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: testerController,
-                          decoration: const InputDecoration(
-                            hintText: 'Ej. Juan te yapeó S/ 15.00',
-                            hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
-                            enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF2E2B3B))),
-                            focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.neonGreen)),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                          ),
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
-                        ),
-                        const SizedBox(height: 10),
-                        ElevatedButton(
-                          onPressed: () {
-                            final text = testerController.text.trim();
-                            if (text.isNotEmpty) {
-                              permissions.simulateNotification(text);
-                              Navigator.pop(context);
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.neonGreen,
-                            foregroundColor: Colors.black,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          ),
-                          child: const Text('Probar Lector', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      ],
-                    ),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Cerrar', style: TextStyle(color: Colors.grey)),
-                    ),
-                  ],
-                );
-              },
-            );
-          },
-        );
-      },
+        if (movements.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Text(
+              'Hoy aún no registras movimientos.',
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
+        for (var i = 0; i < movements.length; i++) ...[
+          if (i > 0) Divider(color: theme.colorScheme.outline, height: 1),
+          MovementRow(
+            icon: categoryDisplay(movements[i].category, movements[i].categoriaPropia, propias).glyph,
+            title: displayName(movements[i].merchant, aliases),
+            amount: movements[i].amount,
+            sourceName: movements[i].source.name,
+            sourceLabel: sourceLabel(movements[i].source),
+            time: timeFormat.format(movements[i].date),
+            isIncome: movements[i].esIngreso,
+            isPending: movements[i].estado == EstadoMovimiento.pendiente,
+            onTap: () => showExpenseDetailSheet(context, ref, movements[i]),
+          ),
+        ],
+      ],
     );
   }
 }

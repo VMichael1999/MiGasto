@@ -5,8 +5,27 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mi_gasto/data/datasource/local_database.dart';
+import 'package:mi_gasto/domain/entities/movimiento.dart';
 import 'package:mi_gasto/main.dart';
 import 'package:mi_gasto/presentation/providers.dart';
+
+/// Base en memoria: la prueba no debe depender de archivos ni del Keychain.
+class _MemoryDb implements LocalDatabase {
+  final _items = <String, Movimiento>{};
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<List<Movimiento>> getExpenses() async => _items.values.toList();
+
+  @override
+  Future<void> saveExpense(Movimiento expense) async => _items[expense.id] = expense;
+
+  @override
+  Future<void> deleteExpense(String id) async => _items.remove(id);
+}
 
 void main() {
   setUpAll(() async {
@@ -47,6 +66,7 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          localDatabaseProvider.overrideWithValue(_MemoryDb()),
         ],
         child: MyApp(
           themeOverride: ThemeData(
@@ -62,18 +82,21 @@ void main() {
     await tester.pump(const Duration(milliseconds: 150));
     await tester.pump();
 
-    // Verify Onboarding screen has loaded by finding the 'Comenzar' button
-    expect(find.text('Comenzar'), findsOneWidget);
+    // El onboarding muestra qué lee la app y deja usarla solo con registro manual
+    expect(find.text('Qué lee la app y qué no'), findsOneWidget);
+    expect(find.text('Usar solo registro manual'), findsOneWidget);
 
-    // Tap the 'Comenzar' button to navigate to the Resumen/Dashboard
-    await tester.tap(find.text('Comenzar'));
+    // Sin dar permisos se puede entrar al Resumen
+    await tester.tap(find.text('Usar solo registro manual'));
     
     // Process route transition frames
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 150));
     await tester.pumpAndSettle();
 
-    // Verify we are now on the 'Resumen' (Dashboard) screen
-    expect(find.text('Resumen'), findsNWidgets(2));
+    // Verify we are now on the 'Resumen' (Dashboard) screen: the rediseño no
+    // tiene título 'Resumen' arriba, solo la etiqueta de la barra inferior.
+    expect(find.text('Resumen'), findsOneWidget);
+    expect(find.text('Te quedan de este mes'), findsOneWidget);
   });
 }

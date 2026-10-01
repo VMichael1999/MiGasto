@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/theme/theme.dart';
 import 'core/navigation/navigation.dart';
+import 'data/services/nlp_classifier_service.dart';
+import 'presentation/lock/lock_gate.dart';
 import 'presentation/providers.dart';
 
 void main() async {
@@ -44,6 +46,7 @@ class _MyAppState extends ConsumerState<MyApp> {
 
   Future<void> _initDatabase() async {
     final db = ref.read(localDatabaseProvider);
+    await NlpClassifierService.loadFromAsset();
     await db.init();
     
     // Warm up the expensesStateProvider to load data or insert mock values
@@ -61,9 +64,12 @@ class _MyAppState extends ConsumerState<MyApp> {
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'MisGastos',
+      title: 'MiGasto',
       debugShowCheckedModeBanner: false,
-      theme: widget.themeOverride ?? AppTheme.darkTheme, // Slate-dark mockup theme
+      // Claro u oscuro según el sistema.
+      theme: widget.themeOverride ?? AppTheme.lightTheme,
+      darkTheme: widget.themeOverride ?? AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
       routerConfig: router,
       builder: (context, child) {
         if (!_dbInitialized) {
@@ -75,7 +81,7 @@ class _MyAppState extends ConsumerState<MyApp> {
             ),
           );
         }
-        return child ?? const SizedBox();
+        return LockGate(child: child ?? const SizedBox());
       },
     );
   }

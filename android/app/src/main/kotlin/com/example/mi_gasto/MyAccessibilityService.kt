@@ -5,28 +5,33 @@ import android.content.Context
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import io.flutter.plugin.common.MethodChannel
-import java.util.regex.Pattern
 
 class MyAccessibilityService : AccessibilityService() {
 
-    // Debounce: skip WINDOW_CONTENT_CHANGED events within 500ms of the previous one
+    // Debounce: ignora cambios de contenido de ventana a menos de 500 ms del anterior.
     private var lastProcessedTime: Long = 0L
     private val debounceMs: Long = 500L
 
-    // Deduplication: skip if same text hash arrives within 2 seconds
-    private var lastTextHash: Int = 0
-    private var lastTextTime: Long = 0L
-    private val deduplicationMs: Long = 2000L
-
     companion object {
         private const val TAG = "MyAccessibilityService"
+        private const val DUPLICATE_WINDOW_MS = 2 * 60 * 1000L
+        private const val MAX_SCREEN_TEXT = 400
+
         private var channel: MethodChannel? = null
         private var instance: MyAccessibilityService? = null
-        
+
+        /** Por dónde llegó un texto: el servicio de notificaciones, la accesibilidad o la pantalla. */
+        const val ORIGIN_LISTENER = "listener"
+        const val ORIGIN_ACCESS = "access"
+        const val ORIGIN_SCREEN = "screen"
+
+        private val duplicates = DuplicateGuard(DUPLICATE_WINDOW_MS)
+
         fun registerChannel(methodChannel: MethodChannel) {
             channel = methodChannel
         }
@@ -34,100 +39,96 @@ class MyAccessibilityService : AccessibilityService() {
         fun getChannel(): MethodChannel? = channel
         fun getInstance(): MyAccessibilityService? = instance
 
-        data class ParseResult(val amount: Double, val peer: String, val provider: String)
-
-        fun parseText(text: String): ParseResult? {
-            Log.d(TAG, "Parsing text: $text")
-            
-            // 1. Identify provider
-            val provider = when {
-                text.contains("yape", ignoreCase = true) -> "yape"
-                text.contains("plin", ignoreCase = true) -> "plin"
-                text.contains("google pay", ignoreCase = true) || 
-                text.contains("gpay", ignoreCase = true) || 
-                text.contains("googlepay", ignoreCase = true) -> "googlePay"
-                else -> return null
-            }
-
-            // 2. Find amount (Peruvian Soles prefix: S/ or S/. followed by number)
-            val amountRegex = Regex("(?i)s/\\.?\\s*(\\d+(?:\\.\\d{1,2})?)")
-            val match = amountRegex.find(text) ?: return null
-            val amount = match.groupValues[1].toDoubleOrNull() ?: return null
-
-            // 3. Find peer/merchant name
-            val amountStart = match.range.first
-            val amountEnd = match.range.last + 1
-
-            var peer = ""
-            val afterText = text.substring(amountEnd).trim()
-            
-            // Try finding preposition after the amount
-            val prepPattern = Regex("(?i)^\\s*(a|de|en|por|para)\\b(.*)")
-            val prepMatch = prepPattern.find(afterText)
-            if (prepMatch != null) {
-                val potentialPeer = prepMatch.groupValues[2].trim()
-                peer = cleanName(potentialPeer)
-            }
-
-            // If peer is still empty, look at beforeText
-            if (peer.isEmpty()) {
-                val beforeText = text.substring(0, amountStart).trim()
-                peer = cleanName(beforeText)
-            }
-
-            if (peer.isEmpty()) {
-                peer = "Desconocido"
-            }
-
-            Log.d(TAG, "Parsing success: amount=$amount, peer=$peer, provider=$provider")
-            return ParseResult(amount, peer, provider)
+        private fun isDuplicate(result: ParseResult, origin: String): Boolean {
+            val key = "${result.provider}|${result.type}|${"%.2f".format(result.amount)}"
+            return duplicates.isDuplicate(key, origin, ORIGIN_LISTENER)
         }
 
-        private fun cleanName(input: String): String {
-            var temp = input.trim()
-            val phrases = listOf(
-                "has recibido un yape de",
-                "compra por",
-                "te yapeó", "te yapeo",
-                "te envió", "te envio",
-                "pago de", "compra de",
-                "yapeaste", "yapeó", "yapeo",
-                "enviaste", "recibiste",
-                "envió", "envio", "pagaste",
-                "yape", "plin", "gpay", "google pay", "googlepay"
-            )
-            for (phrase in phrases) {
-                temp = temp.replace(Regex("(?i)\\b" + Regex.escape(phrase) + "\\b"), "")
+        /** Lee un texto (notificación o pantalla) y, si es un pago, lo entrega. */
+        fun handleText(context: Context, text: String, origin: String = ORIGIN_ACCESS) {
+            val rules = ReaderRules.get(context)
+            if (rules == null) { Log.d(TAG, "reglas no cargadas"); return }
+            // De una pantalla solo cuenta la constancia: el inicio de Yape (saldo, movimientos)
+            // no es un pago, aunque cambie cada vez que se toca "ver saldo".
+            if (origin == ORIGIN_SCREEN && !rules.isScreenReceipt(text)) return
+            val result = rules.parse(text)
+            if (result == null) { Log.d(TAG, "texto sin pago (largo=${text.length})"); return }
+            if (!NativeQueue.isProviderEnabled(context, result.provider)) {
+                Log.d(TAG, "descartado: ${result.provider} está apagado en Ajustes")
+                return
             }
-            temp = temp.replace(Regex("(?i)^\\s*(a|de|en|por|para)\\b"), "")
-            temp = temp.replace(Regex("(?i)\\b(a|de|en|por|para)\\s*$"), "")
-            
-            // Clean common boundary punctuation and symbols
-            temp = temp.trim { it <= ' ' || it == ':' || it == ',' || it == '-' || it == '¡' || it == '!' || it == '.' || it == '*' || it == '_' }
-            return temp
+            // La constancia de Yape trae un número de operación: si ya se leyó, es la misma pantalla
+            // vista otra vez (por ejemplo, al reiniciarse el servicio), no un pago nuevo.
+            rules.operationId(text)?.let { id ->
+                if (!HandledStore.markHandled(context, "op|$id")) {
+                    Log.d(TAG, "descartado: constancia ya leída (número de operación)")
+                    return
+                }
+            }
+            // Si el número de operación no está a la vista, la fecha y hora de la constancia
+            // identifican igual el mismo pago (mismo monto y misma persona en el mismo minuto).
+            rules.operationStamp(text)?.let { stamp ->
+                val key = "st|${result.provider}|${result.type}|${"%.2f".format(result.amount)}|$stamp"
+                if (!HandledStore.markHandled(context, key)) {
+                    Log.d(TAG, "descartado: constancia ya leída (fecha y hora)")
+                    return
+                }
+            }
+            if (isDuplicate(result, origin)) {
+                Log.d(TAG, "descartado: mismo monto, fuente y tipo hace menos de 2 minutos")
+                return
+            }
+
+            // No se registra el texto completo: puede traer datos personales.
+            Log.d(TAG, "Pago detectado: ${result.type} ${result.provider}")
+            deliver(context, result, text.take(MAX_SCREEN_TEXT))
         }
 
-        fun simulateNotification(text: String, context: Context) {
-            val result = parseText(text) ?: return
-            val activeInstance = instance
-            
-            if (activeInstance != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M && android.provider.Settings.canDrawOverlays(activeInstance)) {
-                val intent = Intent(activeInstance, OverlayService::class.java).apply {
+        fun simulateNotification(text: String, context: Context) = handleText(context, text)
+
+        private fun deliver(context: Context, result: ParseResult, rawText: String) {
+            // Con el teléfono en uso y desbloqueado se muestra la ventana flotante.
+            val overlay = PaymentNotifier.canShowOverlay(context)
+            Log.d(TAG, "ventana flotante posible: $overlay")
+            if (overlay) {
+                val category = ReaderRules.get(context)?.classify(
+                    rawText, result.peer, result.type, NativeQueue.categoryOverrides(context),
+                ) ?: "otros"
+                val intent = Intent(context, OverlayService::class.java).apply {
                     putExtra("amount", result.amount)
                     putExtra("merchant", result.peer)
                     putExtra("provider", result.provider)
-                    putExtra("rawText", text)
+                    putExtra("type", result.type)
+                    putExtra("category", category)
+                    putExtra("rawText", rawText)
                 }
-                activeInstance.startService(intent)
-            } else {
-                Handler(Looper.getMainLooper()).post {
-                    channel?.invokeMethod("onTransactionDetected", mapOf(
-                        "amount" to result.amount,
-                        "peerName" to result.peer,
-                        "provider" to result.provider,
-                        "rawText" to text
-                    ))
+                try {
+                    context.startService(intent)
+                    return
+                } catch (e: Exception) {
+                    // Android puede negar iniciar el servicio desde segundo plano.
+                    Log.w(TAG, "No se pudo mostrar la ventana flotante", e)
                 }
+            }
+
+            // Sin ventana visible (pantalla apagada o bloqueada, o sin el permiso): se guarda según
+            // las reglas de siempre (un gasto se guarda; un ingreso, solo si el usuario lo activó)
+            // y se avisa con una notificación.
+            val saved = result.type != "ingreso" || NativeQueue.autoSaveIncome(context)
+            Log.d(TAG, "sin ventana: se guarda=$saved y se avisa con notificación")
+            val ref = java.util.UUID.randomUUID().toString()
+            NativeQueue.enqueue(
+                context, result.amount, result.peer, result.provider, result.type, rawText,
+                confirmed = saved, ref = ref,
+            )
+            notifyFlutterSaved()
+            PaymentNotifier.notify(context, result.amount, result.peer, result.provider, result.type, saved, ref)
+        }
+
+        /** Avisa a Flutter (si está abierto) que hay pagos en la cola. */
+        fun notifyFlutterSaved() {
+            Handler(Looper.getMainLooper()).post {
+                channel?.invokeMethod("onTransactionSaved", null)
             }
         }
     }
@@ -152,29 +153,19 @@ class MyAccessibilityService : AccessibilityService() {
                 val parcelableData = event.parcelableData
                 if (parcelableData is android.app.Notification) {
                     val extras = parcelableData.extras
-                    val title = extras.getString(android.app.Notification.EXTRA_TITLE) ?: ""
+                    val title = extras.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString() ?: ""
                     val text = extras.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString() ?: ""
                     val bigText = extras.getCharSequence(android.app.Notification.EXTRA_BIG_TEXT)?.toString() ?: ""
-                    val fullText = "$title $text $bigText"
-                    
-                    parseAndSendNotification(fullText)
+                    handleText(applicationContext, "$title $text $bigText".trim())
                 }
             }
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
-                // Debounce: skip if within 500ms of last processed event
                 val now = System.currentTimeMillis()
                 if (now - lastProcessedTime < debounceMs) return
                 lastProcessedTime = now
-
-                val rootNode = rootInActiveWindow ?: return
-                inspectNode(rootNode)
-                rootNode.recycle()
+                inspectActiveWindow()
             }
-            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
-                val rootNode = rootInActiveWindow ?: return
-                inspectNode(rootNode)
-                rootNode.recycle()
-            }
+            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> inspectActiveWindow()
         }
     }
 
@@ -182,60 +173,32 @@ class MyAccessibilityService : AccessibilityService() {
         Log.d(TAG, "Accessibility Service Interrupted")
     }
 
-    private fun inspectNode(node: AccessibilityNodeInfo?) {
-        if (node == null) return
-        val text = node.text?.toString() ?: ""
-        if (text.isNotEmpty()) {
-            parseAndSendScreenText(text)
+    /**
+     * Junta el texto de la pantalla de la app de pagos (solo las apps de
+     * `accessibility_service_config.xml`) y lo lee como una sola frase: el monto
+     * y "¡Yapeaste!" están en vistas distintas.
+     */
+    private fun inspectActiveWindow() {
+        val root = rootInActiveWindow ?: return
+        val builder = StringBuilder()
+        collectText(root, builder)
+        @Suppress("DEPRECATION")
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) root.recycle()
+        if (builder.isNotEmpty()) handleText(applicationContext, builder.toString(), ORIGIN_SCREEN)
+    }
+
+    private fun collectText(node: AccessibilityNodeInfo?, out: StringBuilder) {
+        if (node == null || out.length >= MAX_SCREEN_TEXT) return
+        val text = node.text?.toString()
+        if (!text.isNullOrBlank()) {
+            if (out.isNotEmpty()) out.append(' ')
+            out.append(text)
         }
         for (i in 0 until node.childCount) {
             val child = node.getChild(i)
-            inspectNode(child)
-            child?.recycle()
-        }
-    }
-
-    private fun parseAndSendNotification(text: String) {
-        val result = parseText(text) ?: return
-        sendToFlutter(result.amount, result.peer, result.provider, text)
-    }
-
-    private fun parseAndSendScreenText(text: String) {
-        if (text.contains("¡Yapeaste!", ignoreCase = true) || text.contains("Pago Exitoso", ignoreCase = true)) {
-            // Deduplication: skip if same text hash within 2 seconds
-            val textHash = text.hashCode()
-            val now = System.currentTimeMillis()
-            if (textHash == lastTextHash && now - lastTextTime < deduplicationMs) return
-            lastTextHash = textHash
-            lastTextTime = now
-
-            val amountPattern = Pattern.compile("s/\\.?\\s*(\\d+(?:\\.\\d{2})?)", Pattern.CASE_INSENSITIVE)
-            val matcher = amountPattern.matcher(text)
-            if (matcher.find()) {
-                val amount = matcher.group(1)?.toDoubleOrNull() ?: return
-                sendToFlutter(amount, "Pantalla activa", "yape", text)
-            }
-        }
-    }
-
-    private fun sendToFlutter(amount: Double, peer: String, provider: String, rawText: String) {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M && android.provider.Settings.canDrawOverlays(this)) {
-            val intent = Intent(this, OverlayService::class.java).apply {
-                putExtra("amount", amount)
-                putExtra("merchant", peer)
-                putExtra("provider", provider)
-                putExtra("rawText", rawText)
-            }
-            startService(intent)
-        } else {
-            Handler(Looper.getMainLooper()).post {
-                channel?.invokeMethod("onTransactionDetected", mapOf(
-                    "amount" to amount,
-                    "peerName" to peer,
-                    "provider" to provider,
-                    "rawText" to rawText
-                ))
-            }
+            collectText(child, out)
+            @Suppress("DEPRECATION")
+            if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) child?.recycle()
         }
     }
 }

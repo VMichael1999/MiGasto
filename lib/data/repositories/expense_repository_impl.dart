@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../domain/entities/expense.dart';
+import '../../domain/aliases.dart';
+import '../../domain/entities/movimiento.dart';
 import '../../domain/repositories/expense_repository.dart';
 import '../datasource/local_database.dart';
 
@@ -10,38 +11,39 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
 
   static const String _keyBudget = 'migasto_monthly_budget_v2';
   static const String _keyProvidersEnabled = 'migasto_providers_enabled_v2';
+  static const String _keyAliases = 'migasto_aliases_v1';
   static const String _keyCategoryOverrides = 'migasto_category_overrides_v2';
 
   ExpenseRepositoryImpl(this._db, this._prefs);
 
   @override
-  Future<List<Expense>> getExpenses() => _db.getExpenses();
+  Future<List<Movimiento>> getExpenses() => _db.getExpenses();
 
   @override
-  Future<void> saveExpense(Expense expense) => _db.saveExpense(expense);
+  Future<void> saveExpense(Movimiento expense) => _db.saveExpense(expense);
 
   @override
-  Future<void> updateExpense(Expense expense) => _db.saveExpense(expense);
+  Future<void> updateExpense(Movimiento expense) => _db.saveExpense(expense);
 
   @override
   Future<void> deleteExpense(String id) => _db.deleteExpense(id);
 
   @override
-  Future<void> saveCategoryOverride(String merchant, ExpenseCategory category) async {
+  Future<void> saveCategoryOverride(String merchant, Categoria category) async {
     final overrides = _getOverridesMap();
     overrides[merchant.toLowerCase().trim()] = category.name;
     await _prefs.setString(_keyCategoryOverrides, jsonEncode(overrides));
   }
 
   @override
-  Future<ExpenseCategory?> getCategoryOverride(String merchant) async {
+  Future<Categoria?> getCategoryOverride(String merchant) async {
     final overrides = _getOverridesMap();
     final key = merchant.toLowerCase().trim();
     if (overrides.containsKey(key)) {
       final name = overrides[key]!;
-      return ExpenseCategory.values.firstWhere(
+      return Categoria.values.firstWhere(
         (c) => c.name == name,
-        orElse: () => ExpenseCategory.otros,
+        orElse: () => Categoria.otros,
       );
     }
     return null;
@@ -73,6 +75,30 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
     } catch (_) {
       return {};
     }
+  }
+
+  @override
+  Map<String, String> getAllAliases() {
+    final raw = _prefs.getString(_keyAliases);
+    if (raw == null) return {};
+    try {
+      return (jsonDecode(raw) as Map<String, dynamic>).map((k, v) => MapEntry(k, v as String));
+    } catch (_) {
+      return {};
+    }
+  }
+
+  @override
+  Future<void> saveAlias(String merchant, String alias) async {
+    final aliases = getAllAliases();
+    aliases[aliasKey(merchant)] = alias.trim();
+    await _prefs.setString(_keyAliases, jsonEncode(aliases));
+  }
+
+  @override
+  Future<void> deleteAlias(String merchant) async {
+    final aliases = getAllAliases()..remove(aliasKey(merchant));
+    await _prefs.setString(_keyAliases, jsonEncode(aliases));
   }
 
   @override
