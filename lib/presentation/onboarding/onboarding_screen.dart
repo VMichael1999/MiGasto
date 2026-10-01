@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_tokens.dart';
 import '../../shared/widgets/app_icons.dart';
+import '../../shared/widgets/brand_mark.dart';
 import '../providers.dart';
 
 /// Primera pantalla: aviso de privacidad y permisos.
@@ -105,25 +106,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: scheme.primary,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        'm/',
-                        semanticsLabel: 'MiGasto',
-                        style: theme.textTheme.titleLarge!.copyWith(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.9,
-                          color: scheme.onPrimary,
-                        ),
-                      ),
-                    ),
+                    const BrandMark(),
                     const SizedBox(height: 16),
                     Text(
                       _isAndroid

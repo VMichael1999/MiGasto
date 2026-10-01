@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../domain/entities/movimiento.dart';
 import '../../shared/widgets/app_icons.dart';
+import '../../shared/widgets/brand_mark.dart';
 import '../providers.dart';
 
 /// Guía para crear la automatización "Transacción" de Wallet en Atajos.
@@ -87,23 +88,7 @@ class _ApplePaySetupScreenState extends ConsumerState<ApplePaySetupScreen> {
                         ),
                       ),
                     const SizedBox(height: 12),
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: scheme.primary,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text('m/',
-                          semanticsLabel: 'MiGasto',
-                          style: theme.textTheme.titleLarge!.copyWith(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.9,
-                            color: scheme.onPrimary,
-                          )),
-                    ),
+                    const BrandMark(),
                     const SizedBox(height: 16),
                     Text(
                       'Registra solo lo que pagas con Apple Pay.',

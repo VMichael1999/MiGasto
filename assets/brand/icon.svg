@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#0F0E13"/>
+  <g id="icon">
+    <g transform="rotate(10 256 256) translate(22 -4)"><rect x="146" y="82" width="220" height="326" rx="36" fill="#4F8A4C"/></g>
+    <g transform="rotate(-7 256 256)">
+      <path d="M146 118A36 36 0 0 1 182 82H330A36 36 0 0 1 366 118V412A22 22 0 0 0 322 412A22 22 0 0 0 278 412A22 22 0 0 0 234 412A22 22 0 0 0 190 412A22 22 0 0 0 146 412Z" fill="#8CE885"/>
+      <g fill="none" stroke="#0F0E13" stroke-linecap="round" stroke-linejoin="round">
+        <g transform="translate(178 118) scale(0.36) translate(-160 -152)" stroke-width="52">
+          <path d="M268 188C252 150 160 150 160 212C160 266 276 246 276 306C276 366 178 366 160 322"/>
+          <path d="M388 132L340 380"/>
+        </g>
+        <path d="M180 262H330" stroke-width="20"/>
+        <path d="M180 304H296" stroke-width="20" opacity="0.5"/>
+        <path d="M180 346H252" stroke-width="20" opacity="0.5"/>
+      </g>
+    </g>
+  </g>
+</svg>

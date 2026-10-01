@@ -91,6 +91,7 @@ flutter:
   assets:
     - assets/reader_rules.json
     - assets/category_rules.json
+    - assets/brand/icon.svg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
