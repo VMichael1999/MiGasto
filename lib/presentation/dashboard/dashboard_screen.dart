@@ -14,7 +14,6 @@ import '../../shared/widgets/category_icon.dart';
 import '../../shared/widgets/movement_row.dart';
 import '../expenses/expense_detail_dialog.dart';
 import '../providers.dart';
-import 'sample_income.dart';
 
 enum _BudgetState { ok, warning, over }
 
@@ -27,18 +26,19 @@ class DashboardScreen extends ConsumerWidget {
     final budget = ref.watch(budgetProvider);
 
     final now = DateTime.now();
-    final monthExpenses = expenses
-        .where((e) =>
-            e.isConfirmed && e.date.year == now.year && e.date.month == now.month)
-        .toList();
-    final spent = monthExpenses.fold(0.0, (sum, e) => sum + e.amount);
-    final todayExpenses = monthExpenses
-        .where((e) => e.date.day == now.day)
-        .toList();
+    bool isThisMonth(Movimiento m) => m.date.year == now.year && m.date.month == now.month;
 
-    // TEMPORAL: los ingresos son de ejemplo hasta que exista el modelo Movimiento.
-    const income = SampleIncome.confirmedTotal;
+    // Solo lo confirmado suma; lo pendiente se muestra aparte.
+    final confirmedMonth = expenses.where((m) => m.isConfirmed && isThisMonth(m)).toList();
+    final spent = confirmedMonth.where((m) => m.esGasto).fold(0.0, (sum, m) => sum + m.amount);
+    final income = confirmedMonth.where((m) => m.esIngreso).fold(0.0, (sum, m) => sum + m.amount);
     final balance = income - spent;
+
+    final pending = expenses.where((m) => m.estado == EstadoMovimiento.pendiente).toList();
+    final today = expenses
+        .where((m) =>
+            m.date.year == now.year && m.date.month == now.month && m.date.day == now.day)
+        .toList();
 
     return Scaffold(
       body: SafeArea(
@@ -55,13 +55,15 @@ class DashboardScreen extends ConsumerWidget {
               const SizedBox(height: 14),
               _IncomeExpenseTiles(income: income, spent: spent),
               const SizedBox(height: 14),
-              const _PendingIncomeBanner(),
+              if (pending.isNotEmpty) ...[
+                _PendingBanner(pending: pending),
+              ],
               if (budget > 0) ...[
                 const SizedBox(height: 14),
                 _BudgetProgress(spent: spent, budget: budget, now: now),
               ],
               const SizedBox(height: 14),
-              _TodaySection(expenses: todayExpenses),
+              _TodaySection(movements: today),
             ],
           ),
         ),
@@ -237,21 +239,27 @@ class _Tile extends StatelessWidget {
   }
 }
 
-/// Aviso del ingreso detectado que espera confirmación. No suma al saldo.
-class _PendingIncomeBanner extends StatelessWidget {
-  const _PendingIncomeBanner();
+/// Aviso de lo que espera confirmación del usuario. No suma al saldo.
+class _PendingBanner extends StatelessWidget {
+  const _PendingBanner({required this.pending});
+
+  final List<Movimiento> pending;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = context.appColors;
-    const count = SampleIncome.pendingCount;
-    final noun = count == 1 ? 'ingreso' : 'ingresos';
+    final count = pending.length;
+    final allIncome = pending.every((m) => m.esIngreso);
+    final noun = allIncome
+        ? (count == 1 ? 'ingreso' : 'ingresos')
+        : (count == 1 ? 'movimiento' : 'movimientos');
+    final incomeTotal = pending.where((m) => m.esIngreso).fold(0.0, (s, m) => s + m.amount);
     final bodyStyle = theme.textTheme.bodyMedium!.copyWith(fontSize: 13);
 
     return Semantics(
       button: true,
-      label: '$count $noun por confirmar, más ${formatAmount(SampleIncome.pendingAmount)} soles',
+      label: '$count $noun por confirmar',
       excludeSemantics: true,
       child: Material(
         color: colors.pendingReviewSoft,
@@ -282,13 +290,14 @@ class _PendingIncomeBanner extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Text(
-                    '+ ${formatSoles(SampleIncome.pendingAmount)}',
-                    style: AppText.amount(bodyStyle.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: colors.pendingReview,
-                    )),
-                  ),
+                  if (incomeTotal > 0)
+                    Text(
+                      '+ ${formatSoles(incomeTotal)}',
+                      style: AppText.amount(bodyStyle.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: colors.pendingReview,
+                      )),
+                    ),
                 ],
               ),
             ),
@@ -418,9 +427,9 @@ class _BudgetProgress extends StatelessWidget {
 }
 
 class _TodaySection extends ConsumerWidget {
-  const _TodaySection({required this.expenses});
+  const _TodaySection({required this.movements});
 
-  final List<Movimiento> expenses;
+  final List<Movimiento> movements;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -450,39 +459,28 @@ class _TodaySection extends ConsumerWidget {
             ),
           ],
         ),
-        if (expenses.isEmpty)
+        if (movements.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 10),
             child: Text(
-              'Hoy aún no registras gastos.',
+              'Hoy aún no registras movimientos.',
               style: theme.textTheme.bodySmall,
             ),
           ),
-        for (var i = 0; i < expenses.length; i++) ...[
+        for (var i = 0; i < movements.length; i++) ...[
           if (i > 0) Divider(color: theme.colorScheme.outline, height: 1),
           MovementRow(
-            icon: categoryIcon(expenses[i].category),
-            title: expenses[i].merchant,
-            amount: expenses[i].amount,
-            sourceName: expenses[i].source.name,
-            sourceLabel: sourceLabel(expenses[i].source),
-            time: timeFormat.format(expenses[i].date),
-            onTap: () => showExpenseDetailSheet(context, ref, expenses[i]),
+            icon: categoryIcon(movements[i].category),
+            title: movements[i].merchant,
+            amount: movements[i].amount,
+            sourceName: movements[i].source.name,
+            sourceLabel: sourceLabel(movements[i].source),
+            time: timeFormat.format(movements[i].date),
+            isIncome: movements[i].esIngreso,
+            isPending: movements[i].estado == EstadoMovimiento.pendiente,
+            onTap: () => showExpenseDetailSheet(context, ref, movements[i]),
           ),
         ],
-        // TEMPORAL: ingreso pendiente de ejemplo (ver sample_income.dart).
-        if (expenses.isNotEmpty)
-          Divider(color: theme.colorScheme.outline, height: 1),
-        const MovementRow(
-          icon: AppIcons.swap,
-          title: SampleIncome.pendingPeer,
-          amount: SampleIncome.pendingAmount,
-          sourceName: SampleIncome.pendingSource,
-          sourceLabel: SampleIncome.pendingSourceLabel,
-          time: SampleIncome.pendingTime,
-          isIncome: true,
-          isPending: true,
-        ),
       ],
     );
   }

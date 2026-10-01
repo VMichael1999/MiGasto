@@ -42,7 +42,9 @@ enum AppIcons {
   // y para los estados de presupuesto con alerta.
   car,
   bolt,
-  alert;
+  alert,
+  filter,
+  more;
 
   String get _body {
     switch (this) {
@@ -118,6 +120,10 @@ enum AppIcons {
         return '<path d="M5 17v-5l2-5h10l2 5v5M3 17h18M7 20v-3M17 20v-3M8 13h.01M16 13h.01"/>';
       case AppIcons.bolt:
         return '<path d="M13 3L5 14h6l-1 7 8-11h-6z"/>';
+      case AppIcons.filter:
+        return '<path d="M3 5h18l-7 8v6l-4 2v-8z"/>';
+      case AppIcons.more:
+        return '<path d="M12 5h.01M12 12h.01M12 19h.01"/>';
       case AppIcons.alert:
         return '<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.01"/>';
     }

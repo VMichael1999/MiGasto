@@ -219,7 +219,7 @@ class _ExpenseDetailSheetState extends ConsumerState<_ExpenseDetailSheet> {
                     ),
                   ),
                   style: const TextStyle(color: Colors.white),
-                  items: Categoria.values.map((cat) {
+                  items: Categoria.paraTipo(widget.expense.tipo).map((cat) {
                     return DropdownMenuItem(
                       value: cat,
                       child: Text(
@@ -263,6 +263,30 @@ class _ExpenseDetailSheetState extends ConsumerState<_ExpenseDetailSheet> {
               const SizedBox(height: 24),
 
               // Action buttons
+              if (!_isEditing && exp.estado == EstadoMovimiento.pendiente) ...[
+                ElevatedButton(
+                  onPressed: () {
+                    ref.read(expensesStateProvider.notifier).confirmMovimiento(exp.id);
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(exp.esIngreso ? 'Ingreso guardado' : 'Gasto guardado'),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.neonGreen,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(
+                    exp.esIngreso ? 'Guardar ingreso' : 'Guardar gasto',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
               if (_isEditing) ...[
                 ElevatedButton(
                   onPressed: _saveChanges,
@@ -279,7 +303,7 @@ class _ExpenseDetailSheetState extends ConsumerState<_ExpenseDetailSheet> {
               OutlinedButton.icon(
                 onPressed: () => _confirmDelete(context),
                 icon: const Icon(Icons.delete_outline, size: 18),
-                label: const Text('Eliminar gasto'),
+                label: Text(widget.expense.esIngreso ? 'Eliminar ingreso' : 'Eliminar gasto'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.redAccent,
                   side: const BorderSide(color: Colors.redAccent),
@@ -329,7 +353,7 @@ class _ExpenseDetailSheetState extends ConsumerState<_ExpenseDetailSheet> {
     ref.read(expensesStateProvider.notifier).updateExpense(updated);
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Gasto actualizado')),
+      const SnackBar(content: Text('Cambios guardados')),
     );
   }
 
