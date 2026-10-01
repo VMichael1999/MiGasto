@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/theme/theme.dart';
+import 'app_icons.dart';
 
 /// Barra inferior del rediseño: 4 destinos con nombre y botón "+" central.
 /// Grilla `1fr 1fr 64px 1fr 1fr`, igual que la propuesta v0.2.
@@ -35,14 +36,14 @@ class AppBottomNav extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(4, 6, 4, 16),
             child: Row(
               children: [
-                _item(0, Icons.home_outlined, 'Resumen'),
-                _item(1, Icons.format_list_bulleted, 'Movimientos'),
+                _item(0, AppIcons.home, 'Resumen'),
+                _item(1, AppIcons.list, 'Movimientos'),
                 SizedBox(
                   width: 64,
                   child: Center(child: _AddButton(onPressed: onAdd)),
                 ),
-                _item(3, Icons.bar_chart, 'Reportes'),
-                _item(4, Icons.settings_outlined, 'Ajustes'),
+                _item(3, AppIcons.chart, 'Reportes'),
+                _item(4, AppIcons.gear, 'Ajustes'),
               ],
             ),
           ),
@@ -51,7 +52,7 @@ class AppBottomNav extends StatelessWidget {
     );
   }
 
-  Widget _item(int index, IconData icon, String label) {
+  Widget _item(int index, AppIcons icon, String label) {
     return Expanded(
       child: _NavItem(
         icon: icon,
@@ -71,7 +72,7 @@ class _NavItem extends StatelessWidget {
     required this.onTap,
   });
 
-  final IconData icon;
+  final AppIcons icon;
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -95,9 +96,8 @@ class _NavItem extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
+              AppIcon(
                 icon,
-                size: 20,
                 color: selected ? colors.brandInk : scheme.onSurfaceVariant,
               ),
               const SizedBox(height: 3),
@@ -144,7 +144,13 @@ class _AddButton extends StatelessWidget {
               child: const SizedBox(
                 width: AppSizes.fab,
                 height: AppSizes.fab,
-                child: Icon(Icons.add, size: 24, color: AppTheme.darkBg),
+                child: Center(
+                  child: AppIcon(
+                    AppIcons.plus,
+                    size: AppIconSize.large,
+                    color: AppTheme.darkBg,
+                  ),
+                ),
               ),
             ),
           ),

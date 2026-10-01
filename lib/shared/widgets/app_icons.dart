@@ -1,0 +1,155 @@
+// Íconos de línea del rediseño v0.2, generados desde las <symbol> de la propuesta HTML.
+// Trazo 1.8, extremos y uniones redondeados, viewBox 24x24.
+import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
+enum AppIcons {
+  food,
+  bag,
+  film,
+  box,
+  home,
+  list,
+  chart,
+  gear,
+  plus,
+  search,
+  check,
+  checkCircle,
+  close,
+  info,
+  back,
+  chevron,
+  expand,
+  arrowUp,
+  arrowDown,
+  trash,
+  pin,
+  card,
+  nfc,
+  bell,
+  img,
+  hand,
+  salary,
+  swap,
+  tag,
+  file,
+  lock,
+  wallet,
+  share,
+  backspace;
+
+  String get _body {
+    switch (this) {
+      case AppIcons.food:
+        return '<path d="M7 3v8a2 2 0 0 0 2 2v8M7 3v5M11 3v5a2 2 0 0 1-2 2M17 21V3c-2 1.5-3 4-3 7h3"/>';
+      case AppIcons.bag:
+        return '<path d="M5 8h14l-1 13H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>';
+      case AppIcons.film:
+        return '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/>';
+      case AppIcons.box:
+        return '<path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/>';
+      case AppIcons.home:
+        return '<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/>';
+      case AppIcons.list:
+        return '<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>';
+      case AppIcons.chart:
+        return '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>';
+      case AppIcons.gear:
+        return '<circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>';
+      case AppIcons.plus:
+        return '<path d="M12 5v14M5 12h14"/>';
+      case AppIcons.search:
+        return '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>';
+      case AppIcons.check:
+        return '<path d="M5 12.5l4.5 4.5L19 7"/>';
+      case AppIcons.checkCircle:
+        return '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/>';
+      case AppIcons.close:
+        return '<path d="M6 6l12 12M18 6L6 18"/>';
+      case AppIcons.info:
+        return '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.01"/>';
+      case AppIcons.back:
+        return '<path d="M19 12H5M11 6l-6 6 6 6"/>';
+      case AppIcons.chevron:
+        return '<path d="M9 6l6 6-6 6"/>';
+      case AppIcons.expand:
+        return '<path d="M6 9l6 6 6-6"/>';
+      case AppIcons.arrowUp:
+        return '<path d="M12 19V5M6 11l6-6 6 6"/>';
+      case AppIcons.arrowDown:
+        return '<path d="M12 5v14M6 13l6 6 6-6"/>';
+      case AppIcons.trash:
+        return '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>';
+      case AppIcons.pin:
+        return '<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>';
+      case AppIcons.card:
+        return '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/>';
+      case AppIcons.nfc:
+        return '<path d="M6 8.5a5 5 0 0 1 0 7M9.5 6a9 9 0 0 1 0 12M13 3.5a13 13 0 0 1 0 17"/>';
+      case AppIcons.bell:
+        return '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>';
+      case AppIcons.img:
+        return '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/>';
+      case AppIcons.hand:
+        return '<path d="M4 20h4l3-3h5a2 2 0 0 0 0-4h-4"/><path d="M8 17l-3-3 2-2 3 1"/><path d="M14 9V4M11 7h6"/>';
+      case AppIcons.salary:
+        return '<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/>';
+      case AppIcons.swap:
+        return '<path d="M4 8h14l-3-3M20 16H6l3 3"/>';
+      case AppIcons.tag:
+        return '<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/>';
+      case AppIcons.file:
+        return '<path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M12 11v6M9 14l3 3 3-3"/>';
+      case AppIcons.lock:
+        return '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>';
+      case AppIcons.wallet:
+        return '<path d="M4 7a2 2 0 0 1 2-2h12v4"/><path d="M4 7v10a2 2 0 0 0 2 2h14V9H6a2 2 0 0 1-2-2z"/><path d="M16 14h.01"/>';
+      case AppIcons.share:
+        return '<path d="M12 15V3M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>';
+      case AppIcons.backspace:
+        return '<path d="M21 5H8l-5 7 5 7h13z"/><path d="M16 9.5l-5 5M11 9.5l5 5"/>';
+    }
+  }
+
+  String get svg =>
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" '
+      'stroke="#000000" stroke-width="1.8" stroke-linecap="round" '
+      'stroke-linejoin="round">$_body</svg>';
+}
+
+/// Tamaños del set: pequeño 16, normal 20, grande 24.
+class AppIconSize {
+  static const double small = 16;
+  static const double normal = 20;
+  static const double large = 24;
+}
+
+class AppIcon extends StatelessWidget {
+  const AppIcon(
+    this.icon, {
+    super.key,
+    this.size = AppIconSize.normal,
+    this.color,
+    this.semanticLabel,
+  });
+
+  final AppIcons icon;
+  final double size;
+
+  /// Si es null usa el color de texto del tema (`IconTheme`).
+  final Color? color;
+  final String? semanticLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final resolved = color ?? IconTheme.of(context).color ?? Colors.white;
+    return SvgPicture.string(
+      icon.svg,
+      width: size,
+      height: size,
+      colorFilter: ColorFilter.mode(resolved, BlendMode.srcIn),
+      semanticsLabel: semanticLabel,
+    );
+  }
+}
