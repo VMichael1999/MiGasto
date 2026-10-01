@@ -2,7 +2,7 @@
 
 **MiGasto** registra tus gastos e ingresos en el teléfono. En Android lee las notificaciones de **Yape**, **Plin** y **Google Wallet** para anotar cada pago por ti y te deja confirmarlo; todo lo demás se registra a mano. Pensada para quien paga casi todo con el celular en Perú.
 
-Todo se guarda solo en el teléfono: no hay servidor ni cuenta.
+Todo se guarda solo en el teléfono, en una base de datos cifrada: no hay servidor ni cuenta.
 
 ## Qué hace
 
@@ -13,6 +13,7 @@ Todo se guarda solo en el teléfono: no hay servidor ni cuenta.
 - **Categorías.** Por palabras clave (no es IA) y por lo que cambias a mano ("Aprendidas de tus cambios").
 - **Resumen, Movimientos y Reportes.** Saldo del mes, presupuesto de gastos con estado en texto, filtros por tipo, fuente, categoría y monto, e ingresos frente a gastos por mes.
 - **Ubicación opcional.** Se pide solo al tocar "Agregar ubicación" y con la app en uso. Muestra la dirección y un mapa de Google Maps; puedes quitarla de un movimiento o borrar todas.
+- **Datos cifrados.** SQLite con cifrado (SQLite3MultipleCiphers). La clave se genera en el teléfono y vive en el almacén seguro del sistema (Keychain en iPhone, Keystore en Android).
 - **Bloqueo.** Huella, rostro o PIN del teléfono.
 - **Claro y oscuro** según el sistema. Tipografía Outfit.
 - **Exportar a CSV** (sin ubicaciones).
@@ -20,13 +21,12 @@ Todo se guarda solo en el teléfono: no hay servidor ni cuenta.
 ## Lo que todavía no hace
 
 - **iPhone:** la app compila y permite registrar a mano, pero no detecta pagos solos. Faltan la acción de Atajos para Apple Pay, la extensión para compartir capturas de Yape y Plin y el widget (fases 3 y 4 del plan).
-- **Cifrado de la base de datos.** Hoy se usa Isar sin cifrado. El plan es pasar a Drift con cifrado.
 - **Plin dentro de las apps de BBVA, Interbank y Scotiabank:** los nombres de paquete que se escuchan están sin validar con teléfonos reales, igual que el texto exacto de cada notificación (fase 0 del plan).
 - **Ubicación automática al pagar** con Apple Pay (iPhone) y desde la ventana flotante de Android.
 
 ## Tecnologías
 
-Flutter 3.47 (Dart 3.13), Riverpod, GoRouter, Isar, fl_chart, google_maps_flutter, geolocator, geocoding, local_auth, flutter_svg. Capa nativa en Kotlin: `MyAccessibilityService` (lector), `OverlayService` (ventana flotante) y `NativeQueue` (cola que Flutter vacía para guardar en la base de datos).
+Flutter 3.47 (Dart 3.13), Riverpod, GoRouter, Drift (SQLite cifrado), fl_chart, google_maps_flutter, geolocator, geocoding, local_auth, flutter_svg. Capa nativa en Kotlin: `MyAccessibilityService` (lector), `OverlayService` (ventana flotante) y `NativeQueue` (cola que Flutter vacía para guardar en la base de datos).
 
 ## Configuración
 
@@ -67,7 +67,7 @@ flutter analyze
 flutter test
 ```
 
-Hay pruebas del lector (gasto o ingreso, montos, textos que no son pagos), categorías, duplicados, migración de datos antiguos, cola nativa, ventana de pago, registro manual, ubicación y bloqueo.
+Hay pruebas del cifrado de la base, del lector (gasto o ingreso, montos, textos que no son pagos), categorías, duplicados, migración de datos antiguos, cola nativa, ventana de pago, registro manual, ubicación y bloqueo.
 
 ## Contribuidores
 

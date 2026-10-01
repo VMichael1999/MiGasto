@@ -5,8 +5,27 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mi_gasto/data/datasource/local_database.dart';
+import 'package:mi_gasto/domain/entities/movimiento.dart';
 import 'package:mi_gasto/main.dart';
 import 'package:mi_gasto/presentation/providers.dart';
+
+/// Base en memoria: la prueba no debe depender de archivos ni del Keychain.
+class _MemoryDb implements LocalDatabase {
+  final _items = <String, Movimiento>{};
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<List<Movimiento>> getExpenses() async => _items.values.toList();
+
+  @override
+  Future<void> saveExpense(Movimiento expense) async => _items[expense.id] = expense;
+
+  @override
+  Future<void> deleteExpense(String id) async => _items.remove(id);
+}
 
 void main() {
   setUpAll(() async {
@@ -47,6 +66,7 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          localDatabaseProvider.overrideWithValue(_MemoryDb()),
         ],
         child: MyApp(
           themeOverride: ThemeData(

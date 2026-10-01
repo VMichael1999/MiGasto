@@ -9,13 +9,10 @@ PODS:
   - GoogleMaps (10.15.0):
     - GoogleMaps/Maps (= 10.15.0)
   - GoogleMaps/Maps (10.15.0)
-  - isar_flutter_libs (1.0.0):
-    - Flutter
 
 DEPENDENCIES:
   - Flutter (from `Flutter`)
   - google_maps_flutter_ios (from `.symlinks/plugins/google_maps_flutter_ios/ios`)
-  - isar_flutter_libs (from `.symlinks/plugins/isar_flutter_libs/ios`)
 
 SPEC REPOS:
   trunk:
@@ -27,15 +24,12 @@ EXTERNAL SOURCES:
     :path: Flutter
   google_maps_flutter_ios:
     :path: ".symlinks/plugins/google_maps_flutter_ios/ios"
-  isar_flutter_libs:
-    :path: ".symlinks/plugins/isar_flutter_libs/ios"
 
 SPEC CHECKSUMS:
   Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
   Google-Maps-iOS-Utils: bed22fa703c919259b3901449434d60d994fae20
   google_maps_flutter_ios: 5f2ee3f5cc4fc2398574367f893e3f97bbbcea39
   GoogleMaps: 306f6ea18af2dc9ef85d98b0d1b41bc7d506df5f
-  isar_flutter_libs: b69f437aeab9c521821c3f376198c4371fa21073
 
 PODFILE CHECKSUM: 912e34f102da91123e38965ab4e5b3fb21e195f0
 
