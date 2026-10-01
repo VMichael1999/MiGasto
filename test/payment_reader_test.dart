@@ -63,6 +63,16 @@ void main() {
       expect(p.peer, 'Michael Anthony Valdiviezo Maza');
     });
 
+    test('constancia real de Yape al pagar un servicio: la empresa es el nombre', () {
+      final p = read('¡Yapeaste el servicio! S/ 134.85 BanBif 01 oct. 2026 12:36 p. m. '
+          'DATOS DE LA TRANSACCIÓN Servicio: Pago de Cuotas Prestamos Código de cliente: '
+          '73654903 Titular: VALDIVIEZO MAZ* Nº de operación: 05205445')!;
+      expect(p.isIncome, isFalse);
+      expect(p.amount, 134.85);
+      expect(p.provider, 'yape');
+      expect(p.peer, 'BanBif');
+    });
+
     test('Plin enviado', () {
       final p = read('Plin: enviaste S/ 37.00 a Cineplanet')!;
       expect(p.isIncome, isFalse);

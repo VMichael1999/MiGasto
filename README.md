@@ -30,7 +30,7 @@ Todo se guarda solo en el teléfono, en una base de datos cifrada: no hay servid
 ## Lo que todavía no hace
 
 - **iPhone:** Yape y Plin no se detectan solos (iOS no lo permite). Se registran compartiendo la captura de la constancia a MiGasto (el texto se lee en el teléfono) o con el botón +. Los pagos con Apple Pay en el POS se registran con la automatización Transacción de Atajos. Hay un widget y un control del Centro de control que abren el registro (`migasto://new`).
-- **Validado con un teléfono real (Samsung, Yape):** pago recibido (notificación) y yape enviado (constancia). **Sin validar:** el pago de servicios con Yape, Google Wallet y Plin dentro de las apps de BBVA, Interbank y Scotiabank; los nombres de paquete de esos bancos son suposiciones y el texto exacto de cada notificación falta confirmarlo (fase 0 del plan).
+- **Validado con un teléfono real (Samsung, Yape):** pago recibido (notificación), yape enviado y pago de un servicio (constancia: la empresa es el nombre y cae en la categoría Servicios). **Sin validar:** Google Wallet y Plin dentro de las apps de BBVA, Interbank y Scotiabank; los nombres de paquete de esos bancos son suposiciones y el texto exacto de cada notificación falta confirmarlo (fase 0 del plan).
 - **Android:** en algunos teléfonos Samsung el servicio de Accesibilidad no recibe los avisos de notificación; por eso se usa el acceso a notificaciones. Android puede marcar "Configuración restringida" al instalar fuera de Play Store: se permite desde Ajustes > Aplicaciones > MiGasto.
 - **Respaldo:** es manual; no hay copia automática ni en la nube. Hay que acordarse de crearlo.
 - **Ubicación automática al pagar** con Apple Pay (iPhone) y desde la ventana flotante de Android.

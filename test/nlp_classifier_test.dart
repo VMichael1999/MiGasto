@@ -20,6 +20,16 @@ void main() {
           Categoria.alimentacion);
     });
 
+    test('un servicio pagado con Yape cae en Servicios', () {
+      expect(
+        NlpClassifierService.classify(
+          '¡Yapeaste el servicio! S/ 134.85 BanBif Servicio: Pago de Cuotas Prestamos',
+          'BanBif',
+        ),
+        Categoria.servicios,
+      );
+    });
+
     test('compras', () {
       expect(
           NlpClassifierService.classify('Compra Google Pay S/ 120.90 en Metro', 'Metro S.A.'),
