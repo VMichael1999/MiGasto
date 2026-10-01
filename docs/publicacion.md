@@ -20,6 +20,7 @@ Lista de lo que piden las tiendas y qué responder según lo que la app hace hoy
 - Información financiera: movimientos (monto, comercio, fecha). Procesada en el dispositivo, no compartida, cifrada en reposo.
 - Ubicación aproximada y precisa: opcional, solo en uso y a petición del usuario; no compartida.
 - ¿Se puede pedir que se borren los datos? Sí, desde la app, o desinstalando.
+- Copias de seguridad: la app **desactiva** la copia automática de Android (`allowBackup="false"` y `data_extraction_rules.xml`); los datos solo salen por el respaldo cifrado que crea el usuario. Si el formulario pregunta por copia en la nube, responde que no.
 
 **Permisos declarados:** notificaciones (aviso local de cada pago detectado), acceso a notificaciones (lectura de pagos recibidos), accesibilidad (constancia de Yape al enviar, opcional), mostrar sobre otras apps (ventana de confirmación, opcional), vibración, ubicación en primer plano (a petición), biometría (bloqueo).
 
@@ -32,6 +33,11 @@ Lista de lo que piden las tiendas y qué responder según lo que la app hace hoy
 **Ficha.** Di claramente que en iPhone Yape y Plin **no se detectan solos** (iOS no lo permite): se registran con el botón + y, en pagos con Apple Pay en el POS, con la automatización de Atajos.
 
 **Permisos:** ubicación mientras se usa la app (a petición), Face ID, notificaciones (aviso de qué se guardó).
+
+## Antes de la prueba cerrada
+
+- Probar con un teléfono real: yapes seguidos del mismo monto, ver y ocultar saldo en Yape (no debe aparecer ningún ingreso falso), aviso con pantalla bloqueada y los botones Guardar e Ignorar.
+- Pendiente de validar con pagos reales: Google Wallet y Plin dentro de las apps de los bancos.
 
 ## Prueba cerrada
 
