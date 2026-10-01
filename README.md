@@ -1,76 +1,74 @@
-# MiGasto 🪙
+# MiGasto
 
-**MiGasto** es una aplicación móvil desarrollada en Flutter diseñada para automatizar el registro, categorización y control de tus finanzas personales. Pensada especialmente para el mercado peruano, la aplicación detecta transacciones en tiempo real a través de las notificaciones del sistema de servicios como **Yape**, **Plin** y **Google Pay**.
+**MiGasto** registra tus gastos e ingresos en el teléfono. En Android lee las notificaciones de **Yape**, **Plin** y **Google Wallet** para anotar cada pago por ti y te deja confirmarlo; todo lo demás se registra a mano. Pensada para quien paga casi todo con el celular en Perú.
 
----
+Todo se guarda solo en el teléfono: no hay servidor ni cuenta.
 
-## 🚀 Características Principales
+## Qué hace
 
-*   **Detección Automática**: Lector nativo en Kotlin que utiliza el Servicio de Accesibilidad de Android para procesar notificaciones en tiempo real sin requerir registros manuales.
-*   **Categorización Inteligente**: Clasificación automática de comercios mediante un sistema híbrido de reglas predefinidas y preferencias aprendidas (IA de anulación de categorías).
-*   **Diseño Premium**: Interfaz moderna de alta calidad con tema oscuro (*Dark Slate* con acentos *Neon Green*).
-*   **Seguridad y Privacidad**: Base de datos local encriptada con Isar DB. Los datos de tus transacciones no salen de tu dispositivo.
-*   **Presupuesto Dinámico**: Indicador visual del límite mensual establecido con código de colores según el nivel de consumo (Verde, Ámbar, Rojo).
-*   **Búsqueda y Filtros Avanzados**: Filtrado preciso por proveedor, categorías y rango de montos.
-*   **Herramientas de Depuración**: Simulador integrado de transacciones y de OCR (solo visible en entornos de desarrollo).
-*   **Exportación de Datos**: Generación y exportación de historiales completos a formato CSV.
+- **Gastos e ingresos.** Los ingresos nunca se guardan solos: esperan tu confirmación y, si los ignoras, quedan en "Por confirmar".
+- **Detección en Android.** Un lector nativo (Kotlin) reconoce el pago, distingue si entra o sale dinero y muestra una ventana flotante. El gasto se guarda a los 4 segundos (puedes pausarla, editarla o descartarla); el ingreso espera tu confirmación.
+- **Reglas compartidas.** Qué es un pago y de qué categoría es se define en `assets/reader_rules.json` y `assets/category_rules.json`, que leen Kotlin y Dart. Si un banco cambia su texto, se actualiza el JSON.
+- **Sin duplicados.** Mismo monto y fuente dentro de 2 minutos cuenta una sola vez.
+- **Categorías.** Por palabras clave (no es IA) y por lo que cambias a mano ("Aprendidas de tus cambios").
+- **Resumen, Movimientos y Reportes.** Saldo del mes, presupuesto de gastos con estado en texto, filtros por tipo, fuente, categoría y monto, e ingresos frente a gastos por mes.
+- **Ubicación opcional.** Se pide solo al tocar "Agregar ubicación" y con la app en uso. Muestra la dirección y un mapa de Google Maps; puedes quitarla de un movimiento o borrar todas.
+- **Bloqueo.** Huella, rostro o PIN del teléfono.
+- **Claro y oscuro** según el sistema. Tipografía Outfit.
+- **Exportar a CSV** (sin ubicaciones).
 
----
+## Lo que todavía no hace
 
-## 🛠️ Arquitectura y Tecnologías
+- **iPhone:** la app compila y permite registrar a mano, pero no detecta pagos solos. Faltan la acción de Atajos para Apple Pay, la extensión para compartir capturas de Yape y Plin y el widget (fases 3 y 4 del plan).
+- **Cifrado de la base de datos.** Hoy se usa Isar sin cifrado. El plan es pasar a Drift con cifrado.
+- **Plin dentro de las apps de BBVA, Interbank y Scotiabank:** los nombres de paquete que se escuchan están sin validar con teléfonos reales, igual que el texto exacto de cada notificación (fase 0 del plan).
+- **Ubicación automática al pagar** con Apple Pay (iPhone) y desde la ventana flotante de Android.
 
-El proyecto sigue las mejores prácticas de desarrollo móvil y está estructurado bajo principios de arquitectura limpia:
+## Tecnologías
 
-*   **Framework**: [Flutter](https://flutter.dev) (v3.29.1) & [Dart](https://dart.dev).
-*   **Gestión de Estado**: [Flutter Riverpod](https://riverpod.dev) para un manejo reactivo y desacoplado del estado.
-*   **Base de Datos**: [Isar Database](https://isar.dev) como motor de almacenamiento NoSQL local de alto rendimiento.
-*   **Enrutamiento**: [GoRouter](https://pub.dev/packages/go_router) para la navegación declarativa.
-*   **Capa Nativa**: Servicios en Kotlin (`AccessibilityService` y `OverlayService` de Android) para la escucha de notificaciones y renderizado de ventanas emergentes interactivas.
+Flutter 3.47 (Dart 3.13), Riverpod, GoRouter, Isar, fl_chart, google_maps_flutter, geolocator, geocoding, local_auth, flutter_svg. Capa nativa en Kotlin: `MyAccessibilityService` (lector), `OverlayService` (ventana flotante) y `NativeQueue` (cola que Flutter vacía para guardar en la base de datos).
 
----
+## Configuración
 
-## 📦 Instalación y Configuración
+1. Instala Flutter 3.47 o superior (con `fvm`: `fvm install 3.47.5`).
+2. Copia `.env.example` a `.env` y completa tu clave de Google Maps. El `.env` no se sube al repositorio.
 
-### Prerrequisitos
+   ```bash
+   cp .env.example .env
+   ```
 
-*   Flutter SDK (^3.29.1)
-*   Android SDK (API Level 21+)
-*   Un dispositivo Android físico o emulador con servicios de Google Play.
+3. Instala dependencias y corre las pruebas:
 
-### Pasos para iniciar el proyecto
+   ```bash
+   flutter pub get
+   flutter test
+   ```
 
-1.  Clona este repositorio:
-    ```bash
-    git clone https://github.com/VMichael1999/MiGasto.git
-    cd MiGasto
-    ```
+4. Ejecuta pasando el `.env` (el mapa solo aparece si la clave está presente):
 
-2.  Instala las dependencias de Flutter:
-    ```bash
-    flutter pub get
-    ```
+   ```bash
+   flutter run --dart-define-from-file=.env
+   ```
 
-3.  Ejecuta las pruebas unitarias y de widget para verificar que todo esté en orden:
-    ```bash
-    flutter test
-    ```
+La clave también la leen Android (al compilar, desde `.env`) e iOS (por `xcconfig`). En Google Cloud conviene restringirla por app (ID de paquete y bundle ID) y a la API de Maps SDK.
 
-4.  Compila y ejecuta la aplicación:
-    ```bash
-    flutter run
-    ```
+## Permisos en Android
 
----
+- **Accesibilidad:** para leer las notificaciones y la pantalla de Yape, Plin y Google Wallet. Solo esas apps (`accessibility_service_config.xml`).
+- **Mostrar sobre otras apps:** para la ventana flotante de confirmación. Es opcional: sin ella, los pagos quedan "Por confirmar" en la app.
+- **Ubicación (solo en uso):** únicamente cuando tocas "Agregar ubicación".
 
-## 🔒 Permisos Requeridos (Android)
+La app explica qué lee y qué no antes de pedir cualquier permiso, y se puede usar solo con registro manual.
 
-Para que el registro automático funcione, debes conceder los siguientes permisos dentro de la aplicación:
+## Pruebas
 
-1.  **Servicio de Accesibilidad**: Requerido por `MyAccessibilityService` para leer el contenido de las notificaciones entrantes de Yape, Plin y Google Pay.
-2.  **Mostrar sobre otras aplicaciones (Overlay)**: Requerido por `OverlayService` para mostrar la ventana flotante de confirmación inmediata al detectar un pago.
+```bash
+flutter analyze
+flutter test
+```
 
----
+Hay pruebas del lector (gasto o ingreso, montos, textos que no son pagos), categorías, duplicados, migración de datos antiguos, cola nativa, ventana de pago, registro manual, ubicación y bloqueo.
 
-## 👥 Contribuidores
+## Contribuidores
 
-*   **Michael Anthony** - [@VMichael1999](https://github.com/VMichael1999)
+- **Michael Anthony** - [@VMichael1999](https://github.com/VMichael1999)
