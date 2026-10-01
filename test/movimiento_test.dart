@@ -320,6 +320,24 @@ void main() {
       expect(ingreso.category, Categoria.transferenciaRecibida);
     });
 
+    test('dos yapes del mismo monto seguidos de Android se guardan los dos', () async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      Map<String, dynamic> yape(int at) => {
+            'amount': 1,
+            'peer': 'Michael',
+            'provider': 'yape',
+            'type': 'ingreso',
+            'rawText': 'Michael te yapeó S/ 1',
+            'confirmed': false,
+            'origin': 'android',
+            'at': at,
+          };
+      final c = await containerWithQueue(jsonEncode([yape(now), yape(now + 60000)]));
+      addTearDown(c.dispose);
+
+      expect(c.read(expensesStateProvider), hasLength(2));
+    });
+
     Map<String, dynamic> pendingIncome(String id, int at) => {
           'id': id,
           'amount': 15,

@@ -32,7 +32,11 @@ class PaymentNotificationListener : NotificationListenerService() {
         val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
         val bigText = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString() ?: ""
         Log.d(TAG, "notificación de ${sbn.packageName}, llegó ${System.currentTimeMillis() - sbn.postTime} ms después de publicarse")
-        MyAccessibilityService.handleText(applicationContext, "$title $text $bigText".trim())
+        MyAccessibilityService.handleText(
+            applicationContext,
+            "$title $text $bigText".trim(),
+            MyAccessibilityService.ORIGIN_LISTENER,
+        )
     }
 
     companion object {

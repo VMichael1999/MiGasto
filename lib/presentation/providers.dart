@@ -282,8 +282,12 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
       orElse: () => PaymentSource.otro,
     );
 
-    // Un pago confirmado que llegó por dos vías cuenta una sola vez.
-    if (isDuplicateMovement(state, amount: amount, source: source, date: at, tipo: tipo)) {
+    // Un pago que llegó por dos vías cuenta una sola vez. Lo que viene de Android ya pasó por
+    // los frenos nativos (que sí distinguen dos yapes iguales seguidos), así que no se repite
+    // aquí: de lo contrario el segundo yape del mismo monto se perdía en silencio.
+    final fromAndroid = item['origin'] == 'android';
+    if (!fromAndroid &&
+        isDuplicateMovement(state, amount: amount, source: source, date: at, tipo: tipo)) {
       return;
     }
 

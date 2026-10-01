@@ -39,6 +39,8 @@ object NativeQueue {
             put("type", type)
             put("rawText", rawText)
             put("confirmed", confirmed)
+            // Lo que llega de Android ya pasó por los frenos de duplicados nativos.
+            put("origin", "android")
             put("at", System.currentTimeMillis())
         }
         synchronized(lock) {

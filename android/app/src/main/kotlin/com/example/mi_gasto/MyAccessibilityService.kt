@@ -25,9 +25,12 @@ class MyAccessibilityService : AccessibilityService() {
         private var channel: MethodChannel? = null
         private var instance: MyAccessibilityService? = null
 
-        // Mismo monto, fuente y tipo dentro de 2 minutos = el mismo pago (por ejemplo,
-        // llega por la notificación y por la pantalla de confirmación).
-        private val recent = LinkedHashMap<String, Long>()
+        /** Por dónde llegó un texto: el servicio de notificaciones, la accesibilidad o la pantalla. */
+        const val ORIGIN_LISTENER = "listener"
+        const val ORIGIN_ACCESS = "access"
+        const val ORIGIN_SCREEN = "screen"
+
+        private val duplicates = DuplicateGuard(DUPLICATE_WINDOW_MS)
 
         fun registerChannel(methodChannel: MethodChannel) {
             channel = methodChannel
@@ -36,23 +39,18 @@ class MyAccessibilityService : AccessibilityService() {
         fun getChannel(): MethodChannel? = channel
         fun getInstance(): MyAccessibilityService? = instance
 
-        @Synchronized
-        private fun isDuplicate(result: ParseResult): Boolean {
-            val now = System.currentTimeMillis()
-            recent.entries.removeAll { now - it.value > DUPLICATE_WINDOW_MS }
+        private fun isDuplicate(result: ParseResult, origin: String): Boolean {
             val key = "${result.provider}|${result.type}|${"%.2f".format(result.amount)}"
-            if (recent.containsKey(key)) return true
-            recent[key] = now
-            return false
+            return duplicates.isDuplicate(key, origin, ORIGIN_LISTENER)
         }
 
         /** Lee un texto (notificación o pantalla) y, si es un pago, lo entrega. */
-        fun handleText(context: Context, text: String, fromScreen: Boolean = false) {
+        fun handleText(context: Context, text: String, origin: String = ORIGIN_ACCESS) {
             val rules = ReaderRules.get(context)
             if (rules == null) { Log.d(TAG, "reglas no cargadas"); return }
             // De una pantalla solo cuenta la constancia: el inicio de Yape (saldo, movimientos)
             // no es un pago, aunque cambie cada vez que se toca "ver saldo".
-            if (fromScreen && !rules.isScreenReceipt(text)) return
+            if (origin == ORIGIN_SCREEN && !rules.isScreenReceipt(text)) return
             val result = rules.parse(text)
             if (result == null) { Log.d(TAG, "texto sin pago (largo=${text.length})"); return }
             if (!NativeQueue.isProviderEnabled(context, result.provider)) {
@@ -76,7 +74,7 @@ class MyAccessibilityService : AccessibilityService() {
                     return
                 }
             }
-            if (isDuplicate(result)) {
+            if (isDuplicate(result, origin)) {
                 Log.d(TAG, "descartado: mismo monto, fuente y tipo hace menos de 2 minutos")
                 return
             }
@@ -186,7 +184,7 @@ class MyAccessibilityService : AccessibilityService() {
         collectText(root, builder)
         @Suppress("DEPRECATION")
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) root.recycle()
-        if (builder.isNotEmpty()) handleText(applicationContext, builder.toString(), fromScreen = true)
+        if (builder.isNotEmpty()) handleText(applicationContext, builder.toString(), ORIGIN_SCREEN)
     }
 
     private fun collectText(node: AccessibilityNodeInfo?, out: StringBuilder) {
