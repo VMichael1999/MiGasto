@@ -52,6 +52,7 @@ dependencies:
   sqlite3: ^3.7.0
   path: ^1.9.1
   flutter_secure_storage: ^11.2.0
+  percent_indicator: ^4.2.5
 
 dev_dependencies:
   flutter_test:

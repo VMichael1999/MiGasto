@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:percent_indicator/percent_indicator.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
@@ -386,23 +387,23 @@ class _BudgetProgress extends StatelessWidget {
             builder: (context, constraints) {
               final width = constraints.maxWidth;
               return SizedBox(
-                height: AppSizes.track,
+                height: AppSizes.track + 4,
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.outline,
-                        borderRadius: BorderRadius.circular(AppSizes.track),
-                      ),
+                    LinearPercentIndicator(
+                      padding: EdgeInsets.zero,
+                      lineHeight: AppSizes.track + 4,
+                      percent: ratio.clamp(0.0, 1.0),
+                      barRadius: const Radius.circular(AppSizes.track),
+                      backgroundColor: theme.colorScheme.outline,
+                      progressColor: color,
+                      animation: true,
+                      animationDuration: 700,
+                      curve: Curves.easeOutCubic,
+                      animateFromLastPercent: true,
                     ),
-                    Container(
-                      width: width * ratio.clamp(0.0, 1.0),
-                      decoration: BoxDecoration(
-                        color: color,
-                        borderRadius: BorderRadius.circular(AppSizes.track),
-                      ),
-                    ),
+                    // Marca de cuánto del mes ya pasó: el paquete no la trae.
                     Positioned(
                       left: (width * monthFraction - 1).clamp(0.0, width - 2),
                       top: -4,
