@@ -11,7 +11,6 @@ import '../../presentation/reports/reports_screen.dart';
 import '../../presentation/settings/settings_screen.dart';
 import '../../presentation/providers.dart';
 import '../../shared/widgets/overlay_timer_widget.dart';
-import '../../domain/entities/movimiento.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
 
