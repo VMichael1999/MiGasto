@@ -53,6 +53,11 @@ class MyAccessibilityService : AccessibilityService() {
             val result = rules.parse(text)
             if (result == null) { Log.d(TAG, "texto sin pago (largo=${text.length})"); return }
             if (!NativeQueue.isProviderEnabled(context, result.provider)) return
+            // La constancia de Yape trae un número de operación: si ya se leyó, es la misma pantalla
+            // vista otra vez (por ejemplo, al reiniciarse el servicio), no un pago nuevo.
+            rules.operationId(text)?.let { id ->
+                if (!HandledStore.markHandled(context, "op|$id")) return
+            }
             if (isDuplicate(result)) return
 
             // No se registra el texto completo: puede traer datos personales.

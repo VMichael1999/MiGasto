@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -138,6 +139,24 @@ void main() {
 
     test('"explin" no cuenta como Plin', () {
       expect(read('Explin S/ 20.00 pagaste'), isNull);
+    });
+  });
+
+  group('número de operación', () {
+    final rules = jsonDecode(File('assets/reader_rules.json').readAsStringSync()) as Map<String, dynamic>;
+    final regex = RegExp(rules['operationId'] as String, caseSensitive: false);
+
+    String? op(String text) => regex.firstMatch(text)?.group(1);
+
+    test('lo toma de las constancias reales de Yape', () {
+      expect(op('DATOS DE LA TRANSACCIÓN Nro. de celular *** *** 277 Destino Dale Nro. de operación 01614398 Más en Yape'),
+          '01614398');
+      expect(op('Titular: VALDIVIEZO MAZ* Nº de operación: 05205445 Yapear otro servicio'), '05205445');
+    });
+
+    test('un texto sin número de operación no inventa uno', () {
+      expect(op('Yape! MICHAEL te envió un pago por S/ 1'), isNull);
+      expect(op('Código de cliente: 73654903'), isNull);
     });
   });
 }

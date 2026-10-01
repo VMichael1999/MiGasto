@@ -30,6 +30,7 @@
     }
   ],
   "amount": "s/\\.?\\s*(\\d{1,3}(?:,\\d{3})+(?:\\.\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?)",
+  "operationId": "(?:n(?:ro|º|°|o)\\.?|número|numero)\\s+de\\s+operaci[oó]n\\s*:?\\s*(\\d{5,})",
   "income": [
     "te yap(?:e|eó|eo|earon)(?![\\p{L}\\p{N}])",
     "te plin(?:eó|eo|earon)",

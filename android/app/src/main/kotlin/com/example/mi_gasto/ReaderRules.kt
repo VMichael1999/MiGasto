@@ -50,6 +50,12 @@ class ReaderRules private constructor(
             group.getString("category") to strings(group.getJSONArray("keywords")).map(::keywordRegex)
         }
 
+    private val operationIdRegex = rules.optString("operationId").takeIf { it.isNotEmpty() }
+        ?.let { Regex(it, RegexOption.IGNORE_CASE) }
+
+    /** Número de operación de una constancia (identifica el pago aunque la pantalla se lea otra vez). */
+    fun operationId(text: String): String? = operationIdRegex?.find(text)?.groupValues?.get(1)
+
     /** `null` si el texto no es un pago reconocible. */
     fun parse(text: String): ParseResult? {
         val provider = provider(text) ?: return null
