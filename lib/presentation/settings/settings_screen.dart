@@ -1,12 +1,18 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../data/services/backup_service.dart';
 import '../../data/services/payment_reader.dart';
 import '../../domain/entities/movimiento.dart';
 import '../../shared/csv_export.dart';
@@ -176,6 +182,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                 title: 'Exportar a CSV',
                 subtitle: 'Copia tus movimientos, sin ubicaciones',
                 onTap: () => _exportCsv(context),
+              ),
+              _SettingRow(
+                icon: AppIcons.lock,
+                title: 'Respaldo cifrado',
+                subtitle: _backupSubtitle(ref.watch(lastBackupProvider)),
+                onTap: () => _crearRespaldo(context),
+              ),
+              _SettingRow(
+                icon: AppIcons.file,
+                title: 'Restaurar un respaldo',
+                subtitle: 'Desde un archivo .mgb, con tu contraseña',
+                onTap: () => _restaurarRespaldo(context),
               ),
               _SettingRow(
                 icon: AppIcons.lock,
@@ -421,6 +439,138 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     messenger.showSnackBar(const SnackBar(content: Text('Movimientos copiados al portapapeles')));
   }
 
+  // ------------------------------------------------------------ respaldo
+
+  String _backupSubtitle(DateTime? last) {
+    if (last == null) return 'Aún no has hecho uno. Si pierdes el teléfono, pierdes tus datos.';
+    return 'Último: ${DateFormat('d MMM y, HH:mm', 'es').format(last)}';
+  }
+
+  /// Muestra una espera mientras corre [task] (derivar la clave puede tardar unos segundos).
+  Future<T> _conEspera<T>(BuildContext context, String mensaje, Future<T> Function() task) async {
+    final navigator = Navigator.of(context, rootNavigator: true);
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          content: Row(
+            children: [
+              const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 3)),
+              const SizedBox(width: 20),
+              Expanded(child: Text(mensaje)),
+            ],
+          ),
+        ),
+      ),
+    );
+    try {
+      return await task();
+    } finally {
+      navigator.pop();
+    }
+  }
+
+  Future<void> _crearRespaldo(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final notifier = ref.read(expensesStateProvider.notifier);
+    final lastBackup = ref.read(lastBackupProvider.notifier);
+    final prefs = ref.read(sharedPreferencesProvider);
+
+    final passphrase = await showDialog<String>(
+      context: context,
+      builder: (_) => const _PassphraseDialog(creating: true),
+    );
+    if (passphrase == null || !context.mounted) return;
+
+    try {
+      final bytes = await _conEspera(
+        context,
+        'Cifrando tu respaldo…',
+        () => const BackupService().encrypt(notifier.contenidoDeRespaldo(), passphrase),
+      );
+      final dir = await getTemporaryDirectory();
+      final stamp = DateFormat('yyyy-MM-dd_HHmm').format(DateTime.now());
+      final file = File('${dir.path}/MiGasto-respaldo-$stamp.${BackupService.extension}');
+      await file.writeAsBytes(bytes, flush: true);
+
+      await SharePlus.instance.share(ShareParams(
+        files: [XFile(file.path)],
+        subject: 'Respaldo de MiGasto',
+        text: 'Respaldo cifrado de MiGasto. Solo se abre con tu contraseña.',
+      ));
+      final now = DateTime.now();
+      await prefs.setString(keyLastBackup, now.toUtc().toIso8601String());
+      lastBackup.state = now;
+      messenger.showSnackBar(const SnackBar(
+        content: Text('Respaldo creado. Guárdalo en un lugar seguro (Drive, correo, tu computadora).'),
+      ));
+    } on BackupException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      messenger.showSnackBar(const SnackBar(content: Text('No se pudo crear el respaldo.')));
+    }
+  }
+
+  Future<void> _restaurarRespaldo(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final notifier = ref.read(expensesStateProvider.notifier);
+
+    final picked = await FilePicker.pickFiles(dialogTitle: 'Elige tu respaldo de MiGasto');
+    if (picked.isEmpty || !context.mounted) return;
+    final path = picked.first.path;
+    if (path == null) {
+      messenger.showSnackBar(const SnackBar(content: Text('No se pudo leer el archivo.')));
+      return;
+    }
+    final data = await File(path).readAsBytes();
+    if (!context.mounted) return;
+
+    final passphrase = await showDialog<String>(
+      context: context,
+      builder: (_) => const _PassphraseDialog(creating: false),
+    );
+    if (passphrase == null || !context.mounted) return;
+
+    try {
+      final contents = await _conEspera(
+        context,
+        'Abriendo tu respaldo…',
+        () => const BackupService().decrypt(data, passphrase),
+      );
+      if (!context.mounted) return;
+      final nuevos = notifier.cuantosSonNuevos(contents);
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Restaurar respaldo'),
+          content: Text(
+            'Creado el ${DateFormat('d MMM y, HH:mm', 'es').format(contents.creado.toLocal())}.\n\n'
+            '• ${contents.movimientos.length} movimientos en el respaldo, $nuevos nuevos para este teléfono.\n'
+            '• Presupuesto: ${formatSoles(contents.presupuesto)}.\n\n'
+            'No se borra nada de lo que ya tienes.',
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Restaurar')),
+          ],
+        ),
+      );
+      if (ok != true) return;
+      final agregados = await notifier.restaurarRespaldo(contents);
+      messenger.showSnackBar(SnackBar(
+        content: Text(agregados == 0
+            ? 'No había nada nuevo: ya tenías todos esos movimientos.'
+            : 'Se restauraron $agregados movimientos.'),
+      ));
+    } on BackupException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      messenger.showSnackBar(const SnackBar(content: Text('No se pudo abrir el respaldo.')));
+    }
+  }
+
   Future<void> _toggleLock(BuildContext context, bool enable) async {
     final messenger = ScaffoldMessenger.of(context);
     final notifier = ref.read(passcodeEnabledProvider.notifier);
@@ -632,6 +782,114 @@ class _SettingRow extends StatelessWidget {
 }
 
 /// Interruptor de una fuente de pago, con su punto de color.
+/// Pide la contraseña del respaldo. Al crear pide confirmarla.
+class _PassphraseDialog extends StatefulWidget {
+  const _PassphraseDialog({required this.creating});
+
+  final bool creating;
+
+  @override
+  State<_PassphraseDialog> createState() => _PassphraseDialogState();
+}
+
+class _PassphraseDialogState extends State<_PassphraseDialog> {
+  final _first = TextEditingController();
+  final _second = TextEditingController();
+  bool _visible = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _first.dispose();
+    _second.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final value = _first.text;
+    if (widget.creating) {
+      if (value.length < BackupService.minPassphraseLength) {
+        setState(() => _error = 'Usa al menos ${BackupService.minPassphraseLength} caracteres.');
+        return;
+      }
+      if (value != _second.text) {
+        setState(() => _error = 'Las contraseñas no coinciden.');
+        return;
+      }
+    } else if (value.isEmpty) {
+      setState(() => _error = 'Escribe la contraseña.');
+      return;
+    }
+    Navigator.pop(context, value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AlertDialog(
+      title: const Text('Contraseña del respaldo'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (widget.creating)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(
+                  'Elige una contraseña que recuerdes. MiGasto no la guarda: si la olvidas, nadie podrá abrir el respaldo.',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
+            TextField(
+              controller: _first,
+              obscureText: !_visible,
+              autofocus: true,
+              autocorrect: false,
+              enableSuggestions: false,
+              decoration: InputDecoration(
+                labelText: 'Contraseña',
+                suffixIcon: IconButton(
+                  tooltip: _visible ? 'Ocultar' : 'Mostrar',
+                  icon: Icon(_visible ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                  onPressed: () => setState(() => _visible = !_visible),
+                ),
+              ),
+              onSubmitted: (_) => widget.creating ? null : _submit(),
+            ),
+            if (widget.creating) ...[
+              const SizedBox(height: 8),
+              TextField(
+                controller: _second,
+                obscureText: !_visible,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: const InputDecoration(labelText: 'Repite la contraseña'),
+                onSubmitted: (_) => _submit(),
+              ),
+            ],
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  _error!,
+                  style: theme.textTheme.bodySmall!.copyWith(color: theme.colorScheme.error),
+                ),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        TextButton(
+          onPressed: _submit,
+          child: Text(widget.creating ? 'Crear respaldo' : 'Abrir'),
+        ),
+      ],
+    );
+  }
+}
+
 class _AutoIncomeSwitch extends ConsumerWidget {
   const _AutoIncomeSwitch();
 

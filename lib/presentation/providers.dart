@@ -9,6 +9,7 @@ import '../data/datasource/local_database.dart';
 import '../data/repositories/expense_repository_impl.dart';
 import '../domain/entities/movimiento.dart';
 import '../domain/repositories/expense_repository.dart';
+import '../data/services/backup_service.dart';
 import '../data/services/nlp_classifier_service.dart';
 import '../data/services/location_service.dart';
 import '../domain/duplicate_rule.dart';
@@ -80,6 +81,14 @@ class AutoSaveIncomeNotifier extends StateNotifier<bool> {
     state = value;
   }
 }
+
+/// Fecha del último respaldo creado (o `null` si nunca se hizo uno).
+const keyLastBackup = 'migasto_last_backup';
+
+final lastBackupProvider = StateProvider<DateTime?>((ref) {
+  final raw = ref.read(sharedPreferencesProvider).getString(keyLastBackup);
+  return raw == null ? null : DateTime.tryParse(raw)?.toLocal();
+});
 
 // 7. Expenses State Notifier Provider
 final expensesStateProvider = StateNotifierProvider<ExpensesNotifier, List<Movimiento>>((ref) {
@@ -385,6 +394,43 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
   Future<void> deleteExpense(String id) async {
     await _repo.deleteExpense(id);
     state = state.where((e) => e.id != id).toList();
+  }
+
+  // ------------------------------------------------------------ respaldo
+
+  /// Todo lo que va en un respaldo: movimientos, presupuesto y categorías aprendidas.
+  BackupContents contenidoDeRespaldo() => BackupContents(
+        movimientos: List.of(state),
+        presupuesto: _repo.getBudget(),
+        aprendidas: _repo.getAllCategoryOverrides(),
+        creado: DateTime.now().toUtc(),
+      );
+
+  /// Cuántos movimientos de [contents] no están todavía en la app.
+  int cuantosSonNuevos(BackupContents contents) {
+    final existentes = state.map((m) => m.id).toSet();
+    return contents.movimientos.where((m) => !existentes.contains(m.id)).length;
+  }
+
+  /// Restaura un respaldo sin borrar nada de lo que ya hay: agrega los movimientos
+  /// que faltan (los que ya están, por id, se dejan como están), recupera las
+  /// categorías aprendidas y el presupuesto. Devuelve cuántos movimientos agregó.
+  Future<int> restaurarRespaldo(BackupContents contents) async {
+    final existentes = state.map((m) => m.id).toSet();
+    final nuevos = contents.movimientos.where((m) => !existentes.contains(m.id)).toList();
+    for (final m in nuevos) {
+      await _repo.saveExpense(m);
+    }
+    contents.aprendidas.forEach((merchant, name) {
+      final category = Categoria.values.where((c) => c.name == name).firstOrNull;
+      if (category != null) _repo.saveCategoryOverride(merchant, category);
+    });
+    await _repo.saveBudget(contents.presupuesto);
+    _ref.read(budgetProvider.notifier).state = contents.presupuesto;
+    if (mounted && nuevos.isNotEmpty) {
+      state = [...nuevos, ...state]..sort((a, b) => b.date.compareTo(a.date));
+    }
+    return nuevos.length;
   }
 
   /// Vuelve a guardar un movimiento eliminado, con su mismo id (para "Deshacer").
