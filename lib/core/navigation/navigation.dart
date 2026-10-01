@@ -14,7 +14,6 @@ import '../../shared/widgets/overlay_timer_widget.dart';
 import '../../domain/entities/movimiento.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
-import '../theme/theme.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
