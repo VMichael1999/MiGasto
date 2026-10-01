@@ -21,7 +21,7 @@ Todo se guarda solo en el teléfono, en una base de datos cifrada: no hay servid
 
 ## Lo que todavía no hace
 
-- **iPhone:** Yape y Plin no se detectan solos (iOS no lo permite). Se registran compartiendo la captura de la constancia a MiGasto (el texto se lee en el teléfono) o con el botón +. Los pagos con Apple Pay en el POS se registran con la automatización Transacción de Atajos. Falta el widget y el control del Centro de control (fase 3 del plan).
+- **iPhone:** Yape y Plin no se detectan solos (iOS no lo permite). Se registran compartiendo la captura de la constancia a MiGasto (el texto se lee en el teléfono) o con el botón +. Los pagos con Apple Pay en el POS se registran con la automatización Transacción de Atajos. Hay un widget y un control del Centro de control que abren el registro (`migasto://new`).
 - **Plin dentro de las apps de BBVA, Interbank y Scotiabank:** los nombres de paquete que se escuchan están sin validar con teléfonos reales, igual que el texto exacto de cada notificación (fase 0 del plan).
 - **Ubicación automática al pagar** con Apple Pay (iPhone) y desde la ventana flotante de Android.
 

@@ -394,7 +394,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
       crossAxisCount: 4,
       mainAxisSpacing: 8,
       crossAxisSpacing: 8,
-      childAspectRatio: 0.95,
+      childAspectRatio: 1.2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       children: [
@@ -424,15 +424,20 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                       color: cat == _category ? selectedColor : scheme.onSurfaceVariant,
                     ),
                     const SizedBox(height: 5),
-                    Text(
-                      cat == Categoria.transferenciaRecibida
-                          ? 'Transferencia'
-                          : categoryLabel(cat),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall!.copyWith(
-                        color: scheme.onSurface,
-                        fontWeight: cat == _category ? FontWeight.w600 : FontWeight.w500,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          cat == Categoria.transferenciaRecibida
+                              ? 'Transferencia'
+                              : categoryLabel(cat),
+                          maxLines: 1,
+                          style: theme.textTheme.bodySmall!.copyWith(
+                            color: scheme.onSurface,
+                            fontWeight: cat == _category ? FontWeight.w600 : FontWeight.w500,
+                          ),
+                        ),
                       ),
                     ),
                   ],

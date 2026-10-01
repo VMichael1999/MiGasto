@@ -24,6 +24,14 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: onboardingComplete ? '/dashboard' : '/onboarding',
+    // Enlaces migasto://new (widget y Centro de control) abren el registro manual.
+    redirect: (context, state) {
+      final uri = state.uri;
+      if (uri.scheme == 'migasto') {
+        return uri.host == 'new' ? '/new' : '/dashboard';
+      }
+      return null;
+    },
     routes: [
       GoRoute(
         path: '/onboarding',
