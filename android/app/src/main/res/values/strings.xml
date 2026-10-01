@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="accessibility_service_description">MisGastos lee las notificaciones y pantallas de aplicaciones de pago como Yape, Plin y Google Pay para registrar automáticamente tus gastos sin ingreso manual.</string>
+    <string name="accessibility_service_description">MiGasto lee las notificaciones y la pantalla de Yape, Plin y Google Wallet solo para detectar el monto, el comercio y si el dinero entra o sale, y así registrar tus gastos e ingresos. No lee tus mensajes, fotos ni contactos, y todo se guarda solo en tu teléfono.</string>
 </resources>

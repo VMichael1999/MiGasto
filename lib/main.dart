@@ -64,7 +64,7 @@ class _MyAppState extends ConsumerState<MyApp> {
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'MisGastos',
+      title: 'MiGasto',
       debugShowCheckedModeBanner: false,
       // Claro u oscuro según el sistema.
       theme: widget.themeOverride ?? AppTheme.lightTheme,
