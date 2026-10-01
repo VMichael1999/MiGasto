@@ -40,7 +40,11 @@ class AppBottomNav extends StatelessWidget {
                 _item(1, AppIcons.list, 'Movimientos'),
                 SizedBox(
                   width: 64,
-                  child: Center(child: _AddButton(onPressed: onAdd)),
+                  height: AppSizes.minTouch,
+                  child: OverflowBox(
+                    maxHeight: AppSizes.fab,
+                    child: Center(child: _AddButton(onPressed: onAdd)),
+                  ),
                 ),
                 _item(3, AppIcons.chart, 'Reportes'),
                 _item(4, AppIcons.gear, 'Ajustes'),
@@ -128,7 +132,7 @@ class _AddButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Transform.translate(
-      offset: const Offset(0, -10),
+      offset: const Offset(0, -7),
       child: Tooltip(
         message: 'Agregar movimiento',
         child: Semantics(

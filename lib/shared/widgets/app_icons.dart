@@ -37,7 +37,12 @@ enum AppIcons {
   lock,
   wallet,
   share,
-  backspace;
+  backspace,
+  // No están en la propuesta HTML; mismo trazo, para las categorías Transporte y Servicios
+  // y para los estados de presupuesto con alerta.
+  car,
+  bolt,
+  alert;
 
   String get _body {
     switch (this) {
@@ -109,6 +114,12 @@ enum AppIcons {
         return '<path d="M12 15V3M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>';
       case AppIcons.backspace:
         return '<path d="M21 5H8l-5 7 5 7h13z"/><path d="M16 9.5l-5 5M11 9.5l5 5"/>';
+      case AppIcons.car:
+        return '<path d="M5 17v-5l2-5h10l2 5v5M3 17h18M7 20v-3M17 20v-3M8 13h.01M16 13h.01"/>';
+      case AppIcons.bolt:
+        return '<path d="M13 3L5 14h6l-1 7 8-11h-6z"/>';
+      case AppIcons.alert:
+        return '<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.01"/>';
     }
   }
 

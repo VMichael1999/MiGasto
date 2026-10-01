@@ -73,7 +73,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 150));
     await tester.pumpAndSettle();
 
-    // Verify we are now on the 'Resumen' (Dashboard) screen
-    expect(find.text('Resumen'), findsNWidgets(2));
+    // Verify we are now on the 'Resumen' (Dashboard) screen: the rediseño no
+    // tiene título 'Resumen' arriba, solo la etiqueta de la barra inferior.
+    expect(find.text('Resumen'), findsOneWidget);
+    expect(find.text('Te quedan de este mes'), findsOneWidget);
   });
 }
