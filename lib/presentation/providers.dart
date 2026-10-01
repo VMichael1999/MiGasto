@@ -144,6 +144,12 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
       return;
     }
 
+    final canal = switch (item['channel']) {
+      'wallet' => CanalMovimiento.wallet,
+      'captura' => CanalMovimiento.captura,
+      _ => CanalMovimiento.notificacion,
+    };
+    final card = (item['card'] as String?)?.trim();
     final movimiento = Movimiento(
       id: _uuid.v4(),
       amount: amount,
@@ -152,8 +158,13 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
       source: source,
       date: at,
       tipo: tipo,
-      canal: CanalMovimiento.notificacion,
+      canal: canal,
       estado: confirmed ? EstadoMovimiento.confirmado : EstadoMovimiento.pendiente,
+      tarjeta: (card == null || card.isEmpty) ? null : card,
+      latitud: (item['latitude'] as num?)?.toDouble(),
+      longitud: (item['longitude'] as num?)?.toDouble(),
+      precision: (item['accuracy'] as num?)?.toDouble(),
+      lugar: item['place'] as String?,
       textoOriginal: rawText,
     );
     await _repo.saveExpense(movimiento);
@@ -449,6 +460,33 @@ class PermissionsChecker {
   Future<void> requestOverlayPermission() async {
     try {
       await _channel.invokeMethod('requestOverlayPermission');
+    } catch (_) {
+      // Ignore
+    }
+  }
+
+  /// Pide permiso para avisar "S/ 25.50 en Tambo" después de un pago (iPhone).
+  Future<bool> requestNotificationPermission() async {
+    try {
+      return await _channel.invokeMethod<bool>('requestNotificationPermission') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Solo en desarrollo (iPhone): deja un pago en la cola nativa, como lo haría Atajos.
+  Future<bool> debugEnqueue(Map<String, Object?> item) async {
+    try {
+      return await _channel.invokeMethod<bool>('debugEnqueue', item) ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Abre la app Atajos (iPhone).
+  Future<void> openShortcuts() async {
+    try {
+      await _channel.invokeMethod('openShortcuts');
     } catch (_) {
       // Ignore
     }

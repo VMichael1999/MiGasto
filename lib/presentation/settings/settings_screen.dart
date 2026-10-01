@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../data/services/payment_reader.dart';
+import '../../domain/entities/movimiento.dart';
 import '../../shared/csv_export.dart';
 import '../../shared/format.dart';
 import '../../shared/widgets/app_icons.dart';
@@ -109,12 +111,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                 ),
               ]),
             ] else ...[
-              _label(context, 'Registro'),
+              _label(context, 'Registro automático'),
               _box(context, [
                 _SettingRow(
+                  icon: AppIcons.nfc,
+                  title: 'Apple Pay en el POS',
+                  subtitle: _lastWalletText(),
+                  trailing: _status(context, _hasWalletPayment(), onText: 'Activo', offText: 'Configurar'),
+                  onTap: () => context.push('/setup/apple-pay'),
+                ),
+                _SettingRow(
                   icon: AppIcons.hand,
-                  title: 'Registro manual',
-                  subtitle: 'Toca + para agregar un gasto o un ingreso',
+                  title: 'Yape y Plin',
+                  subtitle: 'Regístralos con el botón + de la app',
                 ),
               ]),
             ],
@@ -211,7 +220,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   }
 
   /// Estado con ícono y texto, nunca solo color.
-  Widget _status(BuildContext context, bool on) {
+  bool _hasWalletPayment() =>
+      ref.watch(expensesStateProvider).any((m) => m.canal == CanalMovimiento.wallet);
+
+  String _lastWalletText() {
+    final last = ref
+        .watch(expensesStateProvider)
+        .where((m) => m.canal == CanalMovimiento.wallet)
+        .firstOrNull;
+    if (last == null) return 'Todavía no registramos ningún pago';
+    return 'Último pago registrado: ${DateFormat("d MMM, HH:mm", 'es').format(last.date)}';
+  }
+
+  Widget _status(BuildContext context, bool on,
+      {String onText = 'Activa', String offText = 'Activar'}) {
     final colors = context.appColors;
     final color = on ? colors.budgetOk : colors.budgetWarning;
     return Row(
@@ -220,7 +242,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
         AppIcon(on ? AppIcons.checkCircle : AppIcons.alert, size: AppIconSize.small, color: color),
         const SizedBox(width: 5),
         Text(
-          on ? 'Activa' : 'Activar',
+          on ? onText : offText,
           style: Theme.of(context)
               .textTheme
               .bodySmall!
@@ -491,13 +513,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
       // Pasa por el mismo camino que una notificación real.
       await permissions.simulateNotification(text);
     } else {
-      await notifier.triggerIncomingPayment(
-        amount: parsed.amount,
-        merchant: parsed.peer,
-        providerStr: parsed.provider,
-        rawText: text,
-        tipoStr: parsed.type,
-      );
+      // iPhone: el pago pasa por la cola nativa, como el de la acción de Atajos.
+      await permissions.debugEnqueue({
+        'amount': parsed.amount,
+        'peer': parsed.peer,
+        'provider': parsed.provider,
+        'type': parsed.type,
+        'channel': 'wallet',
+        'card': 'Visa BBVA ···4821',
+        'rawText': text,
+        'confirmed': parsed.type == 'gasto',
+        'at': DateTime.now().millisecondsSinceEpoch,
+      });
+      await notifier.drainNativeQueue();
     }
     messenger.showSnackBar(
       SnackBar(content: Text('Leído: ${parsed.type} de ${formatSoles(parsed.amount)}')),

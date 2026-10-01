@@ -296,6 +296,33 @@ void main() {
       expect(ingreso.category, Categoria.transferenciaRecibida);
     });
 
+    test('un pago de Apple Pay guarda tarjeta, canal Wallet y ubicación', () async {
+      final c = await containerWithQueue(jsonEncode([
+        {
+          'amount': 25.5,
+          'peer': 'Tambo',
+          'provider': 'tarjeta',
+          'type': 'gasto',
+          'channel': 'wallet',
+          'card': 'Visa BBVA ···4821',
+          'latitude': -12.0914,
+          'longitude': -77.0292,
+          'rawText': 'Apple Pay: S/ 25.50 en Tambo',
+          'confirmed': true,
+          'at': DateTime.now().millisecondsSinceEpoch,
+        },
+      ]));
+      addTearDown(c.dispose);
+
+      final m = c.read(expensesStateProvider).single;
+      expect(m.source, PaymentSource.tarjeta);
+      expect(m.canal, CanalMovimiento.wallet);
+      expect(m.tarjeta, 'Visa BBVA ···4821');
+      expect(m.tieneUbicacion, isTrue);
+      expect(m.estado, EstadoMovimiento.confirmado);
+      expect(m.category, Categoria.compras);
+    });
+
     test('una cola vacía no hace nada', () async {
       final c = await containerWithQueue('[]');
       addTearDown(c.dispose);

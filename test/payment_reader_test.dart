@@ -39,6 +39,12 @@ void main() {
       expect(p.provider, 'googlePay');
     });
 
+    test('el comercio no arrastra "con Google Wallet"', () {
+      final p = read('Compra por S/ 89.20 en Metro con Google Wallet')!;
+      expect(p.peer, 'Metro');
+      expect(p.provider, 'googlePay');
+    });
+
     test('Plin enviado', () {
       final p = read('Plin: enviaste S/ 37.00 a Cineplanet')!;
       expect(p.isIncome, isFalse);

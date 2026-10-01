@@ -5,6 +5,7 @@ import '../../presentation/expenses/expenses_screen.dart';
 import '../../presentation/expenses/manual_entry_screen.dart';
 import '../../presentation/expenses/movement_detail_screen.dart';
 import '../../presentation/expenses/where_screen.dart';
+import '../../presentation/setup/apple_pay_setup_screen.dart';
 import '../../presentation/onboarding/onboarding_screen.dart';
 import '../../presentation/reports/reports_screen.dart';
 import '../../presentation/settings/settings_screen.dart';
@@ -31,6 +32,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/movement/:id',
         builder: (context, state) => MovementDetailScreen(id: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/setup/apple-pay',
+        builder: (context, state) =>
+            ApplePaySetupScreen(fromOnboarding: state.uri.queryParameters['onboarding'] == '1'),
       ),
       GoRoute(
         path: '/where',

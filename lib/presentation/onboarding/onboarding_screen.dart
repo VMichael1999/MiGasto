@@ -63,7 +63,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
 
   Future<void> _primary() async {
     final permissions = ref.read(permissionsCheckerProvider);
-    if (!_isAndroid) return _finish();
+    if (!_isAndroid) {
+      // iPhone: la guía de Apple Pay es el siguiente paso.
+      if (mounted) context.go('/setup/apple-pay?onboarding=1');
+      return;
+    }
     if (!_accessibilityOn) {
       await permissions.openAccessibilitySettings();
     } else if (!_overlayOn) {
@@ -74,7 +78,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
   }
 
   String get _primaryLabel {
-    if (!_isAndroid) return 'Empezar';
+    if (!_isAndroid) return 'Continuar';
     if (!_accessibilityOn) return 'Aceptar y activar la lectura';
     if (!_overlayOn) return 'Permitir la ventana flotante';
     return 'Empezar';
