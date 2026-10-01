@@ -93,6 +93,8 @@ Del código nativo de Android hay 9 pruebas JUnit del freno de duplicados (`Dupl
 cd android && ./gradlew :app:testDebugUnitTest
 ```
 
+(`android/gradlew` lo genera Flutter en la primera compilación: corre antes `flutter build apk` o `flutter run`.)
+
 El resto de lo nativo (lector de reglas, servicio de notificaciones, accesibilidad, ventana flotante y avisos) se verificó a mano en teléfonos reales y en un emulador.
 
 ## Contribuidores
