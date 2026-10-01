@@ -21,6 +21,7 @@ Todo se guarda solo en el teléfono, en una base de datos cifrada: no hay servid
 - **Datos cifrados.** SQLite con cifrado (SQLite3MultipleCiphers). La clave se genera en el teléfono y vive en el almacén seguro del sistema (Keychain en iPhone, Keystore en Android).
 - **Bloqueo.** Huella, rostro o PIN del teléfono.
 - **Claro y oscuro** según el sistema. Tipografía Outfit.
+- **Respaldo cifrado.** Ajustes > Respaldo cifrado crea un archivo `.mgb` con tus movimientos (con ubicaciones y texto original), tu presupuesto y las categorías aprendidas, cifrado con **AES-256-GCM** y una clave derivada de tu contraseña con PBKDF2-SHA256 (210 000 vueltas). Lo compartes donde quieras (Drive, correo, tu computadora). MiGasto no guarda la contraseña: si la olvidas, el respaldo no se puede abrir. Ajustes > Restaurar un respaldo lo abre y **agrega lo que falta sin borrar nada** (los movimientos que ya están, por id, no se duplican). Una contraseña equivocada o un archivo alterado se detectan.
 - **Exportar a CSV** (sin ubicaciones).
 
 ## Lo que todavía no hace
@@ -28,11 +29,12 @@ Todo se guarda solo en el teléfono, en una base de datos cifrada: no hay servid
 - **iPhone:** Yape y Plin no se detectan solos (iOS no lo permite). Se registran compartiendo la captura de la constancia a MiGasto (el texto se lee en el teléfono) o con el botón +. Los pagos con Apple Pay en el POS se registran con la automatización Transacción de Atajos. Hay un widget y un control del Centro de control que abren el registro (`migasto://new`).
 - **Validado con un teléfono real (Samsung, Yape):** pago recibido (notificación) y yape enviado (constancia). **Sin validar:** el pago de servicios con Yape, Google Wallet y Plin dentro de las apps de BBVA, Interbank y Scotiabank; los nombres de paquete de esos bancos son suposiciones y el texto exacto de cada notificación falta confirmarlo (fase 0 del plan).
 - **Android:** en algunos teléfonos Samsung el servicio de Accesibilidad no recibe los avisos de notificación; por eso se usa el acceso a notificaciones. Android puede marcar "Configuración restringida" al instalar fuera de Play Store: se permite desde Ajustes > Aplicaciones > MiGasto.
+- **Respaldo:** es manual; no hay copia automática ni en la nube. Hay que acordarse de crearlo.
 - **Ubicación automática al pagar** con Apple Pay (iPhone) y desde la ventana flotante de Android.
 
 ## Tecnologías
 
-Flutter 3.47 (Dart 3.13), Riverpod, GoRouter, Drift (SQLite cifrado), fl_chart, google_maps_flutter, geolocator, geocoding, local_auth, flutter_svg. Capa nativa en Kotlin: `PaymentNotificationListener` (notificaciones), `MyAccessibilityService` (pantalla de constancia), `OverlayService` (ventana flotante) y `NativeQueue` (cola que Flutter vacía para guardar en la base de datos).
+Flutter 3.47 (Dart 3.13), Riverpod, GoRouter, Drift (SQLite cifrado), fl_chart, google_maps_flutter, geolocator, geocoding, local_auth, flutter_svg, cryptography (respaldo), share_plus y file_picker. Capa nativa en Kotlin: `PaymentNotificationListener` (notificaciones), `MyAccessibilityService` (pantalla de constancia), `OverlayService` (ventana flotante) y `NativeQueue` (cola que Flutter vacía para guardar en la base de datos).
 
 ## Configuración
 

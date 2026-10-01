@@ -43,6 +43,10 @@ Se pide solo mientras usas la app y solo cuando tocas "Agregar ubicación". Nunc
 
 La base de datos está cifrada. La clave se genera en tu teléfono y se guarda en el almacén seguro del sistema (Keychain en iPhone, Keystore en Android). Puedes activar un bloqueo con la huella, el rostro o el PIN de tu teléfono.
 
+## Respaldo cifrado
+
+Puedes crear un respaldo de tus datos desde Ajustes. Es un archivo que se cifra en tu teléfono con una contraseña que tú eliges; MiGasto no guarda esa contraseña ni el archivo. Incluye tus movimientos (con la ubicación y el texto original, si los hay), el presupuesto y las categorías aprendidas. El archivo solo sale del teléfono hacia donde tú lo compartas (por ejemplo Drive o correo) y solo se abre con tu contraseña: si la olvidas, nadie, tampoco nosotros, podrá recuperarlo. Restaurar un respaldo agrega los movimientos que faltan y no borra los que ya tienes.
+
 ## Exportar y borrar
 
 Puedes exportar tus movimientos a CSV desde Ajustes (sin ubicaciones). Para borrar tus datos, elimina los movimientos desde la app o desinstálala: al desinstalar se borra todo lo guardado.
