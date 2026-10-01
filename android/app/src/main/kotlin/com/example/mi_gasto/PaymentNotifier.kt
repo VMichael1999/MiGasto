@@ -75,8 +75,20 @@ object PaymentNotifier {
         else -> "Manual"
     }
 
-    /** Avisa de un pago detectado. [saved] indica si ya quedó guardado o espera confirmación. */
-    fun notify(context: Context, amount: Double, peer: String, provider: String, type: String, saved: Boolean) {
+    private fun actionIntent(context: Context, action: String, ref: String, notificationId: Int, requestCode: Int): PendingIntent {
+        val intent = android.content.Intent(context, PaymentActionReceiver::class.java).apply {
+            this.action = action
+            putExtra(PaymentActionReceiver.EXTRA_REF, ref)
+            putExtra(PaymentActionReceiver.EXTRA_NOTIFICATION_ID, notificationId)
+        }
+        return PendingIntent.getBroadcast(context, requestCode, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+    }
+
+    /**
+     * Avisa de un pago detectado. [saved] indica si ya quedó guardado o espera confirmación.
+     * Con [ref] (el id del movimiento pendiente) el aviso trae los botones «Guardar» e «Ignorar».
+     */
+    fun notify(context: Context, amount: Double, peer: String, provider: String, type: String, saved: Boolean, ref: String? = null) {
         if (!canNotify(context)) {
             Log.w(TAG, "sin permiso para publicar notificaciones")
             return
@@ -100,6 +112,7 @@ object PaymentNotifier {
             PendingIntent.getActivity(context, 0, it, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         }
 
+        val notificationId = (System.currentTimeMillis() % Int.MAX_VALUE).toInt()
         val channel = if (saved) CHANNEL_SAVED else CHANNEL_DETECTED
         val builder = NotificationCompat.Builder(context, channel)
             .setSmallIcon(R.drawable.ic_stat_boleta)
@@ -109,6 +122,12 @@ object PaymentNotifier {
             .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
             .setPriority(if (saved) NotificationCompat.PRIORITY_LOW else NotificationCompat.PRIORITY_HIGH)
+
+        if (ref != null && !saved) {
+            val requestBase = notificationId * 2
+            builder.addAction(0, "Guardar", actionIntent(context, PaymentActionReceiver.ACTION_CONFIRM, ref, notificationId, requestBase))
+            builder.addAction(0, "Ignorar", actionIntent(context, PaymentActionReceiver.ACTION_DISCARD, ref, notificationId, requestBase + 1))
+        }
 
         if (showAmountOnLockScreen(context)) {
             builder.setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -125,7 +144,7 @@ object PaymentNotifier {
         }
 
         try {
-            NotificationManagerCompat.from(context).notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), builder.build())
+            NotificationManagerCompat.from(context).notify(notificationId, builder.build())
             Log.d(TAG, "notificación publicada en el canal $channel")
         } catch (e: SecurityException) {
             Log.w(TAG, "el sistema rechazó la notificación", e)

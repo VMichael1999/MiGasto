@@ -103,12 +103,13 @@ class MyAccessibilityService : AccessibilityService() {
             // y se avisa con una notificación.
             val saved = result.type != "ingreso" || NativeQueue.autoSaveIncome(context)
             Log.d(TAG, "sin ventana: se guarda=$saved y se avisa con notificación")
+            val ref = java.util.UUID.randomUUID().toString()
             NativeQueue.enqueue(
                 context, result.amount, result.peer, result.provider, result.type, rawText,
-                confirmed = saved,
+                confirmed = saved, ref = ref,
             )
             notifyFlutterSaved()
-            PaymentNotifier.notify(context, result.amount, result.peer, result.provider, result.type, saved)
+            PaymentNotifier.notify(context, result.amount, result.peer, result.provider, result.type, saved, ref)
         }
 
         /** Avisa a Flutter (si está abierto) que hay pagos en la cola. */

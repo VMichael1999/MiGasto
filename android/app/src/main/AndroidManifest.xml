@@ -37,6 +37,10 @@
             </intent-filter>
         </service>
 
+        <receiver
+            android:name=".PaymentActionReceiver"
+            android:exported="false" />
+
         <service
             android:name=".OverlayService"
             android:enabled="true"

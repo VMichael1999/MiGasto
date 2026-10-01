@@ -28,8 +28,11 @@ object NativeQueue {
         type: String,
         rawText: String,
         confirmed: Boolean,
+        ref: String? = null,
     ) {
         val item = JSONObject().apply {
+            // Con `ref`, Flutter usa ese id para el movimiento y la notificación puede referirse a él.
+            if (ref != null) put("id", ref)
             put("amount", amount)
             put("peer", peer)
             put("provider", provider)
@@ -47,6 +50,25 @@ object NativeQueue {
             }
             array.put(item)
             // commit(): se escribe antes de seguir, por si el proceso termina.
+            prefs.edit().putString(KEY_QUEUE, array.toString()).commit()
+        }
+    }
+
+    /** Pide a Flutter confirmar ("confirm") o descartar ("discard") el movimiento pendiente [ref]. */
+    fun enqueueAction(context: Context, action: String, ref: String) {
+        val item = JSONObject().apply {
+            put("action", action)
+            put("id", ref)
+            put("at", System.currentTimeMillis())
+        }
+        synchronized(lock) {
+            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val array = try {
+                JSONArray(prefs.getString(KEY_QUEUE, "[]") ?: "[]")
+            } catch (e: Exception) {
+                JSONArray()
+            }
+            array.put(item)
             prefs.edit().putString(KEY_QUEUE, array.toString()).commit()
         }
     }

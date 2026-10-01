@@ -185,6 +185,18 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
   }
 
   Future<void> _ingestNative(Map<String, dynamic> item) async {
+    // Orden de los botones del aviso: confirmar o descartar un ingreso pendiente.
+    final action = item['action'];
+    if (action is String) {
+      final id = item['id'];
+      if (id is! String) return;
+      // Si la lista aún no cargó en memoria, se recarga antes de buscar el movimiento.
+      if (!state.any((e) => e.id == id)) await _loadExpenses();
+      if (action == 'confirm') await confirmMovimiento(id);
+      if (action == 'discard') await deleteExpense(id);
+      return;
+    }
+
     final amount = (item['amount'] as num).toDouble();
     final peer = (item['peer'] as String?) ?? 'Desconocido';
     final providerStr = (item['provider'] as String?) ?? 'otro';
@@ -215,7 +227,7 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
         ? chosen
         : await _categoryFor(tipo, rawText, peer);
     final movimiento = Movimiento(
-      id: _uuid.v4(),
+      id: (item['id'] as String?) ?? _uuid.v4(),
       amount: amount,
       merchant: peer,
       category: category,

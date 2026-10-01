@@ -320,6 +320,53 @@ void main() {
       expect(ingreso.category, Categoria.transferenciaRecibida);
     });
 
+    Map<String, dynamic> pendingIncome(String id, int at) => {
+          'id': id,
+          'amount': 15,
+          'peer': 'Juan Pérez',
+          'provider': 'yape',
+          'type': 'ingreso',
+          'rawText': 'Juan Pérez te yapeó S/ 15.00',
+          'confirmed': false,
+          'at': at,
+        };
+
+    test('«Guardar» del aviso confirma el ingreso pendiente', () async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final c = await containerWithQueue(jsonEncode([
+        pendingIncome('ref-1', now),
+        {'action': 'confirm', 'id': 'ref-1', 'at': now + 1000},
+      ]));
+      addTearDown(c.dispose);
+
+      final list = c.read(expensesStateProvider);
+      expect(list, hasLength(1));
+      expect(list.single.id, 'ref-1');
+      expect(list.single.estado, EstadoMovimiento.confirmado);
+    });
+
+    test('«Ignorar» del aviso descarta el ingreso pendiente', () async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final c = await containerWithQueue(jsonEncode([
+        pendingIncome('ref-2', now),
+        {'action': 'discard', 'id': 'ref-2', 'at': now + 1000},
+      ]));
+      addTearDown(c.dispose);
+
+      expect(c.read(expensesStateProvider), isEmpty);
+    });
+
+    test('una orden del aviso para un movimiento que ya no existe no hace nada', () async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final c = await containerWithQueue(jsonEncode([
+        {'action': 'confirm', 'id': 'no-existe', 'at': now},
+        {'action': 'discard', 'id': 'no-existe', 'at': now},
+      ]));
+      addTearDown(c.dispose);
+
+      expect(c.read(expensesStateProvider), isEmpty);
+    });
+
     test('un pago de Apple Pay guarda tarjeta, canal Wallet y ubicación', () async {
       final c = await containerWithQueue(jsonEncode([
         {
