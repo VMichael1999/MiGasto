@@ -63,10 +63,8 @@ class MyAccessibilityService : AccessibilityService() {
         fun simulateNotification(text: String, context: Context) = handleText(context, text)
 
         private fun deliver(context: Context, result: ParseResult, rawText: String) {
-            val canOverlay = android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M ||
-                Settings.canDrawOverlays(context)
-
-            if (canOverlay) {
+            // Con el teléfono en uso y desbloqueado se muestra la ventana flotante.
+            if (PaymentNotifier.canShowOverlay(context)) {
                 val category = ReaderRules.get(context)?.classify(
                     rawText, result.peer, result.type, NativeQueue.categoryOverrides(context),
                 ) ?: "otros"
@@ -87,13 +85,16 @@ class MyAccessibilityService : AccessibilityService() {
                 }
             }
 
-            // Sin ventana flotante: queda pendiente para que el usuario lo confirme en la
-            // app, salvo un ingreso con "Guardar ingresos automáticamente" activado.
+            // Sin ventana visible (pantalla apagada o bloqueada, o sin el permiso): se guarda según
+            // las reglas de siempre (un gasto se guarda; un ingreso, solo si el usuario lo activó)
+            // y se avisa con una notificación.
+            val saved = result.type != "ingreso" || NativeQueue.autoSaveIncome(context)
             NativeQueue.enqueue(
                 context, result.amount, result.peer, result.provider, result.type, rawText,
-                confirmed = result.type == "ingreso" && NativeQueue.autoSaveIncome(context),
+                confirmed = saved,
             )
             notifyFlutterSaved()
+            PaymentNotifier.notify(context, result.amount, result.peer, result.provider, result.type, saved)
         }
 
         /** Avisa a Flutter (si está abierto) que hay pagos en la cola. */

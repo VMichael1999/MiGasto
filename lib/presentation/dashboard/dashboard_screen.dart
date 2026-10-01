@@ -260,11 +260,46 @@ class _SetupBanner extends ConsumerWidget {
     final permissions = ref.read(permissionsCheckerProvider);
     final off = issue == SetupIssue.lecturaApagada;
 
-    final title = off ? 'La lectura de pagos está apagada' : 'Evita que el teléfono cierre la lectura';
-    final body = off
-        ? 'MiGasto no está viendo tus pagos de Yape, Plin ni Wallet. Actívala en Acceso a notificaciones.'
-        : 'Entra a Batería y elige «No restringido» («Sin restricciones» en otras marcas). Si no, el teléfono puede dormir la app y se pierden pagos.';
-    final action = off ? 'Activar' : 'Ajustar';
+    final String title;
+    final String body;
+    final String action;
+    switch (issue) {
+      case SetupIssue.lecturaApagada:
+        title = 'La lectura de pagos está apagada';
+        body = 'MiGasto no está viendo tus pagos de Yape, Plin ni Wallet. Actívala en Acceso a notificaciones.';
+        action = 'Activar';
+      case SetupIssue.avisosApagados:
+        title = 'Activa los avisos de MiGasto';
+        body = 'Con la pantalla apagada o bloqueada, solo así sabrás qué pago se detectó.';
+        action = 'Activar';
+      case SetupIssue.bateriaRestringida:
+        title = 'Evita que el teléfono cierre la lectura';
+        body = 'Entra a Batería y elige «No restringido» («Sin restricciones» en otras marcas). Si no, el teléfono puede dormir la app y se pierden pagos.';
+        action = 'Ajustar';
+    }
+
+    Future<void> dismiss() async {
+      final now = DateTime.now();
+      final prefs = ref.read(sharedPreferencesProvider);
+      if (issue == SetupIssue.avisosApagados) {
+        await prefs.setString(keyAlertsBannerDismissed, now.toIso8601String());
+        ref.read(alertsBannerDismissedProvider.notifier).state = now;
+      } else {
+        await prefs.setString(keyBatteryBannerDismissed, now.toIso8601String());
+        ref.read(batteryBannerDismissedProvider.notifier).state = now;
+      }
+    }
+
+    Future<void> act() async {
+      switch (issue) {
+        case SetupIssue.lecturaApagada:
+          await permissions.openNotificationListenerSettings();
+        case SetupIssue.avisosApagados:
+          await permissions.requestPostNotifications();
+        case SetupIssue.bateriaRestringida:
+          await permissions.openBatterySettings();
+      }
+    }
 
     return Semantics(
       container: true,
@@ -306,23 +341,8 @@ class _SetupBanner extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  if (!off)
-                    TextButton(
-                      onPressed: () async {
-                        final now = DateTime.now();
-                        await ref
-                            .read(sharedPreferencesProvider)
-                            .setString(keyBatteryBannerDismissed, now.toIso8601String());
-                        ref.read(batteryBannerDismissedProvider.notifier).state = now;
-                      },
-                      child: const Text('Ahora no'),
-                    ),
-                  TextButton(
-                    onPressed: () => off
-                        ? permissions.openNotificationListenerSettings()
-                        : permissions.openBatterySettings(),
-                    child: Text(action),
-                  ),
+                  if (!off) TextButton(onPressed: dismiss, child: const Text('Ahora no')),
+                  TextButton(onPressed: act, child: Text(action)),
                 ],
               ),
             ],

@@ -581,6 +581,25 @@ class PermissionsChecker {
     }
   }
 
+  /// Las notificaciones de MiGasto están permitidas (Android 13 o más pide permiso).
+  Future<bool> isPostNotificationsGranted() async {
+    try {
+      final bool? result = await _channel.invokeMethod('isPostNotificationsGranted');
+      return result ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// La primera vez pide el permiso; si ya se pidió, abre los ajustes de notificaciones.
+  Future<void> requestPostNotifications() async {
+    try {
+      await _channel.invokeMethod('requestPostNotifications');
+    } catch (_) {
+      // Ignore
+    }
+  }
+
   /// La batería de la app está en "Sin restricciones".
   Future<bool> isBatteryUnrestricted() async {
     try {
@@ -702,13 +721,23 @@ class PasscodeNotifier extends StateNotifier<bool> {
 
 /// Estado de lo que necesita la lectura de pagos (solo Android).
 class SetupStatus {
-  const SetupStatus({this.notificationsOn = true, this.batteryUnrestricted = true});
+  const SetupStatus({
+    this.notificationsOn = true,
+    this.batteryUnrestricted = true,
+    this.alertsOn = true,
+  });
 
   final bool notificationsOn;
   final bool batteryUnrestricted;
+  final bool alertsOn;
 }
 
 const keyBatteryBannerDismissed = 'migasto_battery_banner_dismissed_at';
+const keyAlertsBannerDismissed = 'migasto_alerts_banner_dismissed_at';
+
+/// Mostrar el monto y el nombre en la pantalla bloqueada. Apagado por defecto; el código
+/// nativo lee la misma clave (`flutter.migasto_show_amount_locked`).
+const keyShowAmountLocked = 'migasto_show_amount_locked';
 
 /// Vuelve a comprobar los permisos al abrir la app y al volver a ella (por ejemplo,
 /// después de visitar los ajustes del teléfono). Arranca "todo bien" para no mostrar
@@ -728,8 +757,13 @@ class SetupStatusNotifier extends StateNotifier<SetupStatus> with WidgetsBinding
   Future<void> refresh() async {
     final notifications = await _permissions.isNotificationListenerEnabled();
     final battery = await _permissions.isBatteryUnrestricted();
+    final alerts = await _permissions.isPostNotificationsGranted();
     if (!mounted) return;
-    state = SetupStatus(notificationsOn: notifications, batteryUnrestricted: battery);
+    state = SetupStatus(
+      notificationsOn: notifications,
+      batteryUnrestricted: battery,
+      alertsOn: alerts,
+    );
   }
 
   @override
@@ -756,6 +790,27 @@ final batteryBannerDismissedProvider = StateProvider<DateTime?>((ref) {
   return raw == null ? null : DateTime.tryParse(raw);
 });
 
+/// Cuándo se tocó "Ahora no" en el aviso de notificaciones apagadas.
+final alertsBannerDismissedProvider = StateProvider<DateTime?>((ref) {
+  final raw = ref.read(sharedPreferencesProvider).getString(keyAlertsBannerDismissed);
+  return raw == null ? null : DateTime.tryParse(raw);
+});
+
+final showAmountLockedProvider = StateNotifierProvider<_BoolPrefNotifier, bool>((ref) {
+  return _BoolPrefNotifier(ref.read(sharedPreferencesProvider), keyShowAmountLocked);
+});
+
+class _BoolPrefNotifier extends StateNotifier<bool> {
+  _BoolPrefNotifier(this._prefs, this._key) : super(_prefs.getBool(_key) ?? false);
+  final SharedPreferences _prefs;
+  final String _key;
+
+  void toggle() {
+    _prefs.setBool(_key, !state);
+    state = !state;
+  }
+}
+
 /// Los avisos que hay que mostrar ahora (vacío en iPhone o si todo está bien).
 final setupIssuesProvider = Provider<List<SetupIssue>>((ref) {
   final status = ref.watch(setupStatusProvider);
@@ -763,6 +818,8 @@ final setupIssuesProvider = Provider<List<SetupIssue>>((ref) {
     isAndroid: defaultTargetPlatform == TargetPlatform.android,
     notificationsOn: status.notificationsOn,
     batteryUnrestricted: status.batteryUnrestricted,
+    alertsOn: status.alertsOn,
+    alertsDismissedAt: ref.watch(alertsBannerDismissedProvider),
     batteryDismissedAt: ref.watch(batteryBannerDismissedProvider),
   );
 });

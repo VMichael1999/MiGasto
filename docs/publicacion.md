@@ -21,7 +21,7 @@ Lista de lo que piden las tiendas y qué responder según lo que la app hace hoy
 - Ubicación aproximada y precisa: opcional, solo en uso y a petición del usuario; no compartida.
 - ¿Se puede pedir que se borren los datos? Sí, desde la app, o desinstalando.
 
-**Permisos declarados:** acceso a notificaciones (lectura de pagos recibidos), accesibilidad (constancia de Yape al enviar, opcional), mostrar sobre otras apps (ventana de confirmación, opcional), vibración, ubicación en primer plano (a petición), biometría (bloqueo).
+**Permisos declarados:** notificaciones (aviso local de cada pago detectado), acceso a notificaciones (lectura de pagos recibidos), accesibilidad (constancia de Yape al enviar, opcional), mostrar sobre otras apps (ventana de confirmación, opcional), vibración, ubicación en primer plano (a petición), biometría (bloqueo).
 
 **Páginas de 16 KB.** Con Drift ya no se incluye `libisar.so`. Verifica el APK final con el comprobador de alineación antes de subir.
 

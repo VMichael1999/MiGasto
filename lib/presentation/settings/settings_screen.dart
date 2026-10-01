@@ -34,6 +34,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   bool _notificationsOn = false;
   bool _screenOn = false;
   bool _batteryOn = false;
+  bool _alertsOn = false;
   bool _overlayOn = false;
   final _simController = TextEditingController();
 
@@ -65,9 +66,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     final notifications = await permissions.isNotificationListenerEnabled();
     final screen = await permissions.isAccessibilityEnabled();
     final battery = await permissions.isBatteryUnrestricted();
+    final alerts = await permissions.isPostNotificationsGranted();
     final overlay = await permissions.isOverlayGranted();
     if (!mounted) return;
     setState(() {
+      _alertsOn = alerts;
       _batteryOn = battery;
       _notificationsOn = notifications;
       _screenOn = screen;
@@ -114,6 +117,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                   onTap: () async {
                     await permissions.openAccessibilitySettings();
                   },
+                ),
+                _SettingRow(
+                  icon: AppIcons.bell,
+                  title: 'Avisos de pagos',
+                  subtitle: 'Una notificación cuando detecta un pago con la pantalla bloqueada',
+                  trailing: _status(context, _alertsOn),
+                  onTap: () async {
+                    await permissions.requestPostNotifications();
+                  },
+                ),
+                _SettingRow(
+                  icon: AppIcons.lock,
+                  title: 'Monto en pantalla bloqueada',
+                  subtitle: ref.watch(showAmountLockedProvider)
+                      ? 'Se ve el monto y el nombre sin desbloquear'
+                      : 'Oculto: solo dice "Pago detectado"',
+                  switchValue: ref.watch(showAmountLockedProvider),
+                  onSwitch: (_) => ref.read(showAmountLockedProvider.notifier).toggle(),
                 ),
                 _SettingRow(
                   icon: AppIcons.bolt,

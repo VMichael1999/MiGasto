@@ -31,6 +31,8 @@ En ambos casos **no lee** tus mensajes, fotos, contactos, contraseñas ni otras 
 
 Cuando MiGasto detecta un pago muestra una **ventana flotante** (si diste el permiso "Mostrar sobre otras apps") con el monto, el comercio y la categoría para que lo confirmes, lo edites o lo descartes. Un gasto se guarda solo a los 4 segundos si no lo detienes. Un ingreso espera tu confirmación, salvo que actives en Ajustes **Guardar ingresos automáticamente**; esa opción viene apagada.
 
+Cuando detecta un pago y no puede mostrar la ventana (por ejemplo, con la pantalla bloqueada), MiGasto muestra una **notificación en tu propio teléfono** con el monto y el nombre. No es un mensaje que venga de internet: se genera dentro del teléfono. En la pantalla bloqueada se oculta el monto y el nombre, salvo que tú lo actives en Ajustes.
+
 ## iPhone
 
 iOS no permite leer las notificaciones de otras apps. En iPhone, MiGasto recibe los datos de un pago con Apple Pay desde la acción "Registrar movimiento" de Atajos, que tú configuras. Los datos pasan solo entre Atajos y MiGasto, dentro de tu teléfono.

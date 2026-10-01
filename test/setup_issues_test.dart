@@ -8,12 +8,16 @@ void main() {
     bool isAndroid = true,
     bool notifications = true,
     bool battery = true,
+    bool alerts = true,
     DateTime? dismissed,
+    DateTime? alertsDismissed,
   }) =>
       computeSetupIssues(
         isAndroid: isAndroid,
         notificationsOn: notifications,
         batteryUnrestricted: battery,
+        alertsOn: alerts,
+        alertsDismissedAt: alertsDismissed,
         batteryDismissedAt: dismissed,
         now: now,
       );
@@ -46,6 +50,26 @@ void main() {
     expect(
       issues(notifications: false, battery: false, dismissed: now.subtract(const Duration(days: 1))),
       [SetupIssue.lecturaApagada],
+    );
+  });
+
+  test('avisos de notificaciones apagados: salen si la lectura está encendida', () {
+    expect(issues(alerts: false), [SetupIssue.avisosApagados]);
+    expect(issues(alerts: false, battery: false),
+        [SetupIssue.avisosApagados, SetupIssue.bateriaRestringida]);
+  });
+
+  test('sin la lectura encendida, primero va ese aviso y no el de las notificaciones propias', () {
+    expect(issues(notifications: false, alerts: false), [SetupIssue.lecturaApagada]);
+  });
+
+  test('"Ahora no" en los avisos los esconde 7 días, aparte del de batería', () {
+    expect(issues(alerts: false, alertsDismissed: now.subtract(const Duration(days: 2))), isEmpty);
+    expect(issues(alerts: false, alertsDismissed: now.subtract(const Duration(days: 9))),
+        [SetupIssue.avisosApagados]);
+    expect(
+      issues(alerts: false, battery: false, alertsDismissed: now.subtract(const Duration(days: 2))),
+      [SetupIssue.bateriaRestringida],
     );
   });
 }

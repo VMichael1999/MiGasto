@@ -24,6 +24,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
   bool _accessibilityOn = false;
   bool _overlayOn = false;
   bool _batteryOn = false;
+  bool _alertsOn = false;
 
   bool get _isAndroid => defaultTargetPlatform == TargetPlatform.android;
 
@@ -52,8 +53,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
     final accessibility = await permissions.isNotificationListenerEnabled();
     final overlay = await permissions.isOverlayGranted();
     final battery = await permissions.isBatteryUnrestricted();
+    final alerts = await permissions.isPostNotificationsGranted();
     if (!mounted) return;
     setState(() {
+      _alertsOn = alerts;
       _batteryOn = battery;
       _accessibilityOn = accessibility;
       _overlayOn = overlay;
@@ -76,6 +79,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
       await permissions.openNotificationListenerSettings();
     } else if (!_overlayOn) {
       await permissions.requestOverlayPermission();
+    } else if (!_alertsOn) {
+      await permissions.requestPostNotifications();
     } else if (!_batteryOn) {
       await permissions.openBatterySettings();
     } else {
@@ -87,6 +92,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
     if (!_isAndroid) return 'Continuar';
     if (!_accessibilityOn) return 'Aceptar y activar la lectura';
     if (!_overlayOn) return 'Permitir la ventana flotante';
+    if (!_alertsOn) return 'Permitir los avisos';
     if (!_batteryOn) return 'Quitar la restricción de batería';
     return 'Empezar';
   }
@@ -137,7 +143,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                       _step(context, 2, 'Permite la ventana flotante',
                           'Para confirmar cada pago al instante. Es opcional.', _overlayOn),
                       const SizedBox(height: 14),
-                      _step(context, 3, 'Evita que el teléfono la duerma',
+                      _step(context, 3, 'Recibe un aviso de cada pago',
+                          'Una notificación cuando detecta un pago con la pantalla bloqueada.', _alertsOn),
+                      const SizedBox(height: 14),
+                      _step(context, 4, 'Evita que el teléfono la duerma',
                           'En Batería, elige «No restringido». Así no se pierden pagos.', _batteryOn),
                     ],
                   ],

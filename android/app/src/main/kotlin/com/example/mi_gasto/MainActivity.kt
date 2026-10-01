@@ -35,6 +35,27 @@ class MainActivity : FlutterFragmentActivity() {
                     startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                     result.success(true)
                 }
+                "isPostNotificationsGranted" -> result.success(PaymentNotifier.canNotify(this))
+                "requestPostNotifications" -> {
+                    // La primera vez se pide el permiso; si ya se pidió y sigue apagado, se abren los ajustes.
+                    val prefs = getSharedPreferences("migasto_native_state", MODE_PRIVATE)
+                    val needsRuntime = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+                        androidx.core.content.ContextCompat.checkSelfPermission(
+                            this, android.Manifest.permission.POST_NOTIFICATIONS,
+                        ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                    if (needsRuntime && !prefs.getBoolean("asked_post_notifications", false)) {
+                        prefs.edit().putBoolean("asked_post_notifications", true).apply()
+                        androidx.core.app.ActivityCompat.requestPermissions(
+                            this, arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1001,
+                        )
+                    } else {
+                        startActivity(
+                            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                .putExtra(Settings.EXTRA_APP_PACKAGE, packageName),
+                        )
+                    }
+                    result.success(true)
+                }
                 "isBatteryUnrestricted" -> {
                     // Sin restricciones: el sistema no duerme la app en segundo plano.
                     val power = getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
