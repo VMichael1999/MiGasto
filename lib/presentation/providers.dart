@@ -285,6 +285,11 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
     _ref.read(pendingExpenseProvider.notifier).state = null;
   }
 
+  /// Cambia el pago detectado que se está mostrando (monto, comercio, categoría, nota).
+  void updatePending(Movimiento updated) {
+    _ref.read(pendingExpenseProvider.notifier).state = updated;
+  }
+
   /// Cierra el aviso sin guardar. Un ingreso ya guardado como pendiente se queda
   /// en "Por confirmar".
   void discardPendingExpense() {
