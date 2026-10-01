@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import '../../presentation/dashboard/dashboard_screen.dart';
 import '../../presentation/expenses/expenses_screen.dart';
 import '../../presentation/expenses/manual_entry_screen.dart';
+import '../../presentation/expenses/movement_detail_screen.dart';
+import '../../presentation/expenses/where_screen.dart';
 import '../../presentation/onboarding/onboarding_screen.dart';
 import '../../presentation/reports/reports_screen.dart';
 import '../../presentation/settings/settings_screen.dart';
@@ -25,6 +27,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/onboarding',
         builder: (context, state) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        path: '/movement/:id',
+        builder: (context, state) => MovementDetailScreen(id: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/where',
+        builder: (context, state) => const WhereScreen(),
       ),
       GoRoute(
         path: '/new',

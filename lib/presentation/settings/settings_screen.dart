@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
@@ -114,6 +115,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                   icon: AppIcons.hand,
                   title: 'Registro manual',
                   subtitle: 'Toca + para agregar un gasto o un ingreso',
+                ),
+              ]),
+            ],
+            if (ref.watch(expensesStateProvider).any((m) => m.tieneUbicacion || m.lugar != null)) ...[
+              _label(context, 'Ubicación'),
+              _box(context, [
+                _SettingRow(
+                  icon: AppIcons.pin,
+                  title: 'Dónde pagaste',
+                  subtitle: 'Tus pagos con ubicación, por zona',
+                  onTap: () => context.push('/where'),
+                ),
+                _SettingRow(
+                  icon: AppIcons.trash,
+                  title: 'Borrar todas las ubicaciones',
+                  subtitle: 'Los movimientos se mantienen',
+                  onTap: () => _clearLocations(context),
                 ),
               ]),
             ],
@@ -336,6 +354,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
       'otros': 'Otros',
     };
     return names[name] ?? name;
+  }
+
+  Future<void> _clearLocations(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final notifier = ref.read(expensesStateProvider.notifier);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Borrar todas las ubicaciones'),
+        content: const Text('Se borra dónde hiciste cada pago. Tus gastos e ingresos se mantienen.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: context.appColors.budgetOver),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Borrar'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await notifier.clearAllLocations();
+    messenger.showSnackBar(const SnackBar(content: Text('Ubicaciones borradas')));
   }
 
   Future<void> _exportCsv(BuildContext context) async {

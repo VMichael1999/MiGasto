@@ -49,6 +49,10 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>GMSApiKey</key>
+	<string>$(GOOGLE_MAPS_API_KEY)</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>MiGasto usa tu ubicación solo cuando tú tocas Agregar ubicación, para guardar dónde hiciste un pago.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>MiGasto usa Face ID para proteger tus movimientos si activas el bloqueo.</string>
 	<key>UILaunchStoryboardName</key>

@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   dynamic_color
+  geolocator_windows
   isar_flutter_libs
   local_auth_windows
 )

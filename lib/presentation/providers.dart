@@ -10,6 +10,7 @@ import '../data/repositories/expense_repository_impl.dart';
 import '../domain/entities/movimiento.dart';
 import '../domain/repositories/expense_repository.dart';
 import '../data/services/nlp_classifier_service.dart';
+import '../data/services/location_service.dart';
 import '../domain/duplicate_rule.dart';
 
 // 1. SharedPreferences Provider
@@ -350,6 +351,49 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
     state = [expense, ...state]..sort((a, b) => b.date.compareTo(a.date));
   }
 
+  /// Guarda dónde se hizo el pago.
+  Future<void> setLocation(String id, CapturedLocation location) async {
+    final current = state.where((e) => e.id == id).firstOrNull;
+    if (current == null) return;
+    await updateExpense(current.copyWith(
+      latitud: location.latitude,
+      longitud: location.longitude,
+      precision: location.accuracy,
+      lugar: location.place,
+    ));
+  }
+
+  /// Quita la ubicación de un solo movimiento.
+  Future<void> removeLocation(String id) async {
+    final current = state.where((e) => e.id == id).firstOrNull;
+    if (current == null) return;
+    await updateExpense(current.copyWith(quitarUbicacion: true));
+  }
+
+  /// Borra todas las ubicaciones; los movimientos se mantienen.
+  Future<void> clearAllLocations() async {
+    for (final m in state.where((e) => e.tieneUbicacion || e.lugar != null)) {
+      await _repo.updateExpense(m.copyWith(quitarUbicacion: true));
+    }
+    state = [for (final m in state) m.copyWith(quitarUbicacion: true)];
+  }
+
+  /// Cambia la categoría de un movimiento. Con [remember], la app la recuerda
+  /// para ese comercio y la aplica a los pagos anteriores de los gastos.
+  Future<void> changeCategory(String id, Categoria category, {bool remember = false}) async {
+    final current = state.where((e) => e.id == id).firstOrNull;
+    if (current == null) return;
+    await updateExpense(current.copyWith(category: category));
+    if (!remember || current.esIngreso) return;
+
+    await _repo.saveCategoryOverride(current.merchant, category);
+    final key = current.merchant.toLowerCase().trim();
+    for (final m in state.where((e) =>
+        e.esGasto && e.id != id && e.merchant.toLowerCase().trim() == key && e.category != category)) {
+      await updateExpense(m.copyWith(category: category));
+    }
+  }
+
   Future<void> updateExpense(Movimiento updated) async {
     await _repo.updateExpense(updated);
     state = state.map((e) => e.id == updated.id ? updated : e).toList();
@@ -360,6 +404,9 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
     _ref.read(budgetProvider.notifier).state = newBudget;
   }
 }
+
+// Ubicación del pago (solo cuando el usuario la pide)
+final locationServiceProvider = Provider<LocationService>((ref) => DeviceLocationService());
 
 // Checking Native Platform permissions helpers
 final permissionsCheckerProvider = Provider((ref) {
