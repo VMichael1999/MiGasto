@@ -22,14 +22,14 @@ void main() {
     final router = GoRouter(routes: [
       GoRoute(
         path: '/',
-        builder: (_, __) => Scaffold(
+        builder: (_, _) => Scaffold(
           body: Builder(
             builder: (context) =>
                 TextButton(onPressed: () => context.push('/new'), child: const Text('abrir')),
           ),
         ),
       ),
-      GoRoute(path: '/new', builder: (_, __) => const ManualEntryScreen()),
+      GoRoute(path: '/new', builder: (_, _) => const ManualEntryScreen()),
     ]);
 
     await tester.binding.setSurfaceSize(const Size(420, 1000));
