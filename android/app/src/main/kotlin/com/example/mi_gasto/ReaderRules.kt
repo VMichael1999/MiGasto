@@ -112,7 +112,20 @@ class ReaderRules private constructor(
         // En ingresos el nombre suele ir antes; en gastos, después.
         val first = if (isIncome) clean(before) else fromAfter()
         if (first.isNotEmpty()) return first
-        return if (isIncome) fromAfter() else clean(before)
+        val second = if (isIncome) fromAfter() else clean(before)
+        if (second.isNotEmpty() || isIncome) return second
+        return fromAfterWithoutPreposition(after)
+    }
+
+    /**
+     * Constancia de Yape al enviar: el nombre va justo después del monto, sin "a" ni "de"
+     * ("¡Yapeaste! S/ 1 Juan Pérez 01 oct. 2026 09:48 a. m. DATOS DE LA TRANSACCIÓN ...").
+     * Se toma hasta la primera cifra (la fecha) y se descarta si queda demasiado largo.
+     */
+    private fun fromAfterWithoutPreposition(after: String): String {
+        val cut = Regex("\\d").find(after)?.range?.first ?: after.length
+        val name = clean(after.substring(0, cut))
+        return if (name.length in 2..60) name else ""
     }
 
     private fun clean(input: String): String {

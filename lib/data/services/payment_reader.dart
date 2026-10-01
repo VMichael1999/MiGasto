@@ -129,7 +129,18 @@ class PaymentReader {
     // después ("Yapeaste S/ 25 a Tambo"). Se prueba el otro lado si queda vacío.
     final first = isIncome ? _clean(before) : fromAfter();
     if (first.isNotEmpty) return first;
-    return isIncome ? fromAfter() : _clean(before);
+    final second = isIncome ? fromAfter() : _clean(before);
+    if (second.isNotEmpty || isIncome) return second;
+    return _fromAfterWithoutPreposition(after);
+  }
+
+  /// Constancia de Yape al enviar: el nombre va justo después del monto, sin "a" ni
+  /// "de" ("¡Yapeaste! S/ 1 Juan Pérez 01 oct. 2026 09:48 a. m. DATOS DE LA ..."). Se
+  /// toma hasta la primera cifra (la fecha) y se descarta si queda demasiado largo.
+  String _fromAfterWithoutPreposition(String after) {
+    final digit = RegExp(r'\d').firstMatch(after);
+    final name = _clean(digit == null ? after : after.substring(0, digit.start));
+    return name.length >= 2 && name.length <= 60 ? name : '';
   }
 
   String _clean(String input) {

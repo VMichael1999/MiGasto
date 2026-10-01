@@ -54,6 +54,15 @@ void main() {
       expect(p.peer, 'MICHAEL ANTHONY VALDIVIEZO MAZA');
     });
 
+    test('constancia real de Yape al enviar: el nombre va después del monto', () {
+      final p = read('¡Yapeaste! S/ 1 Michael Anthony Valdiviezo Maza 01 oct. 2026 '
+          '09:48 a. m. DATOS DE LA TRANSACCIÓN Nro. de celular *** *** 277 Destino Dale')!;
+      expect(p.isIncome, isFalse);
+      expect(p.amount, 1.0);
+      expect(p.provider, 'yape');
+      expect(p.peer, 'Michael Anthony Valdiviezo Maza');
+    });
+
     test('Plin enviado', () {
       final p = read('Plin: enviaste S/ 37.00 a Cineplanet')!;
       expect(p.isIncome, isFalse);
