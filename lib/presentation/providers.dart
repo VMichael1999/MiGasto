@@ -150,11 +150,16 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
       _ => CanalMovimiento.notificacion,
     };
     final card = (item['card'] as String?)?.trim();
+    // La categoría elegida en la captura se respeta si corresponde al tipo.
+    final chosen = Categoria.values.where((c) => c.name == item['category']).firstOrNull;
+    final category = (chosen != null && chosen.esDeIngreso == (tipo == TipoMovimiento.ingreso))
+        ? chosen
+        : await _categoryFor(tipo, rawText, peer);
     final movimiento = Movimiento(
       id: _uuid.v4(),
       amount: amount,
       merchant: peer,
-      category: await _categoryFor(tipo, rawText, peer),
+      category: category,
       source: source,
       date: at,
       tipo: tipo,

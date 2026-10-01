@@ -154,7 +154,7 @@ class _ApplePaySetupScreenState extends ConsumerState<ApplePaySetupScreen> {
                                       text: 'Yape y Plin: ',
                                       style: TextStyle(fontWeight: FontWeight.w600)),
                                   const TextSpan(
-                                      text: 'registra el pago con el botón + de MiGasto.'),
+                                      text: 'abre la captura de la constancia, toca Compartir y elige MiGasto.'),
                                 ],
                               ),
                             ),

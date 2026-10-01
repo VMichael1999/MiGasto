@@ -121,9 +121,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                   onTap: () => context.push('/setup/apple-pay'),
                 ),
                 _SettingRow(
-                  icon: AppIcons.hand,
-                  title: 'Yape y Plin',
-                  subtitle: 'Regístralos con el botón + de la app',
+                  icon: AppIcons.img,
+                  title: 'Capturas de Yape y Plin',
+                  subtitle: 'Comparte la captura de la constancia a MiGasto',
                 ),
               ]),
             ],

@@ -13,6 +13,7 @@ Todo se guarda solo en el teléfono, en una base de datos cifrada: no hay servid
 - **Categorías.** Por palabras clave (no es IA) y por lo que cambias a mano ("Aprendidas de tus cambios").
 - **Resumen, Movimientos y Reportes.** Saldo del mes, presupuesto de gastos con estado en texto, filtros por tipo, fuente, categoría y monto, e ingresos frente a gastos por mes.
 - **Ubicación opcional.** Se pide solo al tocar "Agregar ubicación" y con la app en uso. Muestra la dirección y un mapa de Google Maps; puedes quitarla de un movimiento o borrar todas.
+- **iPhone.** Acción de Atajos "Registrar movimiento" para Apple Pay y extensión para compartir capturas de Yape y Plin, con lectura de texto en el teléfono (Vision).
 - **Datos cifrados.** SQLite con cifrado (SQLite3MultipleCiphers). La clave se genera en el teléfono y vive en el almacén seguro del sistema (Keychain en iPhone, Keystore en Android).
 - **Bloqueo.** Huella, rostro o PIN del teléfono.
 - **Claro y oscuro** según el sistema. Tipografía Outfit.
@@ -20,7 +21,7 @@ Todo se guarda solo en el teléfono, en una base de datos cifrada: no hay servid
 
 ## Lo que todavía no hace
 
-- **iPhone:** la app compila y permite registrar a mano, pero no detecta pagos solos. Faltan la acción de Atajos para Apple Pay, la extensión para compartir capturas de Yape y Plin y el widget (fases 3 y 4 del plan).
+- **iPhone:** Yape y Plin no se detectan solos (iOS no lo permite). Se registran compartiendo la captura de la constancia a MiGasto (el texto se lee en el teléfono) o con el botón +. Los pagos con Apple Pay en el POS se registran con la automatización Transacción de Atajos. Falta el widget y el control del Centro de control (fase 3 del plan).
 - **Plin dentro de las apps de BBVA, Interbank y Scotiabank:** los nombres de paquete que se escuchan están sin validar con teléfonos reales, igual que el texto exacto de cada notificación (fase 0 del plan).
 - **Ubicación automática al pagar** con Apple Pay (iPhone) y desde la ventana flotante de Android.
 
