@@ -4,6 +4,10 @@ import 'category_display.dart';
 
 String _quote(String value) => '"${value.replaceAll('"', '""')}"';
 
+/// Entre comillas solo si hace falta (los nombres propios pueden traer comas).
+String _quoteIfNeeded(String value) =>
+    value.contains(RegExp(r'[",\n\r]')) ? _quote(value) : value;
+
 /// CSV de movimientos. No incluye la ubicación: solo viaja lo que el usuario
 /// ve en la lista.
 String movimientosToCsv(
@@ -18,7 +22,7 @@ String movimientosToCsv(
       m.tipo.name,
       m.amount.toStringAsFixed(2),
       _quote(m.merchant),
-      _quote(categoryDisplay(m.category, m.categoriaPropia, categoriasPropias).label),
+      _quoteIfNeeded(categoryDisplay(m.category, m.categoriaPropia, categoriasPropias).label),
       m.source.name,
       m.canal.name,
       m.estado.name,
