@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../data/services/payment_reader.dart';
 import '../providers.dart';
 import '../../core/theme/theme.dart';
 import '../../domain/entities/movimiento.dart';
@@ -686,49 +687,40 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   const SizedBox(height: 12),
                   ElevatedButton.icon(
-                    onPressed: () {
+                    onPressed: () async {
                       final text = _simTextController.text.trim();
                       if (text.isEmpty) return;
+                      final messenger = ScaffoldMessenger.of(context);
+                      final notifier = ref.read(expensesStateProvider.notifier);
+                      final permissions = ref.read(permissionsCheckerProvider);
 
-                      // Parse amount
-                      final amtReg = RegExp(r's/\.?\s*(\d+(?:\.\d{2})?)', caseSensitive: false);
-                      final amtMatch = amtReg.firstMatch(text);
-                      final amount = amtMatch != null ? double.tryParse(amtMatch.group(1) ?? '0.0') : null;
-
-                      // Parse merchant
-                      final merchantReg = RegExp(r'(?:a|de|en)\s+([a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+)', caseSensitive: false);
-                      final merchantMatch = merchantReg.firstMatch(text);
-                      var merchant = merchantMatch != null ? merchantMatch.group(1)?.trim() : 'Negocio Desconocido';
-                      merchant = merchant?.replaceAll(RegExp(r'\s+por.*$'), '');
-
-                      // Provider
-                      var provider = 'manual';
-                      if (text.toLowerCase().contains('yape')) {
-                        provider = 'yape';
-                      } else if (text.toLowerCase().contains('plin')) {
-                        provider = 'plin';
-                      } else if (text.toLowerCase().contains('google pay') || text.toLowerCase().contains('gpay')) {
-                        provider = 'googlePay';
-                      }
-
-                      if (amount != null && amount > 0) {
-                        ref.read(expensesStateProvider.notifier).triggerIncomingPayment(
-                              amount: amount,
-                              merchant: merchant ?? 'Establecimiento',
-                              providerStr: provider,
-                              rawText: text,
-                            );
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Simulación activada en fondo')),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                      // Mismas reglas que usa la detección real (assets/reader_rules.json).
+                      final reader = await PaymentReader.fromAsset();
+                      final parsed = reader.parse(text);
+                      if (parsed == null) {
+                        messenger.showSnackBar(
                           const SnackBar(
-                            content: Text('Error: Incluye un monto ej: S/ 15.00'),
-                            backgroundColor: Colors.redAccent,
+                            content: Text('No pudimos leer este pago. Incluye el monto, por ejemplo S/ 15.00, y la app (Yape, Plin o Google Wallet).'),
                           ),
                         );
+                        return;
                       }
+
+                      if (defaultTargetPlatform == TargetPlatform.android) {
+                        // Pasa por el mismo camino que una notificación real.
+                        await permissions.simulateNotification(text);
+                      } else {
+                        await notifier.triggerIncomingPayment(
+                          amount: parsed.amount,
+                          merchant: parsed.peer,
+                          providerStr: parsed.provider,
+                          rawText: text,
+                          tipoStr: parsed.type,
+                        );
+                      }
+                      messenger.showSnackBar(
+                        SnackBar(content: Text('Simulado: ${parsed.type} de S/ ${parsed.amount.toStringAsFixed(2)}')),
+                      );
                     },
                     icon: const Icon(Icons.play_arrow),
                     label: const Text('Procesar y Simular'),
