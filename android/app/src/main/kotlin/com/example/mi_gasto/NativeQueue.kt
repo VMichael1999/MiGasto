@@ -14,6 +14,7 @@ object NativeQueue {
     private const val PREFS = "FlutterSharedPreferences"
     private const val KEY_QUEUE = "flutter.migasto_native_queue"
     private const val KEY_PROVIDERS = "flutter.migasto_providers_enabled_v2"
+    private const val KEY_AUTO_INCOME = "flutter.migasto_auto_save_income"
     private const val KEY_OVERRIDES = "flutter.migasto_category_overrides_v2"
     private val lock = Any()
 
@@ -67,6 +68,10 @@ object NativeQueue {
             true
         }
     }
+
+    /** Si los ingresos se guardan solos (Ajustes; por defecto no). */
+    fun autoSaveIncome(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_AUTO_INCOME, false)
 
     /** Categorías que el usuario cambió a mano: comercio en minúsculas -> categoría. */
     fun categoryOverrides(context: Context): Map<String, String> {

@@ -53,7 +53,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   Future<void> _refreshPermissions() async {
     if (!_isAndroid) return;
     final permissions = ref.read(permissionsCheckerProvider);
-    final accessibility = await permissions.isAccessibilityEnabled();
+    final accessibility = await permissions.isNotificationListenerEnabled();
     final overlay = await permissions.isOverlayGranted();
     if (!mounted) return;
     setState(() {
@@ -90,7 +90,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                   subtitle: 'Lee las notificaciones de Yape, Plin y Google Wallet',
                   trailing: _status(context, _accessibilityOn),
                   onTap: () async {
-                    await permissions.openAccessibilitySettings();
+                    await permissions.openNotificationListenerSettings();
                   },
                 ),
                 _SettingRow(
@@ -102,6 +102,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                     await permissions.requestOverlayPermission();
                   },
                 ),
+                const _AutoIncomeSwitch(),
                 _SourceSwitch(label: 'Yape', sourceKey: 'yape', enabled: providers['yape'] ?? false),
                 _SourceSwitch(label: 'Plin', sourceKey: 'plin', enabled: providers['plin'] ?? false),
                 _SourceSwitch(
@@ -619,6 +620,51 @@ class _SettingRow extends StatelessWidget {
 }
 
 /// Interruptor de una fuente de pago, con su punto de color.
+class _AutoIncomeSwitch extends ConsumerWidget {
+  const _AutoIncomeSwitch();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final on = ref.watch(autoSaveIncomeProvider);
+    final notifier = ref.read(autoSaveIncomeProvider.notifier);
+    return Semantics(
+      container: true,
+      toggled: on,
+      label: 'Guardar ingresos automáticamente',
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: notifier.toggle,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: AppSizes.minTouch + 8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Guardar ingresos automáticamente', style: theme.textTheme.titleSmall),
+                      Text(
+                        on
+                            ? 'Los ingresos se guardan solos, como los gastos.'
+                            : 'Apagado: cada ingreso espera tu confirmación.',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(value: on, onChanged: (_) => notifier.toggle()),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _SourceSwitch extends ConsumerWidget {
   const _SourceSwitch({
     required this.label,

@@ -48,8 +48,10 @@ class MyAccessibilityService : AccessibilityService() {
 
         /** Lee un texto (notificación o pantalla) y, si es un pago, lo entrega. */
         fun handleText(context: Context, text: String) {
-            val rules = ReaderRules.get(context) ?: return
-            val result = rules.parse(text) ?: return
+            val rules = ReaderRules.get(context)
+            if (rules == null) { Log.d(TAG, "reglas no cargadas"); return }
+            val result = rules.parse(text)
+            if (result == null) { Log.d(TAG, "texto sin pago (largo=${text.length})"); return }
             if (!NativeQueue.isProviderEnabled(context, result.provider)) return
             if (isDuplicate(result)) return
 
@@ -85,10 +87,11 @@ class MyAccessibilityService : AccessibilityService() {
                 }
             }
 
-            // Sin ventana flotante: queda pendiente para que el usuario lo confirme en la app.
+            // Sin ventana flotante: queda pendiente para que el usuario lo confirme en la
+            // app, salvo un ingreso con "Guardar ingresos automáticamente" activado.
             NativeQueue.enqueue(
                 context, result.amount, result.peer, result.provider, result.type, rawText,
-                confirmed = false,
+                confirmed = result.type == "ingreso" && NativeQueue.autoSaveIncome(context),
             )
             notifyFlutterSaved()
         }

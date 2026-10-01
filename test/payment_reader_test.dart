@@ -45,6 +45,15 @@ void main() {
       expect(p.provider, 'googlePay');
     });
 
+    test('notificación real de Yape: pago recibido', () {
+      const t = 'Yape! MICHAEL ANTHONY VALDIVIEZO MAZA te envió un pago por S/ 1';
+      final p = read('Confirmación de Pago $t $t')!;
+      expect(p.isIncome, isTrue);
+      expect(p.amount, 1.0);
+      expect(p.provider, 'yape');
+      expect(p.peer, 'MICHAEL ANTHONY VALDIVIEZO MAZA');
+    });
+
     test('Plin enviado', () {
       final p = read('Plin: enviaste S/ 37.00 a Cineplanet')!;
       expect(p.isIncome, isFalse);

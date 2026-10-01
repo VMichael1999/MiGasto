@@ -31,8 +31,10 @@ import java.util.Locale
  * Ventana flotante "Pago detectado".
  *
  * - Gasto: cuenta regresiva de 4 s que se pausa al tocar; al llegar a 0 se guarda.
- * - Ingreso: sin cuenta regresiva. Nunca se guarda solo: espera "Guardar ingreso";
- *   si se ignora, queda en "Por confirmar" dentro de la app.
+ * - Ingreso: sin cuenta regresiva. Por defecto no se guarda solo: espera "Guardar
+ *   ingreso"; si se ignora, queda en "Por confirmar" dentro de la app. Si en Ajustes
+ *   está activado "Guardar ingresos automáticamente", sigue la misma cuenta regresiva
+ *   que un gasto.
  *
  * No escribe en la base de datos: deja el pago en [NativeQueue] y Flutter lo guarda.
  */
@@ -79,6 +81,9 @@ class OverlayService : Service() {
     private var rawText = ""
 
     private val isIncome get() = type == "ingreso"
+
+    /** Hay cuenta regresiva y se guarda solo: siempre en gastos; en ingresos solo si el usuario lo activó. */
+    private val autoSave by lazy { !isIncome || NativeQueue.autoSaveIncome(this) }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -198,7 +203,7 @@ class OverlayService : Service() {
 
         // Barra de tiempo (solo gastos): se vacía de forma lineal.
         var timeline: View? = null
-        if (!isIncome) {
+        if (autoSave) {
             val track = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 weightSum = 1f
@@ -232,7 +237,7 @@ class OverlayService : Service() {
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         })
         var countdownText: TextView? = null
-        if (!isIncome) {
+        if (autoSave) {
             countdownText = label("Se guarda en 4 s", 12.5f, palette.muted)
             srcRow.addView(countdownText)
         }
@@ -273,7 +278,10 @@ class OverlayService : Service() {
                     background = rounded(palette.incomeSoft, 12)
                     addView(
                         label(withBold("Es dinero que ", "recibiste") .let {
-                            SpannableStringBuilder(it).append(". No se guarda hasta que lo confirmes.")
+                            SpannableStringBuilder(it).append(
+                                if (autoSave) ". Se guarda solo en unos segundos."
+                                else ". No se guarda hasta que lo confirmes.",
+                            )
                         }, 13f, palette.ink),
                     )
                 },
@@ -299,7 +307,7 @@ class OverlayService : Service() {
 
         // Pie
         var footLeft: TextView? = null
-        if (!isIncome) {
+        if (autoSave) {
             content.addView(spacer(12))
             val foot = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
             footLeft = label("Toca para pausar", 12f, palette.muted).apply {
@@ -314,7 +322,7 @@ class OverlayService : Service() {
 
         // Tocar la ventana pausa la cuenta regresiva.
         card.setOnTouchListener { _, event ->
-            if (!isIncome && event.action == MotionEvent.ACTION_DOWN && !paused) {
+            if (autoSave && event.action == MotionEvent.ACTION_DOWN && !paused) {
                 paused = true
                 timeline?.setBackgroundColor(palette.muted)
                 footLeft?.text = "En pausa"
@@ -362,7 +370,7 @@ class OverlayService : Service() {
             card.animate().translationY(0f).setDuration(200).start()
         }
 
-        if (isIncome) {
+        if (!autoSave) {
             // Un ingreso sin respuesta queda pendiente después de un rato.
             dismissIncome = Runnable { finishWith(confirmed = false) }
             handler.postDelayed(dismissIncome!!, INCOME_TIMEOUT_MS)

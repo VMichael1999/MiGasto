@@ -47,7 +47,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
   Future<void> _refresh() async {
     if (!_isAndroid) return;
     final permissions = ref.read(permissionsCheckerProvider);
-    final accessibility = await permissions.isAccessibilityEnabled();
+    final accessibility = await permissions.isNotificationListenerEnabled();
     final overlay = await permissions.isOverlayGranted();
     if (!mounted) return;
     setState(() {
@@ -69,7 +69,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
       return;
     }
     if (!_accessibilityOn) {
-      await permissions.openAccessibilitySettings();
+      await permissions.openNotificationListenerSettings();
     } else if (!_overlayOn) {
       await permissions.requestOverlayPermission();
     } else {
@@ -143,7 +143,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                     if (_isAndroid) ...[
                       const SizedBox(height: 20),
                       _step(context, 1, 'Activa la lectura de pagos',
-                          'En Accesibilidad, elige MiGasto', _accessibilityOn),
+                          'En Acceso a notificaciones, activa MiGasto', _accessibilityOn),
                       const SizedBox(height: 14),
                       _step(context, 2, 'Permite la ventana flotante',
                           'Para confirmar cada pago al instante. Es opcional.', _overlayOn),

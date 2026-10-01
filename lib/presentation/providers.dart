@@ -61,6 +61,26 @@ class ProvidersEnabledNotifier extends StateNotifier<Map<String, bool>> {
   }
 }
 
+/// "Guardar ingresos automáticamente" (Ajustes). Apagado por defecto: el código
+/// nativo lee la misma clave (`flutter.migasto_auto_save_income`).
+const keyAutoSaveIncome = 'migasto_auto_save_income';
+
+final autoSaveIncomeProvider = StateNotifierProvider<AutoSaveIncomeNotifier, bool>((ref) {
+  return AutoSaveIncomeNotifier(ref.read(sharedPreferencesProvider));
+});
+
+class AutoSaveIncomeNotifier extends StateNotifier<bool> {
+  AutoSaveIncomeNotifier(this._prefs) : super(_prefs.getBool(keyAutoSaveIncome) ?? false);
+  final SharedPreferences _prefs;
+
+  void toggle() => set(!state);
+
+  void set(bool value) {
+    _prefs.setBool(keyAutoSaveIncome, value);
+    state = value;
+  }
+}
+
 // 7. Expenses State Notifier Provider
 final expensesStateProvider = StateNotifierProvider<ExpensesNotifier, List<Movimiento>>((ref) {
   final repo = ref.read(expenseRepositoryProvider);
@@ -270,8 +290,15 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
     );
 
     if (tipo == TipoMovimiento.ingreso) {
-      // Un ingreso nunca se guarda solo como confirmado, pero sí queda en la
-      // lista "Por confirmar" aunque se ignore el aviso.
+      if (_ref.read(autoSaveIncomeProvider)) {
+        // El usuario pidió guardar los ingresos solos.
+        final saved = movimiento.copyWith(estado: EstadoMovimiento.confirmado);
+        await _repo.saveExpense(saved);
+        state = [saved, ...state]..sort((a, b) => b.date.compareTo(a.date));
+        return;
+      }
+      // Por defecto un ingreso no se guarda solo como confirmado, pero sí queda
+      // en la lista "Por confirmar" aunque se ignore el aviso.
       await _repo.saveExpense(movimiento);
       state = [movimiento, ...state]..sort((a, b) => b.date.compareTo(a.date));
     }
@@ -448,6 +475,24 @@ class PermissionsChecker {
   Future<void> openAccessibilitySettings() async {
     try {
       await _channel.invokeMethod('openAccessibilitySettings');
+    } catch (_) {
+      // Ignore
+    }
+  }
+
+  /// Acceso a notificaciones: la vía principal para leer los pagos.
+  Future<bool> isNotificationListenerEnabled() async {
+    try {
+      final bool? result = await _channel.invokeMethod('isNotificationListenerEnabled');
+      return result ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> openNotificationListenerSettings() async {
+    try {
+      await _channel.invokeMethod('openNotificationListenerSettings');
     } catch (_) {
       // Ignore
     }

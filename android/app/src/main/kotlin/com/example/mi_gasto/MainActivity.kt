@@ -26,6 +26,15 @@ class MainActivity : FlutterFragmentActivity() {
                     startActivity(intent)
                     result.success(true)
                 }
+                "isNotificationListenerEnabled" -> {
+                    val enabled = androidx.core.app.NotificationManagerCompat
+                        .getEnabledListenerPackages(this)
+                    result.success(enabled.contains(packageName))
+                }
+                "openNotificationListenerSettings" -> {
+                    startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                    result.success(true)
+                }
                 "requestOverlayPermission" -> {
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
                         val intent = Intent(

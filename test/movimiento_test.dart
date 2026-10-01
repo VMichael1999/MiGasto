@@ -159,6 +159,30 @@ void main() {
 
     tearDown(() => container.dispose());
 
+    test('apagado por defecto: el interruptor de ingresos automáticos', () {
+      expect(container.read(autoSaveIncomeProvider), isFalse);
+    });
+
+    test('con "Guardar ingresos automáticamente" el ingreso queda confirmado', () async {
+      container.read(autoSaveIncomeProvider.notifier).set(true);
+      final notifier = container.read(expensesStateProvider.notifier);
+      await notifier.triggerIncomingPayment(
+        amount: 15,
+        merchant: 'Juan Pérez',
+        providerStr: 'yape',
+        rawText: 'Juan Pérez te yapeó S/ 15.00',
+        tipoStr: 'ingreso',
+      );
+
+      final list = container.read(expensesStateProvider);
+      expect(list, hasLength(1));
+      expect(list.single.estado, EstadoMovimiento.confirmado);
+      expect(container.read(pendingExpenseProvider), isNull);
+      // Y la preferencia llega a la clave que lee el código nativo.
+      final prefs = container.read(sharedPreferencesProvider);
+      expect(prefs.getBool(keyAutoSaveIncome), isTrue);
+    });
+
     test('un ingreso detectado queda pendiente y no cuenta como confirmado', () async {
       final notifier = container.read(expensesStateProvider.notifier);
       await notifier.triggerIncomingPayment(
