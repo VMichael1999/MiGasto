@@ -18,6 +18,7 @@ import '../../domain/entities/movimiento.dart';
 import '../../shared/csv_export.dart';
 import '../../shared/format.dart';
 import '../../shared/widgets/app_icons.dart';
+import '../expenses/alias_dialog.dart';
 import '../lock/lock_gate.dart';
 import '../providers.dart';
 
@@ -190,6 +191,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                 onTap: () => _showLearned(context),
               ),
               _SettingRow(
+                icon: AppIcons.tag,
+                title: 'Nombres guardados',
+                subtitle: 'Cómo ves a cada persona o comercio',
+                onTap: () => _showAliases(context),
+              ),
+              _SettingRow(
                 icon: AppIcons.file,
                 title: 'Exportar a CSV',
                 subtitle: 'Copia tus movimientos, sin ubicaciones',
@@ -327,6 +334,69 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     if (value == null) return;
     await notifier.updateBudget(value);
     messenger.showSnackBar(const SnackBar(content: Text('Presupuesto actualizado')));
+  }
+
+  void _showAliases(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => Consumer(
+        builder: (context, ref, _) {
+          final theme = Theme.of(context);
+          final entries = ref.watch(aliasesProvider).entries.toList()
+            ..sort((a, b) => a.value.toLowerCase().compareTo(b.value.toLowerCase()));
+          return SafeArea(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text('Nombres guardados', style: theme.textTheme.titleLarge),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Para ponerle nombre a alguien, abre un movimiento suyo y toca "De" o "Para".',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 8),
+                    if (entries.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Text('Aún no has guardado ninguno.', style: theme.textTheme.bodyMedium),
+                      )
+                    else
+                      Flexible(
+                        child: ListView(
+                          shrinkWrap: true,
+                          children: [
+                            for (final e in entries)
+                              ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                minTileHeight: AppSizes.minTouch,
+                                title: Text(e.value),
+                                subtitle: Text(e.key, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                onTap: () => showAliasDialog(context, ref, e.key),
+                                trailing: IconButton(
+                                  tooltip: 'Quitar nombre de ${e.value}',
+                                  icon: AppIcon(AppIcons.trash,
+                                      size: AppIconSize.small,
+                                      color: theme.colorScheme.onSurfaceVariant),
+                                  onPressed: () => ref.read(aliasesProvider.notifier).remove(e.key),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   void _showLearned(BuildContext context) {

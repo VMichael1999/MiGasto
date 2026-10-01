@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../domain/aliases.dart';
 import '../../domain/entities/movimiento.dart';
 import '../../shared/csv_export.dart';
 import '../../shared/format.dart';
@@ -47,6 +48,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   @override
   Widget build(BuildContext context) {
     final all = ref.watch(expensesStateProvider);
+    ref.watch(aliasesProvider); // para que la lista se redibuje si cambia un nombre
     final pendingCount =
         all.where((m) => m.estado == EstadoMovimiento.pendiente).length;
     final entries = _filtered(all);
@@ -215,7 +217,11 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         case _TypeFilter.pending:
           if (m.estado != EstadoMovimiento.pendiente) return false;
       }
-      if (query.isNotEmpty && !m.merchant.toLowerCase().contains(query)) return false;
+      if (query.isNotEmpty &&
+          !m.merchant.toLowerCase().contains(query) &&
+          !displayName(m.merchant, ref.read(aliasesProvider)).toLowerCase().contains(query)) {
+        return false;
+      }
       if (_filterCategory != null && m.category != _filterCategory) return false;
       if (_filterSource != null && m.source != _filterSource) return false;
       final range = _filterAmountRange;
@@ -357,7 +363,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
           ..showSnackBar(
             SnackBar(
               content: Text(
-                '${m.esIngreso ? 'Ingreso' : 'Gasto'} de "${m.merchant}" eliminado',
+                '${m.esIngreso ? 'Ingreso' : 'Gasto'} de "${displayName(m.merchant, ref.read(aliasesProvider))}" eliminado',
               ),
               duration: const Duration(seconds: 5),
               action: SnackBarAction(
@@ -369,7 +375,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       },
       child: MovementRow(
         icon: categoryIcon(m.category),
-        title: m.merchant,
+        title: displayName(m.merchant, ref.watch(aliasesProvider)),
         amount: m.amount,
         sourceName: m.source.name,
         sourceLabel: sourceLabel(m.source),

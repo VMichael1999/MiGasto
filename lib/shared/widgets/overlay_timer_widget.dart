@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../domain/aliases.dart';
 import '../../domain/entities/movimiento.dart';
 import '../../presentation/providers.dart';
 import '../labels.dart';
@@ -214,7 +215,7 @@ class _OverlayTimerWidgetState extends ConsumerState<OverlayTimerWidget>
                         children: [
                           TextSpan(text: isIncome ? 'de ' : 'a '),
                           TextSpan(
-                            text: pending.merchant,
+                            text: displayName(pending.merchant, ref.watch(aliasesProvider)),
                             style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
                         ],

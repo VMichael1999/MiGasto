@@ -341,7 +341,7 @@ class OverlayService : Service() {
 
         // Comercio (una sola línea) y categoría
         card.addView(
-            label(withBold(if (isIncome) "de " else "a ", merchant), 16f, palette.ink).apply {
+            label(withBold(if (isIncome) "de " else "a ", NativeQueue.displayName(this, merchant)), 16f, palette.ink).apply {
                 maxLines = 1
                 ellipsize = TextUtils.TruncateAt.END
             },

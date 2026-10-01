@@ -15,6 +15,7 @@ object NativeQueue {
     private const val KEY_QUEUE = "flutter.migasto_native_queue"
     private const val KEY_PROVIDERS = "flutter.migasto_providers_enabled_v2"
     private const val KEY_AUTO_INCOME = "flutter.migasto_auto_save_income"
+    private const val KEY_ALIASES = "flutter.migasto_aliases_v1"
     private const val KEY_OVERRIDES = "flutter.migasto_category_overrides_v2"
     private val lock = Any()
 
@@ -72,6 +73,19 @@ object NativeQueue {
     /** Si los ingresos se guardan solos (Ajustes; por defecto no). */
     fun autoSaveIncome(context: Context): Boolean =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_AUTO_INCOME, false)
+
+    /** Nombre con el que el usuario quiere ver a [merchant]; si no puso uno, el original. */
+    fun displayName(context: Context, merchant: String): String {
+        val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_ALIASES, null)
+            ?: return merchant
+        return try {
+            // Misma clave que `aliasKey` en Dart: minúsculas, sin espacios de más.
+            val key = merchant.lowercase().trim().replace(Regex("\\s+"), " ")
+            JSONObject(raw).optString(key, "").trim().ifEmpty { merchant }
+        } catch (e: Exception) {
+            merchant
+        }
+    }
 
     /** Categorías que el usuario cambió a mano: comercio en minúsculas -> categoría. */
     fun categoryOverrides(context: Context): Map<String, String> {

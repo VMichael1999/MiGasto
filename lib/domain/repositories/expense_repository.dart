@@ -13,6 +13,11 @@ abstract class ExpenseRepository {
   Future<void> deleteCategoryOverride(String merchant);
   Future<void> clearAllCategoryOverrides();
 
+  // Nombres que el usuario le pone a personas y comercios (clave: aliasKey)
+  Map<String, String> getAllAliases();
+  Future<void> saveAlias(String merchant, String alias);
+  Future<void> deleteAlias(String merchant);
+
   // General Settings persistence
   Future<void> saveBudget(double budget);
   double getBudget();

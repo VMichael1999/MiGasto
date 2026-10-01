@@ -14,6 +14,7 @@ class BackupContents {
     required this.presupuesto,
     required this.aprendidas,
     required this.creado,
+    this.alias = const {},
   });
 
   final List<Movimiento> movimientos;
@@ -21,6 +22,9 @@ class BackupContents {
 
   /// Comercio en minúsculas -> nombre de la categoría que el usuario eligió.
   final Map<String, String> aprendidas;
+
+  /// Nombres que el usuario le puso a personas y comercios (clave normalizada -> nombre).
+  final Map<String, String> alias;
   final DateTime creado;
 }
 
@@ -168,6 +172,7 @@ class BackupService {
         'creado': c.creado.toIso8601String(),
         'presupuesto': c.presupuesto,
         'aprendidas': c.aprendidas,
+        'alias': c.alias,
         'movimientos': c.movimientos.map(_movimientoToJson).toList(),
       };
 
@@ -186,6 +191,9 @@ class BackupService {
         creado: DateTime.parse(map['creado'] as String),
         presupuesto: (map['presupuesto'] as num).toDouble(),
         aprendidas: (map['aprendidas'] as Map<String, dynamic>)
+            .map((k, v) => MapEntry(k, v as String)),
+        // Los respaldos hechos antes de los alias no traen este campo.
+        alias: ((map['alias'] as Map<String, dynamic>?) ?? const {})
             .map((k, v) => MapEntry(k, v as String)),
         movimientos: (map['movimientos'] as List)
             .map((m) => _movimientoFromJson(m as Map<String, dynamic>))

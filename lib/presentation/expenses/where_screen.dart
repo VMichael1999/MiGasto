@@ -5,6 +5,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../core/config/env.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../domain/aliases.dart';
 import '../../domain/entities/movimiento.dart';
 import '../../shared/format.dart';
 import '../../shared/widgets/app_icons.dart';
@@ -26,10 +27,11 @@ class _Zone {
   }
 
   /// "Wong y 2 más": el comercio de mayor monto y cuántos hay además.
-  String get subtitle {
+  String subtitleFor(Map<String, String> aliases) {
     final sorted = [...items]..sort((a, b) => b.amount.compareTo(a.amount));
     final extra = items.length - 1;
-    return extra <= 0 ? sorted.first.merchant : '${sorted.first.merchant} y $extra más';
+    final name = displayName(sorted.first.merchant, aliases);
+    return extra <= 0 ? name : '$name y $extra más';
   }
 }
 
@@ -228,10 +230,11 @@ class _WhereScreenState extends ConsumerState<WhereScreen> {
   }
 
   Widget _zoneRow(BuildContext context, _Zone zone) {
+    final aliases = ref.watch(aliasesProvider);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     return Semantics(
-      label: '${zone.name}, ${zone.items.length} pagos, ${formatSoles(zone.total)}. ${zone.subtitle}',
+      label: '${zone.name}, ${zone.items.length} pagos, ${formatSoles(zone.total)}. ${zone.subtitleFor(aliases)}',
       excludeSemantics: true,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 10),
@@ -253,7 +256,7 @@ class _WhereScreenState extends ConsumerState<WhereScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(zone.name, style: theme.textTheme.titleSmall),
-                  Text(zone.subtitle, style: theme.textTheme.bodySmall!.copyWith(fontSize: 12)),
+                  Text(zone.subtitleFor(aliases), style: theme.textTheme.bodySmall!.copyWith(fontSize: 12)),
                 ],
               ),
             ),

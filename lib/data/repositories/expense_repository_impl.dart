@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../domain/aliases.dart';
 import '../../domain/entities/movimiento.dart';
 import '../../domain/repositories/expense_repository.dart';
 import '../datasource/local_database.dart';
@@ -10,6 +11,7 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
 
   static const String _keyBudget = 'migasto_monthly_budget_v2';
   static const String _keyProvidersEnabled = 'migasto_providers_enabled_v2';
+  static const String _keyAliases = 'migasto_aliases_v1';
   static const String _keyCategoryOverrides = 'migasto_category_overrides_v2';
 
   ExpenseRepositoryImpl(this._db, this._prefs);
@@ -73,6 +75,30 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
     } catch (_) {
       return {};
     }
+  }
+
+  @override
+  Map<String, String> getAllAliases() {
+    final raw = _prefs.getString(_keyAliases);
+    if (raw == null) return {};
+    try {
+      return (jsonDecode(raw) as Map<String, dynamic>).map((k, v) => MapEntry(k, v as String));
+    } catch (_) {
+      return {};
+    }
+  }
+
+  @override
+  Future<void> saveAlias(String merchant, String alias) async {
+    final aliases = getAllAliases();
+    aliases[aliasKey(merchant)] = alias.trim();
+    await _prefs.setString(_keyAliases, jsonEncode(aliases));
+  }
+
+  @override
+  Future<void> deleteAlias(String merchant) async {
+    final aliases = getAllAliases()..remove(aliasKey(merchant));
+    await _prefs.setString(_keyAliases, jsonEncode(aliases));
   }
 
   @override

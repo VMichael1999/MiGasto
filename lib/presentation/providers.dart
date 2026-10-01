@@ -13,6 +13,7 @@ import '../domain/repositories/expense_repository.dart';
 import '../data/services/backup_service.dart';
 import '../data/services/nlp_classifier_service.dart';
 import '../data/services/location_service.dart';
+import '../domain/aliases.dart';
 import '../domain/duplicate_rule.dart';
 import '../domain/setup_issues.dart';
 
@@ -91,6 +92,33 @@ final lastBackupProvider = StateProvider<DateTime?>((ref) {
   final raw = ref.read(sharedPreferencesProvider).getString(keyLastBackup);
   return raw == null ? null : DateTime.tryParse(raw)?.toLocal();
 });
+
+/// Alias de personas y comercios (clave: `aliasKey`). El código nativo lee la misma
+/// clave (`flutter.migasto_aliases_v1`) para mostrar el alias en la ventana flotante.
+final aliasesProvider = StateNotifierProvider<AliasesNotifier, Map<String, String>>((ref) {
+  return AliasesNotifier(ref.read(expenseRepositoryProvider));
+});
+
+class AliasesNotifier extends StateNotifier<Map<String, String>> {
+  AliasesNotifier(this._repo) : super(_repo.getAllAliases());
+  final ExpenseRepository _repo;
+
+  /// Un alias vacío quita el nombre guardado.
+  Future<void> set(String merchant, String alias) async {
+    final clean = alias.trim();
+    if (clean.isEmpty || clean == merchant.trim()) return remove(merchant);
+    await _repo.saveAlias(merchant, clean);
+    state = {...state, aliasKey(merchant): clean};
+  }
+
+  Future<void> remove(String merchant) async {
+    await _repo.deleteAlias(merchant);
+    state = Map.of(state)..remove(aliasKey(merchant));
+  }
+
+  /// Vuelve a leer del almacenamiento (después de restaurar un respaldo).
+  void reload() => state = _repo.getAllAliases();
+}
 
 // 7. Expenses State Notifier Provider
 final expensesStateProvider = StateNotifierProvider<ExpensesNotifier, List<Movimiento>>((ref) {
@@ -405,6 +433,7 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
         movimientos: List.of(state),
         presupuesto: _repo.getBudget(),
         aprendidas: _repo.getAllCategoryOverrides(),
+        alias: _repo.getAllAliases(),
         creado: DateTime.now().toUtc(),
       );
 
@@ -427,6 +456,12 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
       final category = Categoria.values.where((c) => c.name == name).firstOrNull;
       if (category != null) _repo.saveCategoryOverride(merchant, category);
     });
+    // Los alias del respaldo se agregan; si ya tenías uno para el mismo nombre, se queda el tuyo.
+    final propios = _repo.getAllAliases();
+    for (final e in contents.alias.entries) {
+      if (!propios.containsKey(e.key)) await _repo.saveAlias(e.key, e.value);
+    }
+    _ref.read(aliasesProvider.notifier).reload();
     await _repo.saveBudget(contents.presupuesto);
     _ref.read(budgetProvider.notifier).state = contents.presupuesto;
     if (mounted && nuevos.isNotEmpty) {

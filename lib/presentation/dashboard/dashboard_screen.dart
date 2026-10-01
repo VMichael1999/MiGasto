@@ -6,6 +6,7 @@ import 'package:percent_indicator/percent_indicator.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../domain/aliases.dart';
 import '../../domain/entities/movimiento.dart';
 import '../../domain/setup_issues.dart';
 import '../../shared/format.dart';
@@ -529,6 +530,7 @@ class _TodaySection extends ConsumerWidget {
     final theme = Theme.of(context);
     final colors = context.appColors;
     final timeFormat = DateFormat('HH:mm');
+    final aliases = ref.watch(aliasesProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -564,7 +566,7 @@ class _TodaySection extends ConsumerWidget {
           if (i > 0) Divider(color: theme.colorScheme.outline, height: 1),
           MovementRow(
             icon: categoryIcon(movements[i].category),
-            title: movements[i].merchant,
+            title: displayName(movements[i].merchant, aliases),
             amount: movements[i].amount,
             sourceName: movements[i].source.name,
             sourceLabel: sourceLabel(movements[i].source),

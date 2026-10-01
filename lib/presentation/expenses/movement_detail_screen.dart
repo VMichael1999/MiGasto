@@ -9,6 +9,7 @@ import '../../core/config/env.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../data/services/location_service.dart';
+import '../../domain/aliases.dart';
 import '../../domain/entities/movimiento.dart';
 import '../../shared/format.dart';
 import '../../shared/labels.dart';
@@ -16,6 +17,7 @@ import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/big_amount.dart';
 import '../../shared/widgets/category_icon.dart';
 import '../providers.dart';
+import 'alias_dialog.dart';
 
 /// Abre el detalle de un movimiento.
 void showExpenseDetailSheet(BuildContext context, WidgetRef ref, Movimiento movimiento) {
@@ -38,6 +40,7 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
   Widget build(BuildContext context) {
     final m = ref.watch(expensesStateProvider).where((e) => e.id == widget.id).firstOrNull;
     final theme = Theme.of(context);
+    final aliases = ref.watch(aliasesProvider);
 
     if (m == null) {
       return Scaffold(
@@ -79,7 +82,7 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
               const SizedBox(height: 14),
               _Boleta(
                 children: [
-                  Text(m.merchant, style: theme.textTheme.bodySmall),
+                  Text(displayName(m.merchant, aliases), style: theme.textTheme.bodySmall),
                   const SizedBox(height: 4),
                   BigAmount(
                     m.amount,
@@ -110,6 +113,31 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
                   const SizedBox(height: 10),
                   _Dash(color: theme.colorScheme.outline),
                   _kv(context, 'Fecha', Text(_dateText(m.date))),
+                  _kv(
+                    context,
+                    m.esIngreso ? 'De' : 'Para',
+                    InkWell(
+                      onTap: () => showAliasDialog(context, ref, m.merchant),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: AppSizes.minTouch - 8),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                displayName(m.merchant, aliases),
+                                textAlign: TextAlign.right,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            AppIcon(AppIcons.chevron,
+                                size: AppIconSize.small,
+                                color: theme.colorScheme.onSurfaceVariant),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                   _kv(
                     context,
                     m.esIngreso ? 'Recibido por' : 'Pagado con',
@@ -397,7 +425,7 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
                     value: remember,
                     onChanged: (v) => setSheet(() => remember = v ?? false),
                     controlAffinity: ListTileControlAffinity.leading,
-                    title: Text('Aplicar a todos los pagos a ${m.merchant}'),
+                    title: Text('Aplicar a todos los pagos a ${displayName(m.merchant, ref.read(aliasesProvider))}'),
                   ),
                 for (final cat in Categoria.paraTipo(m.tipo))
                   ListTile(
@@ -486,7 +514,7 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Eliminar $kind'),
-        content: Text('¿Eliminar "${m.merchant}" por ${formatSoles(m.amount)}?'),
+        content: Text('¿Eliminar "${displayName(m.merchant, ref.read(aliasesProvider))}" por ${formatSoles(m.amount)}?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
           TextButton(
@@ -506,7 +534,7 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
     context.pop();
     messenger.showSnackBar(
       SnackBar(
-        content: Text('${kind[0].toUpperCase()}${kind.substring(1)} de "${m.merchant}" eliminado'),
+        content: Text('${kind[0].toUpperCase()}${kind.substring(1)} de "${displayName(m.merchant, ref.read(aliasesProvider))}" eliminado'),
         duration: const Duration(seconds: 5),
         action: SnackBarAction(label: 'Deshacer', onPressed: () => notifier.restoreExpense(m)),
       ),
