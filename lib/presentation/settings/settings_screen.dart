@@ -204,7 +204,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
               _SettingRow(
                 icon: AppIcons.wallet,
                 title: 'Presupuesto de gastos',
-                trailingText: formatSoles(budget),
+                trailingText: budget > 0 ? formatSoles(budget) : 'Sin definir',
                 onTap: () => _editBudget(context, budget),
               ),
               _SettingRow(
@@ -334,7 +334,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   // ---------------------------------------------------------------- acciones
 
   Future<void> _editBudget(BuildContext context, double current) async {
-    final controller = TextEditingController(text: current.toStringAsFixed(0));
+    final controller = TextEditingController(text: current > 0 ? current.toStringAsFixed(0) : '');
     // Todo el valor queda seleccionado: lo que escribas lo reemplaza, no se pega al final.
     controller.selection = TextSelection(baseOffset: 0, extentOffset: controller.text.length);
     final messenger = ScaffoldMessenger.of(context);
@@ -347,9 +347,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
           controller: controller,
           autofocus: true,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(prefixText: 'S/ ', hintText: '1200'),
+          decoration: const InputDecoration(prefixText: 'S/ ', hintText: 'Monto del mes'),
         ),
         actions: [
+          if (current > 0)
+            TextButton(onPressed: () => Navigator.pop(context, 0.0), child: const Text('Quitar')),
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
           TextButton(
             onPressed: () {
@@ -364,7 +366,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     disposeControllersLater([controller]);
     if (value == null) return;
     await notifier.updateBudget(value);
-    messenger.showSnackBar(const SnackBar(content: Text('Presupuesto actualizado')));
+    messenger.showSnackBar(
+      SnackBar(content: Text(value > 0 ? 'Presupuesto actualizado' : 'Presupuesto quitado')),
+    );
   }
 
   void _showCustomCategories(BuildContext context) {

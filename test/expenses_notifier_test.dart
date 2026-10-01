@@ -42,7 +42,8 @@ void main() {
       
       final list = container.read(expensesStateProvider);
       expect(list.isEmpty, true);
-      expect(container.read(budgetProvider), 1200.0);
+      // Sin presupuesto hasta que el usuario lo define: no se inventa uno.
+      expect(container.read(budgetProvider), 0.0);
     });
 
     test('Incoming transaction sets pending expense state', () async {

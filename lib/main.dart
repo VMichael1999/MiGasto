@@ -49,7 +49,7 @@ class _MyAppState extends ConsumerState<MyApp> {
     await NlpClassifierService.loadFromAsset();
     await db.init();
     
-    // Warm up the expensesStateProvider to load data or insert mock values
+    // Se crea el estado de movimientos para que cargue lo guardado en la base.
     ref.read(expensesStateProvider.notifier);
     
     if (mounted) {

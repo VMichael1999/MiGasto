@@ -108,7 +108,8 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
 
   @override
   double getBudget() {
-    return _prefs.getDouble(_keyBudget) ?? 1200.0;
+    // Sin presupuesto hasta que el usuario lo define (0 = sin definir): no se inventa uno.
+    return _prefs.getDouble(_keyBudget) ?? 0.0;
   }
 
   @override
