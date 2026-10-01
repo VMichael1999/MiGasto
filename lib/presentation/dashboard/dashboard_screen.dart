@@ -80,13 +80,14 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-class _Header extends StatelessWidget {
+class _Header extends ConsumerWidget {
   const _Header({required this.now});
 
   final DateTime now;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hidden = ref.watch(balanceHiddenProvider);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final month = toBeginningOfSentenceCase(DateFormat('MMMM', 'es').format(now));
@@ -105,43 +106,81 @@ class _Header extends StatelessWidget {
             ),
           ],
         ),
-        Tooltip(
-          message: 'Buscar movimientos',
-          child: Semantics(
-            button: true,
-            label: 'Buscar movimientos',
-            excludeSemantics: true,
-            child: Material(
-              color: scheme.surface,
-              borderRadius: BorderRadius.circular(AppRadius.field),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(AppRadius.field),
-                onTap: () => context.go('/expenses'),
-                child: SizedBox(
-                  width: AppSizes.iconButton,
-                  height: AppSizes.iconButton,
-                  child: Center(
-                    child: AppIcon(AppIcons.search, color: scheme.onSurface),
-                  ),
-                ),
-              ),
+        Row(
+          children: [
+            _HeaderButton(
+              label: hidden ? 'Mostrar montos' : 'Ocultar montos',
+              icon: hidden ? AppIcons.eyeOff : AppIcons.eye,
+              onTap: () => ref.read(balanceHiddenProvider.notifier).toggle(),
             ),
-          ),
+            const SizedBox(width: 8),
+            _HeaderButton(
+              label: 'Buscar movimientos',
+              icon: AppIcons.search,
+              onTap: () => context.go('/expenses'),
+            ),
+          ],
         ),
       ],
     );
   }
 }
 
-class _Balance extends StatelessWidget {
+class _HeaderButton extends StatelessWidget {
+  const _HeaderButton({required this.label, required this.icon, required this.onTap});
+
+  final String label;
+  final AppIcons icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: label,
+      child: Semantics(
+        button: true,
+        label: label,
+        excludeSemantics: true,
+        child: Material(
+          color: scheme.surface,
+          borderRadius: BorderRadius.circular(AppRadius.field),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppRadius.field),
+            onTap: onTap,
+            child: SizedBox(
+              width: AppSizes.iconButton,
+              height: AppSizes.iconButton,
+              child: Center(child: AppIcon(icon, color: scheme.onSurface)),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Balance extends ConsumerStatefulWidget {
   const _Balance({required this.balance});
 
   final double balance;
 
   @override
+  ConsumerState<_Balance> createState() => _BalanceState();
+}
+
+class _BalanceState extends ConsumerState<_Balance> {
+  /// Cuántas veces se volvió a mostrar el saldo: cada vez el número sube desde 0.
+  int _reveals = 0;
+  bool _wasHidden = false;
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final negative = balance < 0;
+    final hidden = ref.watch(balanceHiddenProvider);
+    if (_wasHidden && !hidden) _reveals++;
+    _wasHidden = hidden;
+    final negative = widget.balance < 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -156,9 +195,12 @@ class _Balance extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         BigAmount(
-          balance.abs(),
-          prefix: negative ? '− S/' : 'S/',
-          color: negative ? context.appColors.budgetOver : null,
+          widget.balance.abs(),
+          key: ValueKey(_reveals),
+          prefix: negative && !hidden ? '− S/' : 'S/',
+          color: negative && !hidden ? context.appColors.budgetOver : null,
+          hidden: hidden,
+          countUpFromZero: _reveals > 0,
         ),
       ],
     );
@@ -196,7 +238,7 @@ class _IncomeExpenseTiles extends StatelessWidget {
   }
 }
 
-class _Tile extends StatelessWidget {
+class _Tile extends ConsumerWidget {
   const _Tile({
     required this.icon,
     required this.label,
@@ -210,12 +252,13 @@ class _Tile extends StatelessWidget {
   final Color? iconColor;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hidden = ref.watch(balanceHiddenProvider);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
     return Semantics(
-      label: '$label, ${formatSoles(value).replaceAll('S/', 'soles')}',
+      label: '$label, ${hidden ? 'monto oculto' : formatSoles(value).replaceAll('S/', 'soles')}',
       excludeSemantics: true,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -235,7 +278,7 @@ class _Tile extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Text(
-              formatSoles(value),
+              solesOrHidden(value, hidden),
               style: AppText.amount(theme.textTheme.titleMedium!.copyWith(
                 fontSize: 17,
               )),
@@ -354,13 +397,14 @@ class _SetupBanner extends ConsumerWidget {
 }
 
 /// Aviso de lo que espera confirmación del usuario. No suma al saldo.
-class _PendingBanner extends StatelessWidget {
+class _PendingBanner extends ConsumerWidget {
   const _PendingBanner({required this.pending});
 
   final List<Movimiento> pending;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hidden = ref.watch(balanceHiddenProvider);
     final theme = Theme.of(context);
     final colors = context.appColors;
     final count = pending.length;
@@ -406,7 +450,7 @@ class _PendingBanner extends StatelessWidget {
                   ),
                   if (incomeTotal > 0)
                     Text(
-                      '+ ${formatSoles(incomeTotal)}',
+                      '+ ${solesOrHidden(incomeTotal, hidden)}',
                       style: AppText.amount(bodyStyle.copyWith(
                         fontWeight: FontWeight.w600,
                         color: colors.pendingReview,
@@ -422,7 +466,7 @@ class _PendingBanner extends StatelessWidget {
   }
 }
 
-class _BudgetProgress extends StatelessWidget {
+class _BudgetProgress extends ConsumerWidget {
   const _BudgetProgress({
     required this.spent,
     required this.budget,
@@ -441,7 +485,8 @@ class _BudgetProgress extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hidden = ref.watch(balanceHiddenProvider);
     final theme = Theme.of(context);
     final colors = context.appColors;
     final ratio = spent / budget;
@@ -449,9 +494,9 @@ class _BudgetProgress extends StatelessWidget {
     final monthFraction = (now.day / daysInMonth).clamp(0.0, 1.0);
     final percent = (ratio * 100).round();
 
-    late final Color color;
-    late final AppIcons icon;
-    late final String status;
+    late Color color;
+    late AppIcons icon;
+    late String status;
     switch (_state) {
       case _BudgetState.ok:
         color = colors.budgetOk;
@@ -465,6 +510,13 @@ class _BudgetProgress extends StatelessWidget {
         color = colors.budgetOver;
         icon = AppIcons.alert;
         status = 'Gastos: te pasaste';
+    }
+
+    // Con los montos ocultos tampoco se ve cuánto del presupuesto va gastado.
+    if (hidden) {
+      icon = AppIcons.wallet;
+      color = theme.colorScheme.onSurfaceVariant;
+      status = 'Presupuesto del mes';
     }
 
     final statusStyle = theme.textTheme.bodyMedium!.copyWith(
@@ -486,15 +538,18 @@ class _BudgetProgress extends StatelessWidget {
               ],
             ),
             Text(
-              '$percent % de S/ ${NumberFormat('#,##0', 'en').format(budget)}',
+              hidden
+                  ? '$hiddenAmount % de S/ $hiddenAmount'
+                  : '$percent % de S/ ${NumberFormat('#,##0', 'en').format(budget)}',
               style: AppText.amount(theme.textTheme.bodySmall!),
             ),
           ],
         ),
         const SizedBox(height: 8),
         Semantics(
-          label:
-              '$percent % del presupuesto de gastos usado, ${(monthFraction * 100).round()} % del mes transcurrido',
+          label: hidden
+              ? 'presupuesto oculto'
+              : '$percent % del presupuesto de gastos usado, ${(monthFraction * 100).round()} % del mes transcurrido',
           excludeSemantics: true,
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -507,7 +562,7 @@ class _BudgetProgress extends StatelessWidget {
                     LinearPercentIndicator(
                       padding: EdgeInsets.zero,
                       lineHeight: AppSizes.track + 4,
-                      percent: ratio.clamp(0.0, 1.0),
+                      percent: hidden ? 0.0 : ratio.clamp(0.0, 1.0),
                       barRadius: const Radius.circular(AppSizes.track),
                       backgroundColor: theme.colorScheme.outline,
                       progressColor: color,
@@ -517,7 +572,8 @@ class _BudgetProgress extends StatelessWidget {
                       animateFromLastPercent: true,
                     ),
                     // Marca de cuánto del mes ya pasó: el paquete no la trae.
-                    Positioned(
+                    if (!hidden)
+                      Positioned(
                       left: (width * monthFraction - 1).clamp(0.0, width - 2),
                       top: -4,
                       bottom: -4,

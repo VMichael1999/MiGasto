@@ -373,7 +373,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       };
       comparison = diff.abs() < 0.005
           ? 'Igual que en $prevName'
-          : '${formatSoles(diff.abs())} ${diff > 0 ? 'más' : 'menos'} que en $prevName';
+          : '${solesOrHidden(diff.abs(), ref.watch(balanceHiddenProvider))} ${diff > 0 ? 'más' : 'menos'} que en $prevName';
     }
 
     final negative = balance < 0;
@@ -389,8 +389,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         BigAmount(
           balance.abs(),
           size: 36,
-          prefix: negative ? '− S/' : 'S/',
-          color: negative ? colors.budgetOver : null,
+          prefix: negative && !ref.watch(balanceHiddenProvider) ? '− S/' : 'S/',
+          color: negative && !ref.watch(balanceHiddenProvider) ? colors.budgetOver : null,
+          hidden: ref.watch(balanceHiddenProvider),
         ),
         if (comparison != null) ...[
           const SizedBox(height: 4),
@@ -570,7 +571,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   ),
                 ),
                 Text(
-                  formatSoles(rows[i].value),
+                  solesOrHidden(rows[i].value, ref.watch(balanceHiddenProvider)),
                   style: AppText.amount(theme.textTheme.bodyMedium!
                       .copyWith(fontSize: 13.5, fontWeight: FontWeight.w600)),
                 ),

@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../presentation/providers.dart';
 import '../format.dart';
 import 'app_icons.dart';
 
 /// Fila de movimiento: ícono, nombre, punto de color de la fuente, hora y monto
 /// alineado a la derecha. Los ingresos van en azul con signo `+`; los pendientes
 /// llevan la etiqueta "Por confirmar".
-class MovementRow extends StatelessWidget {
+class MovementRow extends ConsumerWidget {
   const MovementRow({
     super.key,
     required this.icon,
@@ -33,19 +35,21 @@ class MovementRow extends StatelessWidget {
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hidden = ref.watch(balanceHiddenProvider);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final colors = context.appColors;
     final text = theme.textTheme;
 
-    final amountText = isIncome ? '+ ${formatSoles(amount)}' : formatSoles(amount);
+    final shownSoles = solesOrHidden(amount, hidden);
+    final amountText = isIncome ? '+ $shownSoles' : shownSoles;
     final amountColor = isIncome ? colors.income : scheme.onSurface;
 
     final semantics = [
       isIncome ? 'Ingreso' : 'Gasto',
       title,
-      formatSoles(amount).replaceAll('S/', 'soles'),
+      hidden ? 'monto oculto' : formatSoles(amount).replaceAll('S/', 'soles'),
       sourceLabel,
       time,
       if (isPending) 'por confirmar',

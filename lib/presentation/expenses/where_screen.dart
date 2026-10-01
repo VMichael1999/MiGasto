@@ -261,7 +261,7 @@ class _WhereScreenState extends ConsumerState<WhereScreen> {
               ),
             ),
             Text(
-              formatSoles(zone.total),
+              solesOrHidden(zone.total, ref.watch(balanceHiddenProvider)),
               style: AppText.amount(theme.textTheme.titleSmall!),
             ),
           ],

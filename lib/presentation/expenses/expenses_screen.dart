@@ -308,7 +308,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                     ),
                     if (dayTotal > 0)
                       Text(
-                        '${formatSoles(dayTotal)} en gastos',
+                        '${solesOrHidden(dayTotal, ref.watch(balanceHiddenProvider))} en gastos',
                         style: AppText.amount(theme.textTheme.bodySmall!.copyWith(
                           fontWeight: FontWeight.w600,
                         )),

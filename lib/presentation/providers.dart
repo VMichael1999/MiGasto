@@ -85,6 +85,23 @@ class AutoSaveIncomeNotifier extends StateNotifier<bool> {
   }
 }
 
+/// Si el usuario ocultó los montos (botón del ojo en Resumen). Se recuerda entre aperturas.
+const keyBalanceHidden = 'migasto_balance_hidden';
+
+final balanceHiddenProvider = StateNotifierProvider<BalanceHiddenNotifier, bool>((ref) {
+  return BalanceHiddenNotifier(ref.read(sharedPreferencesProvider));
+});
+
+class BalanceHiddenNotifier extends StateNotifier<bool> {
+  BalanceHiddenNotifier(this._prefs) : super(_prefs.getBool(keyBalanceHidden) ?? false);
+  final SharedPreferences _prefs;
+
+  void toggle() {
+    state = !state;
+    _prefs.setBool(keyBalanceHidden, state);
+  }
+}
+
 /// Fecha del último respaldo creado (o `null` si nunca se hizo uno).
 const keyLastBackup = 'migasto_last_backup';
 

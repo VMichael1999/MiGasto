@@ -89,6 +89,7 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
                     size: 40,
                     prefix: m.esIngreso ? '+ S/' : 'S/',
                     color: m.esIngreso ? colors.income : null,
+                    hidden: ref.watch(balanceHiddenProvider),
                   ),
                   if (isPending) ...[
                     const SizedBox(height: 8),

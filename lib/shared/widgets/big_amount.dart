@@ -12,6 +12,8 @@ class BigAmount extends StatelessWidget {
     this.size = 42,
     this.prefix = 'S/',
     this.color,
+    this.hidden = false,
+    this.countUpFromZero = false,
   });
 
   final double value;
@@ -20,6 +22,12 @@ class BigAmount extends StatelessWidget {
   /// `S/` o `+ S/` en ingresos.
   final String prefix;
   final Color? color;
+
+  /// Muestra `••••` en lugar del monto.
+  final bool hidden;
+
+  /// Al construirse, el número sube desde 0 hasta [value] (al volver a mostrar el saldo).
+  final bool countUpFromZero;
 
   @override
   Widget build(BuildContext context) {
@@ -38,14 +46,24 @@ class BigAmount extends StatelessWidget {
       letterSpacing: 0,
     );
 
-    return Text.rich(
-      TextSpan(
-        children: [
-          TextSpan(text: '$prefix ', style: small),
-          TextSpan(text: formatAmount(value), style: main),
-        ],
-      ),
-      semanticsLabel: '$prefix ${formatAmount(value)}'.replaceAll('S/', 'soles'),
+    Widget build(String shown, String spoken) => Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(text: '$prefix ', style: small),
+              TextSpan(text: shown, style: main),
+            ],
+          ),
+          semanticsLabel: spoken,
+        );
+
+    if (hidden) return build(hiddenAmount, 'monto oculto');
+    final spoken = '$prefix ${formatAmount(value)}'.replaceAll('S/', 'soles');
+    if (!countUpFromZero) return build(formatAmount(value), spoken);
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: value),
+      duration: const Duration(milliseconds: 900),
+      curve: Curves.easeOutCubic,
+      builder: (context, v, _) => build(formatAmount(v), spoken),
     );
   }
 }
