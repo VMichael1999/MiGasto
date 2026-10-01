@@ -4,21 +4,31 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
+import android.graphics.Canvas
+import android.graphics.ColorFilter
+import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.PixelFormat
+import android.graphics.RectF
 import android.graphics.Typeface
+import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.provider.Settings
 import android.text.SpannableStringBuilder
 import android.text.Spanned
+import android.text.TextUtils
 import android.text.style.StyleSpan
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.LinearLayout
@@ -30,7 +40,9 @@ import java.util.Locale
 /**
  * Ventana flotante "Pago detectado".
  *
- * - Gasto: cuenta regresiva de 4 s que se pausa al tocar; al llegar a 0 se guarda.
+ * - Gasto: cuenta regresiva de 4 s dentro del botón "Guardar" (se vacía de color fuerte
+ *   a tenue); se pausa al tocar la ventana y, al llegar a 0, se guarda.
+ * - Deslizar la ventana hacia arriba hace lo mismo que su primer botón (Descartar / Ignorar).
  * - Ingreso: sin cuenta regresiva. Por defecto no se guarda solo: espera "Guardar
  *   ingreso"; si se ignora, queda en "Por confirmar" dentro de la app. Si en Ajustes
  *   está activado "Guardar ingresos automáticamente", sigue la misma cuenta regresiva
@@ -51,6 +63,12 @@ class OverlayService : Service() {
         val brandInk = if (night) 0xFF8CE885.toInt() else 0xFF1E7A36.toInt()
         val income = if (night) 0xFF7FB6FF.toInt() else 0xFF2458C6.toInt()
         val incomeSoft = if (night) 0xFF18233A.toInt() else 0xFFE3EBFA.toInt()
+        // Botón "Guardar": color fuerte que se vacía hasta el tenue durante la cuenta regresiva.
+        val saveStrong = if (night) 0xFF8CE885.toInt() else 0xFF8CE885.toInt()
+        val saveSoft = if (night) 0xFF4F8A4C.toInt() else 0xFFD7F3D4.toInt()
+        val incomeStrong = if (night) 0xFF7FB6FF.toInt() else 0xFF86B4F5.toInt()
+        val incomeFaint = if (night) 0xFF4A7DB8.toInt() else 0xFFD5E4FB.toInt()
+        val onSave = 0xFF0F0E13.toInt()
         private val yape = if (night) 0xFF9B4FD6.toInt() else 0xFF742284.toInt()
         private val plin = if (night) 0xFF10BFAF.toInt() else 0xFF00857A.toInt()
         private val gpay = if (night) 0xFF5B9BF8.toInt() else 0xFF1A73E8.toInt()
@@ -71,7 +89,10 @@ class OverlayService : Service() {
     private var tick: Runnable? = null
     private var dismissIncome: Runnable? = null
     private var paused = false
+    private var closing = false
     private var remainingMs = COUNTDOWN_MS
+    private var fill: FillDrawable? = null
+    private var timeLabel: TextView? = null
 
     private var amount = 0.0
     private var merchant = ""
@@ -92,7 +113,7 @@ class OverlayService : Service() {
 
         // Si había otra ventana sin resolver, ese pago queda pendiente en vez de perderse.
         if (overlayView != null) {
-            enqueue(confirmed = false)
+            if (!closing) enqueue(confirmed = false)
             removeOverlay()
         }
 
@@ -151,41 +172,120 @@ class OverlayService : Service() {
         else -> "Manual"
     }
 
-    private fun button(text: String, weight: Float, fill: Int?, textColor: Int, onClick: () -> Unit) =
+    /** Fondo del botón "Guardar": [strong] llena hasta [progress] y [soft] el resto. */
+    private class FillDrawable(
+        private val strong: Int,
+        private val soft: Int,
+        private val radius: Float,
+    ) : Drawable() {
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private val clip = Path()
+        var progress = 1f
+            set(value) {
+                field = value.coerceIn(0f, 1f)
+                invalidateSelf()
+            }
+
+        override fun draw(canvas: Canvas) {
+            val r = RectF(bounds)
+            clip.reset()
+            clip.addRoundRect(r, radius, radius, Path.Direction.CW)
+            canvas.save()
+            canvas.clipPath(clip)
+            paint.color = soft
+            canvas.drawRect(r, paint)
+            paint.color = strong
+            canvas.drawRect(r.left, r.top, r.left + r.width() * progress, r.bottom, paint)
+            canvas.restore()
+        }
+
+        override fun setAlpha(alpha: Int) {}
+        override fun setColorFilter(colorFilter: ColorFilter?) {}
+        @Suppress("OVERRIDE_DEPRECATION")
+        override fun getOpacity() = android.graphics.PixelFormat.TRANSLUCENT
+    }
+
+    /** Tarjeta que se descarta deslizándola hacia arriba y pausa la cuenta al tocarla. */
+    private inner class SwipeCard(context: Context) : LinearLayout(context) {
+        private val slop = ViewConfiguration.get(context).scaledTouchSlop
+        private var downY = 0f
+
+        override fun dispatchTouchEvent(e: MotionEvent): Boolean {
+            if (e.actionMasked == MotionEvent.ACTION_DOWN) {
+                downY = e.rawY
+                pauseCountdown()
+            }
+            return super.dispatchTouchEvent(e)
+        }
+
+        override fun onInterceptTouchEvent(e: MotionEvent): Boolean =
+            e.actionMasked == MotionEvent.ACTION_MOVE && downY - e.rawY > slop
+
+        override fun onTouchEvent(e: MotionEvent): Boolean {
+            when (e.actionMasked) {
+                MotionEvent.ACTION_MOVE -> translationY = minOf(0f, e.rawY - downY)
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
+                    if (translationY < -dp(56)) onSwiped()
+                    else animate().translationY(0f).setDuration(150).start()
+            }
+            return true
+        }
+    }
+
+    private fun pauseCountdown() {
+        if (!autoSave || paused || closing) return
+        paused = true
+        timeLabel?.text = "En pausa"
+    }
+
+    private fun button(text: String, weight: Float, textColor: Int, onClick: () -> Unit) =
         TextView(this).apply {
             this.text = text
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14.5f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
             setTextColor(textColor)
             setTypeface(null, Typeface.BOLD)
             gravity = Gravity.CENTER
-            minimumHeight = dp(48)
             isClickable = true
             isFocusable = true
             contentDescription = text
-            background = if (fill != null) rounded(fill, 13) else rounded(0x00000000, 13, palette.line, 1.5f)
-            layoutParams = LinearLayout.LayoutParams(0, dp(48), weight).apply { marginStart = dp(4); marginEnd = dp(4) }
+            layoutParams = LinearLayout.LayoutParams(0, dp(52), weight).apply { marginStart = dp(3); marginEnd = dp(3) }
             setOnClickListener { onClick() }
         }
 
-    private fun pickRow(prefix: String, value: String): View {
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(12), dp(10), dp(12), dp(10))
-            background = rounded(palette.bg, 12)
-            isClickable = true
-            minimumHeight = dp(48)
-            contentDescription = "$prefix$value. Cambiar"
-            setOnClickListener { openEdit() }
+    /** Botón principal: con cuenta regresiva se vacía de color fuerte a tenue. */
+    private fun primaryButton(text: String, strong: Int, soft: Int, countdown: Boolean, onClick: () -> Unit): View =
+        button(text, 1.7f, palette.onSave, onClick).apply {
+            if (countdown) {
+                val drawable = FillDrawable(strong, soft, dp(16).toFloat())
+                fill = drawable
+                background = drawable
+                contentDescription = "$text. Se guarda solo en unos segundos"
+            } else {
+                background = rounded(strong, 16)
+            }
         }
-        row.addView(
-            label(withBold(prefix, value), 13.5f, palette.ink).apply {
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            },
-        )
-        row.addView(label("Cambiar", 13f, palette.brandInk, bold = true))
-        return row
-    }
+
+    private fun quietButton(text: String, onClick: () -> Unit): View =
+        button(text, 1f, palette.muted, onClick).apply {
+            background = rounded(0x00000000, 16)
+        }
+
+    private fun chip(text: CharSequence, textColor: Int, fill: Int, onClick: (() -> Unit)? = null) =
+        TextView(this).apply {
+            this.text = text
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
+            setTextColor(textColor)
+            setTypeface(null, Typeface.BOLD)
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(10), dp(5), dp(10), dp(5))
+            background = rounded(fill, 20)
+            includeFontPadding = false
+            if (onClick != null) {
+                isClickable = true
+                minimumHeight = dp(32)
+                setOnClickListener { onClick() }
+            }
+        }
 
     private fun spacer(heightDp: Int) = View(this).apply {
         layoutParams = LinearLayout.LayoutParams(1, dp(heightDp))
@@ -193,146 +293,102 @@ class OverlayService : Service() {
 
     private fun showOverlay() {
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        closing = false
+        fill = null
 
-        val card = LinearLayout(this).apply {
+        val card = SwipeCard(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = rounded(palette.surface, 22)
-            elevation = dp(12).toFloat()
+            background = rounded(palette.surface, 28)
+            elevation = dp(16).toFloat()
             clipToOutline = true
+            setPadding(dp(18), dp(16), dp(18), dp(14))
         }
 
-        // Barra de tiempo (solo gastos): se vacía de forma lineal.
-        var timeline: View? = null
-        if (autoSave) {
-            val track = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                weightSum = 1f
-                setBackgroundColor(palette.line)
-                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(4))
-            }
-            timeline = View(this).apply {
-                setBackgroundColor(palette.brand)
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f)
-            }
-            track.addView(timeline)
-            card.addView(track)
-        }
-
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(14), dp(16), dp(16))
-        }
-
-        // Fuente y hora (+ cuenta regresiva)
-        val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-        val srcRow = LinearLayout(this).apply {
+        // Fuente (etiqueta de su color) y hora / estado
+        val sourceColor = palette.source(provider)
+        val top = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        srcRow.addView(View(this).apply {
-            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(palette.source(provider)) }
-            layoutParams = LinearLayout.LayoutParams(dp(8), dp(8)).apply { marginEnd = dp(7) }
-        })
-        srcRow.addView(label("${sourceName()} · $time", 12.5f, palette.muted, bold = true).apply {
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        })
-        var countdownText: TextView? = null
-        if (autoSave) {
-            countdownText = label("Se guarda en 4 s", 12.5f, palette.muted)
-            srcRow.addView(countdownText)
-        }
-        content.addView(srcRow)
-        content.addView(spacer(12))
+        top.addView(
+            chip(sourceName(), sourceColor, (sourceColor and 0x00FFFFFF) or 0x24000000),
+        )
+        top.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(0, 1, 1f) })
+        val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+        timeLabel = label(time, 12.5f, palette.muted, bold = true)
+        top.addView(timeLabel)
+        card.addView(top)
+        card.addView(spacer(14))
 
         // Monto
+        val amountColor = if (isIncome) palette.income else palette.ink
         val amountRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.BOTTOM
         }
-        val amountColor = if (isIncome) palette.income else palette.ink
         amountRow.addView(
-            label(if (isIncome) "+ S/ " else "S/ ", 19f, amountColor, bold = true),
+            label(if (isIncome) "+ S/ " else "S/ ", 20f, amountColor, bold = true).apply {
+                setPadding(0, 0, 0, dp(5))
+            },
         )
         amountRow.addView(
-            label(String.format(Locale.US, "%,.2f", amount), 38f, amountColor, bold = true).apply {
+            label(String.format(Locale.US, "%,.2f", amount), 42f, amountColor, bold = true).apply {
                 contentDescription = String.format(Locale.US, "%,.2f soles", amount)
             },
         )
-        content.addView(amountRow)
-        content.addView(spacer(4))
-        content.addView(label(withBold(if (isIncome) "de " else "a ", merchant), 16f, palette.ink))
-        content.addView(spacer(12))
+        card.addView(amountRow)
+        card.addView(spacer(6))
 
-        // Categoría o tipo
-        content.addView(
-            if (isIncome) pickRow("Tipo: ", ReaderRules.categoryLabel(category))
-            else pickRow("Categoría: ", ReaderRules.categoryLabel(category)),
+        // Comercio (una sola línea) y categoría
+        card.addView(
+            label(withBold(if (isIncome) "de " else "a ", merchant), 16f, palette.ink).apply {
+                maxLines = 1
+                ellipsize = TextUtils.TruncateAt.END
+            },
         )
-        content.addView(spacer(12))
-
-        if (isIncome) {
-            content.addView(
-                LinearLayout(this).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    setPadding(dp(12), dp(10), dp(12), dp(10))
-                    background = rounded(palette.incomeSoft, 12)
-                    addView(
-                        label(withBold("Es dinero que ", "recibiste") .let {
-                            SpannableStringBuilder(it).append(
-                                if (autoSave) ". Se guarda solo en unos segundos."
-                                else ". No se guarda hasta que lo confirmes.",
-                            )
-                        }, 13f, palette.ink),
-                    )
-                },
-            )
-            content.addView(spacer(12))
+        card.addView(spacer(12))
+        val chipRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
         }
+        val categoryName = ReaderRules.categoryLabel(category)
+        chipRow.addView(
+            chip("$categoryName  ›", palette.ink, palette.bg) { openEdit() }.apply {
+                contentDescription = "${if (isIncome) "Tipo" else "Categoría"}: $categoryName. Cambiar"
+            },
+        )
+        card.addView(chipRow)
+        card.addView(spacer(16))
 
         // Acciones
         val actions = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-                .apply { marginStart = -dp(4); marginEnd = -dp(4) }
+                .apply { marginStart = -dp(3); marginEnd = -dp(3) }
         }
         if (isIncome) {
-            actions.addView(button("Ignorar", 1f, null, palette.ink) { finishWith(confirmed = false) })
-            actions.addView(button("Guardar ingreso", 1.4f, palette.income, palette.bg) { finishWith(confirmed = true) })
+            actions.addView(quietButton("Ignorar") { finishWith(confirmed = false) })
+            actions.addView(
+                primaryButton("Guardar ingreso", palette.incomeStrong, palette.incomeFaint, autoSave) {
+                    finishWith(confirmed = true)
+                },
+            )
         } else {
-            actions.addView(button("Descartar", 1f, null, palette.ink) { discard() })
-            actions.addView(button("Editar", 1f, null, palette.ink) { openEdit() })
-            actions.addView(button("Guardar", 1.4f, palette.brand, palette.onBrand) { finishWith(confirmed = true) })
+            actions.addView(quietButton("Descartar") { discard() })
+            actions.addView(quietButton("Editar") { openEdit() })
+            actions.addView(
+                primaryButton("Guardar", palette.saveStrong, palette.saveSoft, true) {
+                    finishWith(confirmed = true)
+                },
+            )
         }
-        content.addView(actions)
-
-        // Pie
-        var footLeft: TextView? = null
-        if (autoSave) {
-            content.addView(spacer(12))
-            val foot = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            footLeft = label("Toca para pausar", 12f, palette.muted).apply {
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            }
-            foot.addView(footLeft)
-            foot.addView(label("MiGasto", 12f, palette.muted))
-            content.addView(foot)
-        }
-
-        card.addView(content)
-
-        // Tocar la ventana pausa la cuenta regresiva.
-        card.setOnTouchListener { _, event ->
-            if (autoSave && event.action == MotionEvent.ACTION_DOWN && !paused) {
-                paused = true
-                timeline?.setBackgroundColor(palette.muted)
-                footLeft?.text = "En pausa"
-                countdownText?.text = "En pausa"
-            }
-            false
-        }
+        card.addView(actions)
 
         val root = FrameLayout(this).apply {
-            setPadding(dp(10), 0, dp(10), 0)
+            setPadding(dp(12), 0, dp(12), dp(12))
+            clipChildren = false
+            clipToPadding = false
             addView(card, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT))
         }
         overlayView = root
@@ -350,7 +406,7 @@ class OverlayService : Service() {
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            y = statusBarHeight() + dp(8)
+            y = statusBarHeight() + dp(6)
         }
 
         try {
@@ -363,11 +419,14 @@ class OverlayService : Service() {
             return
         }
 
+        vibrateOnce()
+
         // Entra desde arriba (se omite si las animaciones están desactivadas).
-        val animationsOn = Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f
-        if (animationsOn) {
-            card.translationY = -dp(120).toFloat()
-            card.animate().translationY(0f).setDuration(200).start()
+        if (animationsOn()) {
+            card.translationY = -dp(140).toFloat()
+            card.alpha = 0f
+            card.animate().translationY(0f).alpha(1f).setDuration(260)
+                .setInterpolator(android.view.animation.DecelerateInterpolator(1.6f)).start()
         }
 
         if (!autoSave) {
@@ -382,22 +441,41 @@ class OverlayService : Service() {
                     if (!paused) {
                         remainingMs -= TICK_MS
                         if (remainingMs <= 0) {
+                            fill?.progress = 0f
                             finishWith(confirmed = true)
                             return
                         }
-                        val bar = timeline?.layoutParams as? LinearLayout.LayoutParams
-                        bar?.let {
-                            it.weight = remainingMs.toFloat() / COUNTDOWN_MS
-                            timeline?.layoutParams = it
-                        }
-                        val seconds = (remainingMs + 999) / 1000
-                        countdownText?.text = "Se guarda en $seconds s"
+                        fill?.progress = remainingMs.toFloat() / COUNTDOWN_MS
                     }
                     handler.postDelayed(this, TICK_MS)
                 }
             }
             handler.postDelayed(tick!!, TICK_MS)
         }
+    }
+
+    private fun animationsOn() =
+        Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f
+
+    /** Vibración corta al aparecer, para notarla sin mirar el teléfono. */
+    private fun vibrateOnce() {
+        try {
+            val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator ?: return
+            if (!vibrator.hasVibrator()) return
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(25, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(25)
+            }
+        } catch (e: Exception) {
+            // Sin vibración: no es esencial.
+        }
+    }
+
+    /** Deslizar hacia arriba: igual que el primer botón (Descartar en gastos, Ignorar en ingresos). */
+    private fun onSwiped() {
+        if (isIncome) finishWith(confirmed = false) else discard()
     }
 
     private fun statusBarHeight(): Int {
@@ -435,8 +513,25 @@ class OverlayService : Service() {
     }
 
     private fun close() {
-        removeOverlay()
-        stopSelf()
+        if (closing) return
+        closing = true
+        tick?.let { handler.removeCallbacks(it) }
+        dismissIncome?.let { handler.removeCallbacks(it) }
+        val view = overlayView
+        val card = (view as? FrameLayout)?.getChildAt(0)
+        if (card != null && animationsOn()) {
+            card.animate().translationY(-dp(140).toFloat()).alpha(0f).setDuration(180)
+                .withEndAction {
+                    // Si llegó otro pago mientras salía, esa ventana nueva sigue.
+                    if (overlayView === view) {
+                        removeOverlay()
+                        stopSelf()
+                    }
+                }.start()
+        } else {
+            removeOverlay()
+            stopSelf()
+        }
     }
 
     private fun removeOverlay() {
