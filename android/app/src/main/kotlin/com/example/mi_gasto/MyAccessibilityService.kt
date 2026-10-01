@@ -47,24 +47,39 @@ class MyAccessibilityService : AccessibilityService() {
         }
 
         /** Lee un texto (notificación o pantalla) y, si es un pago, lo entrega. */
-        fun handleText(context: Context, text: String) {
+        fun handleText(context: Context, text: String, fromScreen: Boolean = false) {
             val rules = ReaderRules.get(context)
             if (rules == null) { Log.d(TAG, "reglas no cargadas"); return }
+            // De una pantalla solo cuenta la constancia: el inicio de Yape (saldo, movimientos)
+            // no es un pago, aunque cambie cada vez que se toca "ver saldo".
+            if (fromScreen && !rules.isScreenReceipt(text)) return
             val result = rules.parse(text)
             if (result == null) { Log.d(TAG, "texto sin pago (largo=${text.length})"); return }
-            if (!NativeQueue.isProviderEnabled(context, result.provider)) return
+            if (!NativeQueue.isProviderEnabled(context, result.provider)) {
+                Log.d(TAG, "descartado: ${result.provider} está apagado en Ajustes")
+                return
+            }
             // La constancia de Yape trae un número de operación: si ya se leyó, es la misma pantalla
             // vista otra vez (por ejemplo, al reiniciarse el servicio), no un pago nuevo.
             rules.operationId(text)?.let { id ->
-                if (!HandledStore.markHandled(context, "op|$id")) return
+                if (!HandledStore.markHandled(context, "op|$id")) {
+                    Log.d(TAG, "descartado: constancia ya leída (número de operación)")
+                    return
+                }
             }
             // Si el número de operación no está a la vista, la fecha y hora de la constancia
             // identifican igual el mismo pago (mismo monto y misma persona en el mismo minuto).
             rules.operationStamp(text)?.let { stamp ->
                 val key = "st|${result.provider}|${result.type}|${"%.2f".format(result.amount)}|$stamp"
-                if (!HandledStore.markHandled(context, key)) return
+                if (!HandledStore.markHandled(context, key)) {
+                    Log.d(TAG, "descartado: constancia ya leída (fecha y hora)")
+                    return
+                }
             }
-            if (isDuplicate(result)) return
+            if (isDuplicate(result)) {
+                Log.d(TAG, "descartado: mismo monto, fuente y tipo hace menos de 2 minutos")
+                return
+            }
 
             // No se registra el texto completo: puede traer datos personales.
             Log.d(TAG, "Pago detectado: ${result.type} ${result.provider}")
@@ -171,7 +186,7 @@ class MyAccessibilityService : AccessibilityService() {
         collectText(root, builder)
         @Suppress("DEPRECATION")
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) root.recycle()
-        if (builder.isNotEmpty()) handleText(applicationContext, builder.toString())
+        if (builder.isNotEmpty()) handleText(applicationContext, builder.toString(), fromScreen = true)
     }
 
     private fun collectText(node: AccessibilityNodeInfo?, out: StringBuilder) {

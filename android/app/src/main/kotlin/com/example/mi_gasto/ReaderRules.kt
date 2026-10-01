@@ -56,6 +56,15 @@ class ReaderRules private constructor(
     /** Número de operación de una constancia (identifica el pago aunque la pantalla se lea otra vez). */
     fun operationId(text: String): String? = operationIdRegex?.find(text)?.groupValues?.get(1)
 
+    private val screenReceiptRegex = rules.optString("screenReceipt").takeIf { it.isNotEmpty() }
+        ?.let { Regex(it, RegexOption.IGNORE_CASE) }
+
+    /**
+     * Si el texto de una pantalla es una constancia de pago. Las demás pantallas de la app
+     * (inicio con el saldo, movimientos, etc.) no son pagos nuevos aunque traigan montos.
+     */
+    fun isScreenReceipt(text: String): Boolean = screenReceiptRegex?.containsMatchIn(text) == true
+
     private val operationStampRegex = rules.optString("operationStamp").takeIf { it.isNotEmpty() }
         ?.let { Regex(it, RegexOption.IGNORE_CASE) }
 

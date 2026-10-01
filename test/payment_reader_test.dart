@@ -163,6 +163,14 @@ void main() {
       expect(stamp.hasMatch('Yape! MICHAEL te envió un pago por S/ 1'), isFalse);
     });
 
+    test('de una pantalla solo cuenta la constancia, no el inicio con el saldo', () {
+      final receipt = RegExp(rules['screenReceipt'] as String, caseSensitive: false, unicode: true);
+      expect(receipt.hasMatch('¡Yapeaste! S/ 1 Michael 01 oct. 2026 09:48 a. m. DATOS DE LA TRANSACCIÓN Nro. de celular'), isTrue);
+      expect(receipt.hasMatch('¡Yapeaste el servicio! S/ 134.85 BanBif DATOS DE LA TRANSACCIÓN Servicio'), isTrue);
+      expect(receipt.hasMatch('Yape Ver saldo S/ 1,250.00 Ocultar saldo Yapear Servicios Movimientos Juan te yapeó S/ 15.00'),
+          isFalse);
+    });
+
     test('un texto sin número de operación no inventa uno', () {
       expect(op('Yape! MICHAEL te envió un pago por S/ 1'), isNull);
       expect(op('Código de cliente: 73654903'), isNull);

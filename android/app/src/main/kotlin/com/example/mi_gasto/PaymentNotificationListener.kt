@@ -18,13 +18,20 @@ class PaymentNotificationListener : NotificationListenerService() {
         if (sbn == null || sbn.packageName !in PACKAGES) return
         // Al reiniciar el servicio o reinstalar la app el sistema vuelve a entregar
         // las notificaciones que siguen en la barra: no son pagos nuevos.
-        if (System.currentTimeMillis() - sbn.postTime > STALE_MS) return
-        if (!HandledStore.markHandled(applicationContext, "n|${sbn.key}|${sbn.postTime}")) return
+        val age = System.currentTimeMillis() - sbn.postTime
+        if (age > STALE_MS) {
+            Log.d(TAG, "ignorada: notificación antigua (${age / 1000} s)")
+            return
+        }
+        if (!HandledStore.markHandled(applicationContext, "n|${sbn.key}|${sbn.postTime}")) {
+            Log.d(TAG, "ignorada: esta notificación ya se leyó")
+            return
+        }
         val extras = sbn.notification?.extras ?: return
         val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
         val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
         val bigText = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString() ?: ""
-        Log.d(TAG, "notificación de ${sbn.packageName}")
+        Log.d(TAG, "notificación de ${sbn.packageName}, llegó ${System.currentTimeMillis() - sbn.postTime} ms después de publicarse")
         MyAccessibilityService.handleText(applicationContext, "$title $text $bigText".trim())
     }
 
