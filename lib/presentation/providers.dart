@@ -4,9 +4,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../data/datasource/local_database.dart';
 import '../data/repositories/expense_repository_impl.dart';
-import '../domain/entities/expense.dart';
+import '../domain/entities/movimiento.dart';
 import '../domain/repositories/expense_repository.dart';
 import '../data/services/nlp_classifier_service.dart';
+import '../domain/duplicate_rule.dart';
 
 // 1. SharedPreferences Provider
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
@@ -26,8 +27,8 @@ final expenseRepositoryProvider = Provider<ExpenseRepository>((ref) {
   return ExpenseRepositoryImpl(db, prefs);
 });
 
-// 4. Pending Expense State Provider
-final pendingExpenseProvider = StateProvider<Expense?>((ref) => null);
+// 4. Pending Movimiento State Provider
+final pendingExpenseProvider = StateProvider<Movimiento?>((ref) => null);
 
 // 5. Budget State Provider
 final budgetProvider = StateProvider<double>((ref) {
@@ -57,12 +58,12 @@ class ProvidersEnabledNotifier extends StateNotifier<Map<String, bool>> {
 }
 
 // 7. Expenses State Notifier Provider
-final expensesStateProvider = StateNotifierProvider<ExpensesNotifier, List<Expense>>((ref) {
+final expensesStateProvider = StateNotifierProvider<ExpensesNotifier, List<Movimiento>>((ref) {
   final repo = ref.read(expenseRepositoryProvider);
   return ExpensesNotifier(repo, ref);
 });
 
-class ExpensesNotifier extends StateNotifier<List<Expense>> {
+class ExpensesNotifier extends StateNotifier<List<Movimiento>> {
   final ExpenseRepository _repo;
   final Ref _ref;
   static const _channel = MethodChannel('com.example.mi_gasto/accessibility');
@@ -90,6 +91,7 @@ class ExpensesNotifier extends StateNotifier<List<Expense>> {
         final peerName = map['peerName'] as String;
         final providerStr = map['provider'] as String;
         final rawText = map['rawText'] as String;
+        final tipoStr = (map['type'] as String?) ?? 'gasto';
 
         // Check if provider is enabled
         final activeProviders = _ref.read(providersEnabledProvider);
@@ -99,6 +101,7 @@ class ExpensesNotifier extends StateNotifier<List<Expense>> {
             merchant: peerName,
             providerStr: providerStr,
             rawText: rawText,
+            tipoStr: tipoStr,
           );
         }
       } else if (call.method == 'onTransactionSaved') {
@@ -107,45 +110,77 @@ class ExpensesNotifier extends StateNotifier<List<Expense>> {
     });
   }
 
+  /// Un pago detectado. Los gastos quedan como aviso para confirmar (se guardan
+  /// solos tras la cuenta regresiva). Los ingresos se guardan como pendientes y
+  /// esperan la confirmación del usuario.
   Future<void> triggerIncomingPayment({
     required double amount,
     required String merchant,
     required String providerStr,
     required String rawText,
+    String tipoStr = 'gasto',
+    CanalMovimiento canal = CanalMovimiento.notificacion,
   }) async {
     final source = PaymentSource.values.firstWhere(
       (s) => s.name == providerStr,
-      orElse: () => PaymentSource.manual,
+      orElse: () => PaymentSource.otro,
     );
+    final tipo = tipoStr == 'ingreso' ? TipoMovimiento.ingreso : TipoMovimiento.gasto;
+    final now = DateTime.now();
 
-    // 1. Check if we have learned overrides for this merchant
-    ExpenseCategory? predictedCategory = await _repo.getCategoryOverride(merchant);
+    // Regla de duplicados: mismo monto y fuente dentro de 2 minutos.
+    final pendingNow = _ref.read(pendingExpenseProvider);
+    if (isDuplicateMovement(
+      [...state, if (pendingNow != null) pendingNow],
+      amount: amount,
+      source: source,
+      date: now,
+      tipo: tipo,
+    )) {
+      return;
+    }
 
-    // 2. If no overrides found, run rules-based NLP classifier
-    predictedCategory ??= NlpClassifierService.classify(rawText, merchant);
+    Categoria? predicted;
+    if (tipo == TipoMovimiento.ingreso) {
+      predicted = NlpClassifierService.classifyIncome(rawText, merchant);
+    } else {
+      // 1. Categoría aprendida de los cambios del usuario para este comercio
+      final learned = await _repo.getCategoryOverride(merchant);
+      if (learned != null && !learned.esDeIngreso) predicted = learned;
+      // 2. Reglas por palabras clave
+      predicted ??= NlpClassifierService.classify(rawText, merchant);
+    }
 
-    final expense = Expense(
+    final movimiento = Movimiento(
       id: _uuid.v4(),
       amount: amount,
       merchant: merchant,
-      category: predictedCategory,
+      category: predicted,
       source: source,
-      date: DateTime.now(),
-      isConfirmed: false,
-      notes: rawText,
+      date: now,
+      tipo: tipo,
+      canal: canal,
+      estado: EstadoMovimiento.pendiente,
+      textoOriginal: rawText,
     );
 
-    _ref.read(pendingExpenseProvider.notifier).state = expense;
+    if (tipo == TipoMovimiento.ingreso) {
+      // Un ingreso nunca se guarda solo como confirmado, pero sí queda en la
+      // lista "Por confirmar" aunque se ignore el aviso.
+      await _repo.saveExpense(movimiento);
+      state = [movimiento, ...state]..sort((a, b) => b.date.compareTo(a.date));
+    }
+    _ref.read(pendingExpenseProvider.notifier).state = movimiento;
   }
 
-  Future<void> confirmPendingExpense(ExpenseCategory finalCategory, String notes) async {
+  Future<void> confirmPendingExpense(Categoria finalCategory, String notes) async {
     final pending = _ref.read(pendingExpenseProvider);
     if (pending == null) return;
 
     final confirmed = pending.copyWith(
       category: finalCategory,
       notes: notes,
-      isConfirmed: true,
+      estado: EstadoMovimiento.confirmado,
     );
 
     // Save learning preference
@@ -153,31 +188,61 @@ class ExpensesNotifier extends StateNotifier<List<Expense>> {
 
     // Save to database
     await _repo.saveExpense(confirmed);
-    
-    // Update local state
-    state = [confirmed, ...state]..sort((a, b) => b.date.compareTo(a.date));
-    
+
+    // Update local state (reemplaza el pendiente si ya estaba guardado)
+    state = [confirmed, ...state.where((e) => e.id != confirmed.id)]
+      ..sort((a, b) => b.date.compareTo(a.date));
+
     // Clear pending alerts
     _ref.read(pendingExpenseProvider.notifier).state = null;
   }
 
+  /// Cierra el aviso sin guardar. Un ingreso ya guardado como pendiente se queda
+  /// en "Por confirmar".
   void discardPendingExpense() {
     _ref.read(pendingExpenseProvider.notifier).state = null;
   }
 
-  Future<void> addManualExpense(double amount, String merchant, ExpenseCategory category) async {
-    final expense = Expense(
+  Future<void> addManualExpense(double amount, String merchant, Categoria category) {
+    return addManualMovimiento(
+      tipo: TipoMovimiento.gasto,
+      amount: amount,
+      merchant: merchant,
+      category: category,
+    );
+  }
+
+  Future<void> addManualMovimiento({
+    required TipoMovimiento tipo,
+    required double amount,
+    required String merchant,
+    required Categoria category,
+    PaymentSource source = PaymentSource.manual,
+  }) async {
+    final movimiento = Movimiento(
       id: _uuid.v4(),
       amount: amount,
       merchant: merchant,
       category: category,
-      source: PaymentSource.manual,
+      source: source,
       date: DateTime.now(),
-      isConfirmed: true,
+      tipo: tipo,
+      canal: CanalMovimiento.manual,
+      estado: EstadoMovimiento.confirmado,
       notes: 'Registro manual',
     );
-    await _repo.saveExpense(expense);
-    state = [expense, ...state]..sort((a, b) => b.date.compareTo(a.date));
+    await _repo.saveExpense(movimiento);
+    state = [movimiento, ...state]..sort((a, b) => b.date.compareTo(a.date));
+  }
+
+  /// Confirma un ingreso que estaba en "Por confirmar".
+  Future<void> confirmMovimiento(String id, {Categoria? category}) async {
+    final current = state.where((e) => e.id == id).firstOrNull;
+    if (current == null) return;
+    await updateExpense(current.copyWith(
+      category: category ?? current.category,
+      estado: EstadoMovimiento.confirmado,
+    ));
   }
 
   Future<void> deleteExpense(String id) async {
@@ -185,7 +250,14 @@ class ExpensesNotifier extends StateNotifier<List<Expense>> {
     state = state.where((e) => e.id != id).toList();
   }
 
-  Future<void> updateExpense(Expense updated) async {
+  /// Vuelve a guardar un movimiento eliminado, con su mismo id (para "Deshacer").
+  Future<void> restoreExpense(Movimiento expense) async {
+    if (state.any((e) => e.id == expense.id)) return;
+    await _repo.saveExpense(expense);
+    state = [expense, ...state]..sort((a, b) => b.date.compareTo(a.date));
+  }
+
+  Future<void> updateExpense(Movimiento updated) async {
     await _repo.updateExpense(updated);
     state = state.map((e) => e.id == updated.id ? updated : e).toList();
   }

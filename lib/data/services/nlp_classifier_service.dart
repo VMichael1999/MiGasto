@@ -1,7 +1,20 @@
-import '../../domain/entities/expense.dart';
+import '../../domain/entities/movimiento.dart';
 
 class NlpClassifierService {
-  static ExpenseCategory classify(String text, String peerName) {
+  /// Categoría de un ingreso a partir del texto de la notificación.
+  static Categoria classifyIncome(String text, String peerName) {
+    final combined = '$text $peerName'.toLowerCase();
+    if (RegExp(r'\b(sueldo|haberes|planilla|remuneraci[oó]n|pago de n[oó]mina)\b')
+        .hasMatch(combined)) {
+      return Categoria.sueldo;
+    }
+    if (RegExp(r'\b(venta|vendiste|cobro)\b').hasMatch(combined)) {
+      return Categoria.venta;
+    }
+    return Categoria.transferenciaRecibida;
+  }
+
+  static Categoria classify(String text, String peerName) {
     final combined = '$text $peerName'.toLowerCase();
 
     // 1. Food keywords -> alimentacion
@@ -20,7 +33,7 @@ class NlpClassifierService {
         combined.contains('cafe') ||
         combined.contains('snack') ||
         combined.contains('sandwich')) {
-      return ExpenseCategory.alimentacion;
+      return Categoria.alimentacion;
     }
 
     // 2. Transport keywords -> transporte
@@ -36,7 +49,7 @@ class NlpClassifierService {
         combined.contains('pecsa') ||
         combined.contains('colectivo') ||
         combined.contains('peaje')) {
-      return ExpenseCategory.transporte;
+      return Categoria.transporte;
     }
 
     // 3. Entertainment keywords -> entretenimiento
@@ -50,7 +63,7 @@ class NlpClassifierService {
         combined.contains('apple music') ||
         combined.contains('playstation') ||
         combined.contains('steam')) {
-      return ExpenseCategory.entretenimiento;
+      return Categoria.entretenimiento;
     }
 
     // 4. Services & Bills keywords -> servicios
@@ -66,7 +79,7 @@ class NlpClassifierService {
         combined.contains('directv') ||
         combined.contains('internet') ||
         combined.contains('recarga')) {
-      return ExpenseCategory.servicios;
+      return Categoria.servicios;
     }
 
     // 5. Groceries & Shopping keywords -> compras
@@ -97,9 +110,9 @@ class NlpClassifierService {
         combined.contains('tienda') ||
         combined.contains('regalo') ||
         combined.contains('compra')) {
-      return ExpenseCategory.compras;
+      return Categoria.compras;
     }
 
-    return ExpenseCategory.otros;
+    return Categoria.otros;
   }
 }

@@ -7,7 +7,7 @@ import '../../presentation/reports/reports_screen.dart';
 import '../../presentation/settings/settings_screen.dart';
 import '../../presentation/providers.dart';
 import '../../shared/widgets/overlay_timer_widget.dart';
-import '../../domain/entities/expense.dart';
+import '../../domain/entities/movimiento.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
 import '../theme/theme.dart';
@@ -106,7 +106,7 @@ class MainScaffoldWrapper extends ConsumerWidget {
   void _showQuickAddDialog(BuildContext context, WidgetRef ref) {
     final amountController = TextEditingController();
     final conceptController = TextEditingController();
-    ExpenseCategory selectedCategory = ExpenseCategory.compras;
+    Categoria selectedCategory = Categoria.compras;
 
     showDialog(
       context: context,
@@ -149,7 +149,7 @@ class MainScaffoldWrapper extends ConsumerWidget {
                       style: const TextStyle(color: Colors.white),
                     ),
                     const SizedBox(height: 16),
-                    DropdownButtonFormField<ExpenseCategory>(
+                    DropdownButtonFormField<Categoria>(
                       initialValue: selectedCategory,
                       dropdownColor: AppTheme.cardBg,
                       decoration: InputDecoration(
@@ -159,14 +159,14 @@ class MainScaffoldWrapper extends ConsumerWidget {
                         focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.neonGreen)),
                       ),
                       style: const TextStyle(color: Colors.white),
-                      items: ExpenseCategory.values.map((cat) {
+                      items: Categoria.values.map((cat) {
                         String name = cat.name;
-                        if (cat == ExpenseCategory.alimentacion) name = 'Alimentación';
-                        if (cat == ExpenseCategory.transporte) name = 'Transporte';
-                        if (cat == ExpenseCategory.compras) name = 'Compras';
-                        if (cat == ExpenseCategory.servicios) name = 'Servicios';
-                        if (cat == ExpenseCategory.entretenimiento) name = 'Entretenimiento';
-                        if (cat == ExpenseCategory.otros) name = 'Otros';
+                        if (cat == Categoria.alimentacion) name = 'Alimentación';
+                        if (cat == Categoria.transporte) name = 'Transporte';
+                        if (cat == Categoria.compras) name = 'Compras';
+                        if (cat == Categoria.servicios) name = 'Servicios';
+                        if (cat == Categoria.entretenimiento) name = 'Entretenimiento';
+                        if (cat == Categoria.otros) name = 'Otros';
 
                         return DropdownMenuItem(
                           value: cat,

@@ -3,13 +3,13 @@ import 'package:flutter/foundation.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../domain/entities/expense.dart';
+import '../../domain/entities/movimiento.dart';
 import '../models/expense_model.dart';
 
 abstract class LocalDatabase {
   Future<void> init();
-  Future<List<Expense>> getExpenses();
-  Future<void> saveExpense(Expense expense);
+  Future<List<Movimiento>> getExpenses();
+  Future<void> saveExpense(Movimiento expense);
   Future<void> deleteExpense(String id);
 }
 
@@ -39,7 +39,7 @@ class DatabaseManager implements LocalDatabase {
   }
 
   @override
-  Future<List<Expense>> getExpenses() async {
+  Future<List<Movimiento>> getExpenses() async {
     if (_useFallback || _isar == null) {
       return _loadFallbackExpenses();
     }
@@ -53,7 +53,7 @@ class DatabaseManager implements LocalDatabase {
   }
 
   @override
-  Future<void> saveExpense(Expense expense) async {
+  Future<void> saveExpense(Movimiento expense) async {
     if (_useFallback || _isar == null) {
       await _saveFallbackExpense(expense);
       return;
@@ -100,8 +100,36 @@ class DatabaseManager implements LocalDatabase {
     }
   }
 
+  // ---- Enum parsing con valores por defecto para registros anteriores ----
+
+  static T _enumByName<T extends Enum>(List<T> values, String? name, T fallback) {
+    if (name == null || name.isEmpty) return fallback;
+    for (final v in values) {
+      if (v.name == name) return v;
+    }
+    return fallback;
+  }
+
+  /// Un registro anterior no tiene `estado`: se deduce de `isConfirmed`.
+  static EstadoMovimiento _estado(String? name, bool legacyConfirmed) {
+    if (name != null && name.isNotEmpty) {
+      return _enumByName(EstadoMovimiento.values, name, EstadoMovimiento.pendiente);
+    }
+    return legacyConfirmed ? EstadoMovimiento.confirmado : EstadoMovimiento.pendiente;
+  }
+
+  /// Un registro anterior no tiene `canal`: manual si fue manual, si no notificación.
+  static CanalMovimiento _canal(String? name, PaymentSource source) {
+    if (name != null && name.isNotEmpty) {
+      return _enumByName(CanalMovimiento.values, name, CanalMovimiento.manual);
+    }
+    return source == PaymentSource.manual
+        ? CanalMovimiento.manual
+        : CanalMovimiento.notificacion;
+  }
+
   // Fallback storage helpers (SharedPreferences JSON list)
-  List<Expense> _loadFallbackExpenses() {
+  List<Movimiento> _loadFallbackExpenses() {
     final raw = _prefs.getString(_keyFallbackExpenses);
     if (raw == null) {
       return [];
@@ -110,21 +138,29 @@ class DatabaseManager implements LocalDatabase {
       final List<dynamic> decoded = jsonDecode(raw);
       return decoded.map((item) {
         final map = item as Map<String, dynamic>;
-        return Expense(
+        final source = _enumByName(
+            PaymentSource.values, map['source'] as String?, PaymentSource.manual);
+        final notes = (map['notes'] as String?) ?? '';
+        return Movimiento(
           id: map['id'],
           amount: (map['amount'] as num).toDouble(),
           merchant: map['merchant'],
-          category: ExpenseCategory.values.firstWhere(
-            (c) => c.name == map['category'],
-            orElse: () => ExpenseCategory.otros,
-          ),
-          source: PaymentSource.values.firstWhere(
-            (s) => s.name == map['source'],
-            orElse: () => PaymentSource.manual,
-          ),
+          category: _enumByName(
+              Categoria.values, map['category'] as String?, Categoria.otros),
+          source: source,
           date: DateTime.parse(map['date']),
-          notes: map['notes'] ?? '',
-          isConfirmed: map['isConfirmed'] ?? false,
+          notes: notes,
+          tipo: _enumByName(
+              TipoMovimiento.values, map['tipo'] as String?, TipoMovimiento.gasto),
+          canal: _canal(map['canal'] as String?, source),
+          estado: _estado(map['estado'] as String?, map['isConfirmed'] ?? false),
+          tarjeta: map['tarjeta'] as String?,
+          latitud: (map['latitud'] as num?)?.toDouble(),
+          longitud: (map['longitud'] as num?)?.toDouble(),
+          precision: (map['precision'] as num?)?.toDouble(),
+          lugar: map['lugar'] as String?,
+          textoOriginal: (map['textoOriginal'] as String?) ??
+              (source == PaymentSource.manual ? '' : notes),
         );
       }).toList();
     } catch (e) {
@@ -133,7 +169,7 @@ class DatabaseManager implements LocalDatabase {
     }
   }
 
-  Future<void> _saveFallbackExpense(Expense expense) async {
+  Future<void> _saveFallbackExpense(Movimiento expense) async {
     final list = _loadFallbackExpenses();
     final index = list.indexWhere((e) => e.id == expense.id);
     if (index >= 0) {
@@ -150,7 +186,7 @@ class DatabaseManager implements LocalDatabase {
     await _saveAllFallback(list);
   }
 
-  Future<void> _saveAllFallback(List<Expense> list) async {
+  Future<void> _saveAllFallback(List<Movimiento> list) async {
     final jsonList = list.map((e) => {
       'id': e.id,
       'amount': e.amount,
@@ -160,12 +196,21 @@ class DatabaseManager implements LocalDatabase {
       'date': e.date.toIso8601String(),
       'notes': e.notes,
       'isConfirmed': e.isConfirmed,
+      'tipo': e.tipo.name,
+      'canal': e.canal.name,
+      'estado': e.estado.name,
+      'tarjeta': e.tarjeta,
+      'latitud': e.latitud,
+      'longitud': e.longitud,
+      'precision': e.precision,
+      'lugar': e.lugar,
+      'textoOriginal': e.textoOriginal,
     }).toList();
     await _prefs.setString(_keyFallbackExpenses, jsonEncode(jsonList));
   }
 
   // Model mapper logic
-  ExpenseModel _toModel(Expense entity) {
+  ExpenseModel _toModel(Movimiento entity) {
     return ExpenseModel()
       ..uuid = entity.id
       ..amount = entity.amount
@@ -174,25 +219,41 @@ class DatabaseManager implements LocalDatabase {
       ..sourceName = entity.source.name
       ..date = entity.date
       ..notes = entity.notes
-      ..isConfirmed = entity.isConfirmed;
+      ..isConfirmed = entity.isConfirmed
+      ..tipoName = entity.tipo.name
+      ..estadoName = entity.estado.name
+      ..canalName = entity.canal.name
+      ..tarjeta = entity.tarjeta
+      ..latitud = entity.latitud
+      ..longitud = entity.longitud
+      ..precision = entity.precision
+      ..lugar = entity.lugar
+      ..textoOriginal = entity.textoOriginal;
   }
 
-  Expense _fromModel(ExpenseModel model) {
-    return Expense(
+  Movimiento _fromModel(ExpenseModel model) {
+    final source =
+        _enumByName(PaymentSource.values, model.sourceName, PaymentSource.manual);
+    return Movimiento(
       id: model.uuid,
       amount: model.amount,
       merchant: model.merchant,
-      category: ExpenseCategory.values.firstWhere(
-        (c) => c.name == model.categoryName,
-        orElse: () => ExpenseCategory.otros,
-      ),
-      source: PaymentSource.values.firstWhere(
-        (s) => s.name == model.sourceName,
-        orElse: () => PaymentSource.manual,
-      ),
+      category: _enumByName(Categoria.values, model.categoryName, Categoria.otros),
+      source: source,
       date: model.date,
       notes: model.notes,
-      isConfirmed: model.isConfirmed,
+      tipo: _enumByName(
+          TipoMovimiento.values, model.tipoName, TipoMovimiento.gasto),
+      canal: _canal(model.canalName, source),
+      estado: _estado(model.estadoName, model.isConfirmed),
+      tarjeta: model.tarjeta,
+      latitud: model.latitud,
+      longitud: model.longitud,
+      precision: model.precision,
+      lugar: model.lugar,
+      textoOriginal: model.textoOriginal.isNotEmpty
+          ? model.textoOriginal
+          : (source == PaymentSource.manual ? '' : model.notes),
     );
   }
 }

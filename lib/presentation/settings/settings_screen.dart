@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers.dart';
 import '../../core/theme/theme.dart';
-import '../../domain/entities/expense.dart';
+import '../../domain/entities/movimiento.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -139,7 +139,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           final entry = list[index];
                           final merchant = entry.key;
                           final categoryStr = entry.value;
-                          final cat = ExpenseCategory.values.firstWhere((c) => c.name == categoryStr, orElse: () => ExpenseCategory.otros);
+                          final cat = Categoria.values.firstWhere((c) => c.name == categoryStr, orElse: () => Categoria.otros);
                           final catColor = AppTheme.getCategoryColor(cat);
 
                           return ListTile(
@@ -195,7 +195,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _showSourcesDialog(BuildContext context) {
-    final expenses = ref.read(expensesStateProvider).where((e) => e.isConfirmed).toList();
+    final expenses = ref.read(expensesStateProvider).where((e) => e.isConfirmed && e.esGasto).toList();
     
     final sourceCounts = <PaymentSource, int>{};
     final sourceTotals = <PaymentSource, double>{};
@@ -264,7 +264,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _showBackupDialog(BuildContext context) {
-    final expenses = ref.read(expensesStateProvider).where((e) => e.isConfirmed).toList();
+    final expenses = ref.read(expensesStateProvider).where((e) => e.isConfirmed && e.esGasto).toList();
     
     // Generate CSV
     final csvBuf = StringBuffer();

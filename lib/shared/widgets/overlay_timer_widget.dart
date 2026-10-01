@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import '../../domain/entities/expense.dart';
+import '../../domain/entities/movimiento.dart';
 import '../../presentation/providers.dart';
 import '../../core/theme/theme.dart';
 
@@ -25,7 +25,7 @@ class _OverlayTimerWidgetState extends ConsumerState<OverlayTimerWidget>
   Timer? _countdownTimer;
   double _progress = 1.0;
   bool _isTimerRunning = false;
-  ExpenseCategory? _selectedCategory;
+  Categoria? _selectedCategory;
   final _notesController = TextEditingController();
   final _focusNode = FocusNode();
 
@@ -67,9 +67,19 @@ class _OverlayTimerWidgetState extends ConsumerState<OverlayTimerWidget>
     super.dispose();
   }
 
-  void _startTimer(Expense pending) {
+  void _startTimer(Movimiento pending) {
     if (_isTimerRunning) return;
-    
+
+    // Un ingreso nunca se guarda solo: espera la confirmación del usuario.
+    if (pending.esIngreso) {
+      setState(() {
+        _progress = 0.0;
+        _selectedCategory = pending.category;
+        _notesController.clear();
+      });
+      return;
+    }
+
     setState(() {
       _progress = 1.0;
       _isTimerRunning = true;
@@ -109,7 +119,7 @@ class _OverlayTimerWidgetState extends ConsumerState<OverlayTimerWidget>
     }
   }
 
-  void _autoConfirm(Expense pending) {
+  void _autoConfirm(Movimiento pending) {
     if (!_isTimerRunning) return;
     _isTimerRunning = false;
     
@@ -465,7 +475,7 @@ class _OverlayTimerWidgetState extends ConsumerState<OverlayTimerWidget>
   }
 
   Widget _buildCategoryDropdownButton(BuildContext context) {
-    final category = _selectedCategory ?? ExpenseCategory.otros;
+    final category = _selectedCategory ?? Categoria.otros;
     final catColor = AppTheme.getCategoryColor(category);
 
     return InkWell(
@@ -506,6 +516,8 @@ class _OverlayTimerWidgetState extends ConsumerState<OverlayTimerWidget>
   }
 
   void _showCategorySelectorSheet(BuildContext context) {
+    final pending = ref.read(pendingExpenseProvider);
+    final categorias = Categoria.paraTipo(pending?.tipo ?? TipoMovimiento.gasto);
     showModalBottomSheet(
       context: context,
       backgroundColor: AppTheme.cardBg,
@@ -546,9 +558,9 @@ class _OverlayTimerWidgetState extends ConsumerState<OverlayTimerWidget>
                       crossAxisSpacing: 10,
                       childAspectRatio: 2.8,
                     ),
-                    itemCount: ExpenseCategory.values.length,
+                    itemCount: categorias.length,
                     itemBuilder: (context, index) {
-                      final cat = ExpenseCategory.values[index];
+                      final cat = categorias[index];
                       final catColor = AppTheme.getCategoryColor(cat);
                       final isSelected = _selectedCategory == cat;
 

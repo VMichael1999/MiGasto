@@ -5,8 +5,9 @@ import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
-import '../../domain/entities/expense.dart';
+import '../../domain/entities/movimiento.dart';
 import '../../shared/format.dart';
+import '../../shared/labels.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/big_amount.dart';
 import '../../shared/widgets/category_icon.dart';
@@ -419,7 +420,7 @@ class _BudgetProgress extends StatelessWidget {
 class _TodaySection extends ConsumerWidget {
   const _TodaySection({required this.expenses});
 
-  final List<Expense> expenses;
+  final List<Movimiento> expenses;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -464,7 +465,7 @@ class _TodaySection extends ConsumerWidget {
             title: expenses[i].merchant,
             amount: expenses[i].amount,
             sourceName: expenses[i].source.name,
-            sourceLabel: _sourceLabel(expenses[i].source),
+            sourceLabel: sourceLabel(expenses[i].source),
             time: timeFormat.format(expenses[i].date),
             onTap: () => showExpenseDetailSheet(context, ref, expenses[i]),
           ),
@@ -484,18 +485,5 @@ class _TodaySection extends ConsumerWidget {
         ),
       ],
     );
-  }
-
-  String _sourceLabel(PaymentSource source) {
-    switch (source) {
-      case PaymentSource.yape:
-        return 'Yape';
-      case PaymentSource.plin:
-        return 'Plin';
-      case PaymentSource.googlePay:
-        return 'Google Pay';
-      case PaymentSource.manual:
-        return 'Manual';
-    }
   }
 }

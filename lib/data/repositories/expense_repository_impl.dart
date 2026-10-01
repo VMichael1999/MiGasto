@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../domain/entities/expense.dart';
+import '../../domain/entities/movimiento.dart';
 import '../../domain/repositories/expense_repository.dart';
 import '../datasource/local_database.dart';
 
@@ -15,33 +15,33 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
   ExpenseRepositoryImpl(this._db, this._prefs);
 
   @override
-  Future<List<Expense>> getExpenses() => _db.getExpenses();
+  Future<List<Movimiento>> getExpenses() => _db.getExpenses();
 
   @override
-  Future<void> saveExpense(Expense expense) => _db.saveExpense(expense);
+  Future<void> saveExpense(Movimiento expense) => _db.saveExpense(expense);
 
   @override
-  Future<void> updateExpense(Expense expense) => _db.saveExpense(expense);
+  Future<void> updateExpense(Movimiento expense) => _db.saveExpense(expense);
 
   @override
   Future<void> deleteExpense(String id) => _db.deleteExpense(id);
 
   @override
-  Future<void> saveCategoryOverride(String merchant, ExpenseCategory category) async {
+  Future<void> saveCategoryOverride(String merchant, Categoria category) async {
     final overrides = _getOverridesMap();
     overrides[merchant.toLowerCase().trim()] = category.name;
     await _prefs.setString(_keyCategoryOverrides, jsonEncode(overrides));
   }
 
   @override
-  Future<ExpenseCategory?> getCategoryOverride(String merchant) async {
+  Future<Categoria?> getCategoryOverride(String merchant) async {
     final overrides = _getOverridesMap();
     final key = merchant.toLowerCase().trim();
     if (overrides.containsKey(key)) {
       final name = overrides[key]!;
-      return ExpenseCategory.values.firstWhere(
+      return Categoria.values.firstWhere(
         (c) => c.name == name,
-        orElse: () => ExpenseCategory.otros,
+        orElse: () => Categoria.otros,
       );
     }
     return null;

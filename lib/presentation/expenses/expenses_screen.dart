@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers.dart';
 import '../../core/theme/theme.dart';
-import '../../domain/entities/expense.dart';
+import '../../domain/entities/movimiento.dart';
 import 'expense_detail_dialog.dart';
 
 class ExpensesScreen extends ConsumerStatefulWidget {
@@ -21,7 +21,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen>
   String _searchQuery = '';
   bool _isSearching = false;
   final _searchController = TextEditingController();
-  ExpenseCategory? _filterCategory;
+  Categoria? _filterCategory;
   RangeValues? _filterAmountRange;
 
   @override
@@ -135,7 +135,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen>
     );
   }
 
-  Widget _buildExpenseList(List<Expense> allList, String providerFilter) {
+  Widget _buildExpenseList(List<Movimiento> allList, String providerFilter) {
     // 1. Filter by provider
     var filtered = allList;
     if (providerFilter != 'all') {
@@ -176,7 +176,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen>
     }
 
     // 3. Group by Day
-    final groupedMap = <String, List<Expense>>{};
+    final groupedMap = <String, List<Movimiento>>{};
     for (final exp in filtered) {
       final key = _getDayLabel(exp.date);
       groupedMap[key] ??= [];
@@ -425,7 +425,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen>
   }
 
   void _showFilterDialog(BuildContext context) {
-    ExpenseCategory? tempCategory = _filterCategory;
+    Categoria? tempCategory = _filterCategory;
     RangeValues tempRange = _filterAmountRange ?? const RangeValues(0, 500);
     bool rangeActive = _filterAmountRange != null;
 
@@ -483,7 +483,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen>
                             },
                           ),
                         ),
-                        ...ExpenseCategory.values.map((cat) {
+                        ...Categoria.values.map((cat) {
                           final isSelected = tempCategory == cat;
                           return Padding(
                             padding: const EdgeInsets.only(right: 6),

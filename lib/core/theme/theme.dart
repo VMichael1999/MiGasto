@@ -66,6 +66,12 @@ class AppTheme {
         return 'Servicios';
       case 'entretenimiento':
         return 'Entretenimiento';
+      case 'sueldo':
+        return 'Sueldo';
+      case 'transferenciaRecibida':
+        return 'Transferencia recibida';
+      case 'venta':
+        return 'Venta';
       default:
         return 'Otros';
     }

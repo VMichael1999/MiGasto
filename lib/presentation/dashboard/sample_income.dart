@@ -1,6 +1,6 @@
 /// TEMPORAL: datos de ejemplo de ingresos para el Resumen del rediseño.
 ///
-/// El modelo actual (`Expense`) solo guarda gastos. Cuando exista `Movimiento`
+/// El modelo actual (`Movimiento`) solo guarda gastos. Cuando exista `Movimiento`
 /// con tipo ingreso/gasto y estado pendiente (fase 1 del plan), este archivo se
 /// elimina y el Resumen lee los ingresos reales.
 class SampleIncome {

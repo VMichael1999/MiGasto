@@ -4,7 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../providers.dart';
 import '../../core/theme/theme.dart';
-import '../../domain/entities/expense.dart';
+import '../../domain/entities/movimiento.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
@@ -40,14 +40,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
   @override
   Widget build(BuildContext context) {
     final expenses = ref.watch(expensesStateProvider);
-    final confirmed = expenses.where((e) => e.isConfirmed).toList();
+    final confirmed = expenses.where((e) => e.isConfirmed && e.esGasto).toList();
 
     // 1. Calculations for Monthly Tab
     final confirmedForMonth = confirmed.where((e) {
       return e.date.year == _selectedMonth.year && e.date.month == _selectedMonth.month;
     }).toList();
     final totalSpentForMonth = confirmedForMonth.fold(0.0, (sum, e) => sum + e.amount);
-    final categoryMapForMonth = <ExpenseCategory, double>{};
+    final categoryMapForMonth = <Categoria, double>{};
     for (final exp in confirmedForMonth) {
       categoryMapForMonth[exp.category] = (categoryMapForMonth[exp.category] ?? 0.0) + exp.amount;
     }
@@ -84,8 +84,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
 
   Widget _buildMonthlyReport(
     BuildContext context,
-    List<Expense> list,
-    Map<ExpenseCategory, double> categoryMap,
+    List<Movimiento> list,
+    Map<Categoria, double> categoryMap,
     List<double> weeklySpending,
     double totalSpent,
     String monthLabel,
@@ -162,7 +162,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
     );
   }
 
-  Widget _buildAnnualReport(BuildContext context, List<Expense> list) {
+  Widget _buildAnnualReport(BuildContext context, List<Movimiento> list) {
     // 1. Filter by selected year
     final confirmedForYear = list.where((e) => e.date.year == _selectedYear).toList();
 
@@ -170,7 +170,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
     final totalSpent = confirmedForYear.fold(0.0, (sum, e) => sum + e.amount);
 
     // 3. Category breakdown
-    final categoryMap = <ExpenseCategory, double>{};
+    final categoryMap = <Categoria, double>{};
     for (final exp in confirmedForYear) {
       categoryMap[exp.category] = (categoryMap[exp.category] ?? 0.0) + exp.amount;
     }
@@ -255,7 +255,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
     );
   }
 
-  Widget _buildCustomReport(BuildContext context, List<Expense> list) {
+  Widget _buildCustomReport(BuildContext context, List<Movimiento> list) {
     // 1. Filter by range
     final confirmedForRange = list.where((e) {
       final dateOnly = DateTime(e.date.year, e.date.month, e.date.day);
@@ -269,7 +269,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
     final totalSpent = confirmedForRange.fold(0.0, (sum, e) => sum + e.amount);
 
     // 3. Category breakdown
-    final categoryMap = <ExpenseCategory, double>{};
+    final categoryMap = <Categoria, double>{};
     for (final exp in confirmedForRange) {
       categoryMap[exp.category] = (categoryMap[exp.category] ?? 0.0) + exp.amount;
     }
@@ -565,7 +565,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
 
   Widget _buildCategoryBreakdownList(
     BuildContext context,
-    Map<ExpenseCategory, double> categoryMap,
+    Map<Categoria, double> categoryMap,
     double totalSpent,
   ) {
     // Sort categories by amount descending
@@ -672,7 +672,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
     );
   }
 
-  List<double> _calculateWeeklySpending(List<Expense> confirmed) {
+  List<double> _calculateWeeklySpending(List<Movimiento> confirmed) {
     // 4 buckets representing week 1 (1-7), week 2 (8-14), week 3 (15-21), week 4 (22-31)
     final buckets = [0.0, 0.0, 0.0, 0.0];
     for (final exp in confirmed) {

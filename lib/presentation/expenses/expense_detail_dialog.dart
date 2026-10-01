@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers.dart';
 import '../../core/theme/theme.dart';
-import '../../domain/entities/expense.dart';
+import '../../domain/entities/movimiento.dart';
 
 /// Shows a premium bottom sheet to view/edit an existing expense.
-void showExpenseDetailSheet(BuildContext context, WidgetRef ref, Expense expense) {
+void showExpenseDetailSheet(BuildContext context, WidgetRef ref, Movimiento expense) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -18,7 +18,7 @@ void showExpenseDetailSheet(BuildContext context, WidgetRef ref, Expense expense
 }
 
 class _ExpenseDetailSheet extends ConsumerStatefulWidget {
-  final Expense expense;
+  final Movimiento expense;
   const _ExpenseDetailSheet({required this.expense});
 
   @override
@@ -29,7 +29,7 @@ class _ExpenseDetailSheetState extends ConsumerState<_ExpenseDetailSheet> {
   late TextEditingController _amountController;
   late TextEditingController _merchantController;
   late TextEditingController _notesController;
-  late ExpenseCategory _selectedCategory;
+  late Categoria _selectedCategory;
   bool _isEditing = false;
 
   @override
@@ -53,8 +53,11 @@ class _ExpenseDetailSheetState extends ConsumerState<_ExpenseDetailSheet> {
     switch (source) {
       case PaymentSource.yape: return 'Yape';
       case PaymentSource.plin: return 'Plin';
-      case PaymentSource.googlePay: return 'Google Pay';
-      case PaymentSource.manual: return 'Manual';
+      case PaymentSource.googlePay: return 'Google Wallet';
+      case PaymentSource.tarjeta: return 'Tarjeta';
+      case PaymentSource.efectivo: return 'Efectivo';
+      case PaymentSource.manual:
+      case PaymentSource.otro: return 'Manual';
     }
   }
 
@@ -63,7 +66,10 @@ class _ExpenseDetailSheetState extends ConsumerState<_ExpenseDetailSheet> {
       case PaymentSource.yape: return AppTheme.yapePurple;
       case PaymentSource.plin: return AppTheme.plinTeal;
       case PaymentSource.googlePay: return AppTheme.googlePayBlue;
-      case PaymentSource.manual: return AppTheme.manualGray;
+      case PaymentSource.tarjeta: return const Color(0xFFE8B04A);
+      case PaymentSource.efectivo:
+      case PaymentSource.manual:
+      case PaymentSource.otro: return AppTheme.manualGray;
     }
   }
 
@@ -197,7 +203,7 @@ class _ExpenseDetailSheetState extends ConsumerState<_ExpenseDetailSheet> {
                 ),
                 const SizedBox(height: 12),
                 // Category selector
-                DropdownButtonFormField<ExpenseCategory>(
+                DropdownButtonFormField<Categoria>(
                   initialValue: _selectedCategory,
                   dropdownColor: AppTheme.cardBg,
                   decoration: InputDecoration(
@@ -213,7 +219,7 @@ class _ExpenseDetailSheetState extends ConsumerState<_ExpenseDetailSheet> {
                     ),
                   ),
                   style: const TextStyle(color: Colors.white),
-                  items: ExpenseCategory.values.map((cat) {
+                  items: Categoria.values.map((cat) {
                     return DropdownMenuItem(
                       value: cat,
                       child: Text(

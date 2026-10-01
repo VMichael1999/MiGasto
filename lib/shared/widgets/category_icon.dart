@@ -1,20 +1,27 @@
-import '../../domain/entities/expense.dart';
+import '../../domain/entities/movimiento.dart';
 import 'app_icons.dart';
 
 /// Ícono de línea de cada categoría (reemplaza a los emojis).
-AppIcons categoryIcon(ExpenseCategory category) {
+AppIcons categoryIcon(Categoria category) {
   switch (category) {
-    case ExpenseCategory.alimentacion:
+    case Categoria.alimentacion:
       return AppIcons.food;
-    case ExpenseCategory.transporte:
+    case Categoria.transporte:
       return AppIcons.car;
-    case ExpenseCategory.compras:
+    case Categoria.compras:
       return AppIcons.bag;
-    case ExpenseCategory.servicios:
+    case Categoria.servicios:
       return AppIcons.bolt;
-    case ExpenseCategory.entretenimiento:
+    case Categoria.entretenimiento:
       return AppIcons.film;
-    case ExpenseCategory.otros:
+    case Categoria.otros:
+    case Categoria.otrosIngresos:
       return AppIcons.box;
+    case Categoria.sueldo:
+      return AppIcons.salary;
+    case Categoria.transferenciaRecibida:
+      return AppIcons.swap;
+    case Categoria.venta:
+      return AppIcons.hand;
   }
 }
