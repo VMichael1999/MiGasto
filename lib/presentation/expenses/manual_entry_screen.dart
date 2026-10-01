@@ -10,6 +10,8 @@ import '../../shared/format.dart';
 import '../../shared/labels.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/category_icon.dart';
+import 'new_category_sheet.dart';
+import '../../shared/widgets/custom_icons.dart';
 import '../providers.dart';
 
 /// Registro manual de un gasto o un ingreso: para el efectivo y para lo que la
@@ -29,6 +31,9 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
   final _concept = TextEditingController();
   PaymentSource _source = PaymentSource.efectivo;
   late Categoria _category = _defaultCategory(widget.initialType);
+
+  /// Categoría propia elegida (si hay una, [_category] es la de siempre para los totales).
+  String? _propia;
 
   static const _sources = [
     PaymentSource.efectivo,
@@ -92,6 +97,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
           amount: _amount,
           merchant: _concept.text.trim(),
           category: _category,
+          categoriaPropia: _propia,
           source: _source,
         );
     if (!mounted) return;
@@ -263,6 +269,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
             onTap: () => setState(() {
               _tipo = tipo;
               _category = _defaultCategory(tipo);
+              _propia = null;
             }),
             child: Container(
               constraints: const BoxConstraints(minHeight: AppSizes.minTouch - 8),
@@ -389,6 +396,58 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
     final colors = context.appColors;
     final selectedColor = _isIncome ? colors.income : colors.brandInk;
     final categories = Categoria.paraTipo(_tipo);
+    final propias =
+        ref.watch(customCategoriesProvider).where((c) => c.tipo == _tipo).toList();
+
+    Widget tile({
+      required String label,
+      required String shortLabel,
+      required Widget Function(Color color) icon,
+      required bool selected,
+      required VoidCallback onTap,
+    }) {
+      return Semantics(
+        button: true,
+        selected: selected,
+        label: label,
+        excludeSemantics: true,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          onTap: onTap,
+          child: Container(
+            decoration: BoxDecoration(
+              color: scheme.surface,
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              border: Border.all(
+                color: selected ? selectedColor : Colors.transparent,
+                width: 1.5,
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                icon(selected ? selectedColor : scheme.onSurfaceVariant),
+                const SizedBox(height: 5),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      shortLabel,
+                      maxLines: 1,
+                      style: theme.textTheme.bodySmall!.copyWith(
+                        color: scheme.onSurface,
+                        fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return GridView.count(
       crossAxisCount: 4,
@@ -399,54 +458,47 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
       physics: const NeverScrollableScrollPhysics(),
       children: [
         for (final cat in categories)
-          Semantics(
-            button: true,
-            selected: cat == _category,
+          tile(
             label: categoryLabel(cat),
-            excludeSemantics: true,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(AppRadius.card),
-              onTap: () => setState(() => _category = cat),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: scheme.surface,
-                  borderRadius: BorderRadius.circular(AppRadius.card),
-                  border: Border.all(
-                    color: cat == _category ? selectedColor : Colors.transparent,
-                    width: 1.5,
-                  ),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    AppIcon(
-                      categoryIcon(cat),
-                      color: cat == _category ? selectedColor : scheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(height: 5),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          cat == Categoria.transferenciaRecibida
-                              ? 'Transferencia'
-                              : categoryLabel(cat),
-                          maxLines: 1,
-                          style: theme.textTheme.bodySmall!.copyWith(
-                            color: scheme.onSurface,
-                            fontWeight: cat == _category ? FontWeight.w600 : FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            shortLabel: cat == Categoria.transferenciaRecibida
+                ? 'Transferencia'
+                : categoryLabel(cat),
+            icon: (color) => AppIcon(categoryIcon(cat), color: color),
+            selected: _propia == null && cat == _category,
+            onTap: () => setState(() {
+              _category = cat;
+              _propia = null;
+            }),
           ),
+        for (final p in propias)
+          tile(
+            label: p.nombre,
+            shortLabel: p.nombre,
+            icon: (color) => Icon(customIconFor(p.icono), size: 22, color: color),
+            selected: _propia == p.id,
+            onTap: () => setState(() {
+              _category = p.base;
+              _propia = p.id;
+            }),
+          ),
+        tile(
+          label: 'Crear una categoría nueva',
+          shortLabel: 'Nueva',
+          icon: (color) => AppIcon(AppIcons.plus, color: color),
+          selected: false,
+          onTap: _createCategory,
+        ),
       ],
     );
+  }
+
+  Future<void> _createCategory() async {
+    final created = await showNewCategorySheet(context, ref, _tipo);
+    if (created == null || !mounted) return;
+    setState(() {
+      _category = created.base;
+      _propia = created.id;
+    });
   }
 
   Widget _keypad(BuildContext context) {

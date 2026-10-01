@@ -16,6 +16,9 @@ import '../../shared/labels.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/big_amount.dart';
 import '../../shared/widgets/category_icon.dart';
+import 'new_category_sheet.dart';
+import '../../shared/widgets/custom_icons.dart';
+import '../../shared/category_display.dart';
 import '../providers.dart';
 import 'alias_dialog.dart';
 
@@ -173,10 +176,11 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            AppIcon(categoryIcon(m.category),
-                                size: AppIconSize.small, color: theme.colorScheme.onSurface),
+                            categoryDisplay(m.category, m.categoriaPropia, ref.watch(customCategoriesProvider))
+                                .glyph
+                                .build(color: theme.colorScheme.onSurface),
                             const SizedBox(width: 6),
-                            Text(categoryLabel(m.category)),
+                            Text(categoryDisplay(m.category, m.categoriaPropia, ref.watch(customCategoriesProvider)).label),
                             AppIcon(AppIcons.chevron,
                                 size: AppIconSize.small,
                                 color: theme.colorScheme.onSurfaceVariant),
@@ -434,7 +438,7 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
                     leading: AppIcon(categoryIcon(cat),
                         color: Theme.of(context).colorScheme.onSurfaceVariant),
                     title: Text(categoryLabel(cat)),
-                    selected: cat == m.category,
+                    selected: m.categoriaPropia == null && cat == m.category,
                     onTap: () {
                       ref
                           .read(expensesStateProvider.notifier)
@@ -442,6 +446,34 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
                       Navigator.pop(context);
                     },
                   ),
+                for (final p in ref.read(customCategoriesProvider).where((c) => c.tipo == m.tipo))
+                  ListTile(
+                    minTileHeight: AppSizes.minTouch,
+                    leading: Icon(customIconFor(p.icono),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    title: Text(p.nombre),
+                    selected: m.categoriaPropia == p.id,
+                    onTap: () {
+                      ref
+                          .read(expensesStateProvider.notifier)
+                          .changeCategory(m.id, p.base, remember: remember, propia: p.id);
+                      Navigator.pop(context);
+                    },
+                  ),
+                ListTile(
+                  minTileHeight: AppSizes.minTouch,
+                  leading: AppIcon(AppIcons.plus,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  title: const Text('Nueva categoría'),
+                  onTap: () async {
+                    final created = await showNewCategorySheet(context, ref, m.tipo);
+                    if (created == null) return;
+                    ref
+                        .read(expensesStateProvider.notifier)
+                        .changeCategory(m.id, created.base, remember: remember, propia: created.id);
+                    if (context.mounted) Navigator.pop(context);
+                  },
+                ),
                 const SizedBox(height: 8),
               ],
             ),

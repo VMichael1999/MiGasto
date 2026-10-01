@@ -9,7 +9,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../domain/entities/movimiento.dart';
 import '../../shared/format.dart';
-import '../../shared/labels.dart';
+import '../../shared/category_display.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/big_amount.dart';
 import '../providers.dart';
@@ -539,9 +539,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     required Iterable<Movimiento> movimientos,
   }) {
     final theme = Theme.of(context);
-    final byCategory = <Categoria, double>{};
+    final propias = ref.watch(customCategoriesProvider);
+    final byCategory = <String, double>{};
     for (final m in movimientos) {
-      byCategory[m.category] = (byCategory[m.category] ?? 0) + m.amount;
+      final key = categoryKey(m, propias);
+      byCategory[key] = (byCategory[key] ?? 0) + m.amount;
     }
     final rows = byCategory.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
 
@@ -564,9 +566,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    rows[i].key == Categoria.transferenciaRecibida
+                    rows[i].key == Categoria.transferenciaRecibida.name
                         ? 'Transferencias recibidas'
-                        : categoryLabel(rows[i].key),
+                        : displayForKey(rows[i].key, propias).label,
                     style: theme.textTheme.bodyMedium!.copyWith(fontSize: 13.5),
                   ),
                 ),

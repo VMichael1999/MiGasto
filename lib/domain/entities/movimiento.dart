@@ -81,6 +81,10 @@ class Movimiento {
   /// La notificación o el texto leído de la captura.
   final String textoOriginal;
 
+  /// Id de la categoría propia del usuario, si eligió una (ver `CategoriaPropia`).
+  /// [category] sigue siendo la de siempre (Otros / Otros ingresos) para los totales.
+  final String? categoriaPropia;
+
   Movimiento({
     required this.id,
     required this.amount,
@@ -98,6 +102,7 @@ class Movimiento {
     this.precision,
     this.lugar,
     this.textoOriginal = '',
+    this.categoriaPropia,
   });
 
   bool get isConfirmed => estado == EstadoMovimiento.confirmado;
@@ -123,6 +128,7 @@ class Movimiento {
     String? lugar,
     String? textoOriginal,
     bool quitarUbicacion = false,
+    String? categoriaPropia,
   }) {
     return Movimiento(
       id: id ?? this.id,
@@ -141,6 +147,8 @@ class Movimiento {
       precision: quitarUbicacion ? null : (precision ?? this.precision),
       lugar: quitarUbicacion ? null : (lugar ?? this.lugar),
       textoOriginal: textoOriginal ?? this.textoOriginal,
+      // Elegir una categoría de siempre quita la propia; elegir una propia la pone.
+      categoriaPropia: categoriaPropia ?? (category != null ? null : this.categoriaPropia),
     );
   }
 
@@ -155,4 +163,22 @@ class Movimiento {
   @override
   String toString() =>
       'Movimiento(id: $id, ${tipo.name}, amount: $amount, merchant: $merchant)';
+}
+
+/// Cómo se guarda la categoría de un movimiento en una sola columna de texto:
+/// `otros` o, con categoría propia, `otros|<id>`. Una versión anterior de la app
+/// ve solo `otros|…`, no la reconoce y la trata como Otros.
+String categoriaAlmacenada(Categoria categoria, String? propia) =>
+    propia == null ? categoria.name : '${categoria.name}|$propia';
+
+/// Inversa de [categoriaAlmacenada]; si el nombre no se reconoce usa [fallback].
+({Categoria categoria, String? propia}) leerCategoriaAlmacenada(String? raw, Categoria fallback) {
+  if (raw == null || raw.isEmpty) return (categoria: fallback, propia: null);
+  final cut = raw.indexOf('|');
+  final name = cut < 0 ? raw : raw.substring(0, cut);
+  final propia = cut < 0 || cut == raw.length - 1 ? null : raw.substring(cut + 1);
+  for (final c in Categoria.values) {
+    if (c.name == name) return (categoria: c, propia: propia);
+  }
+  return (categoria: fallback, propia: propia);
 }

@@ -14,6 +14,7 @@ import '../data/services/backup_service.dart';
 import '../data/services/nlp_classifier_service.dart';
 import '../data/services/location_service.dart';
 import '../domain/aliases.dart';
+import '../domain/categoria_propia.dart';
 import '../domain/duplicate_rule.dart';
 import '../domain/setup_issues.dart';
 
@@ -135,6 +136,60 @@ class AliasesNotifier extends StateNotifier<Map<String, String>> {
 
   /// Vuelve a leer del almacenamiento (después de restaurar un respaldo).
   void reload() => state = _repo.getAllAliases();
+}
+
+/// Categorías que creó el usuario (con su ícono). Se guardan en el teléfono.
+const keyCustomCategories = 'migasto_custom_categories_v1';
+
+final customCategoriesProvider =
+    StateNotifierProvider<CustomCategoriesNotifier, List<CategoriaPropia>>((ref) {
+  return CustomCategoriesNotifier(ref.read(sharedPreferencesProvider));
+});
+
+class CustomCategoriesNotifier extends StateNotifier<List<CategoriaPropia>> {
+  CustomCategoriesNotifier(this._prefs) : super(_load(_prefs));
+  final SharedPreferences _prefs;
+
+  static List<CategoriaPropia> _load(SharedPreferences prefs) {
+    final raw = prefs.getString(keyCustomCategories);
+    if (raw == null) return const [];
+    try {
+      return categoriasPropiasDesdeJson(jsonDecode(raw));
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> _save() =>
+      _prefs.setString(keyCustomCategories, jsonEncode(state.map((c) => c.toJson()).toList()));
+
+  /// Crea una categoría. Si ya hay una con el mismo nombre para ese tipo, devuelve esa.
+  Future<CategoriaPropia> add(String nombre, String icono, TipoMovimiento tipo) async {
+    final clean = nombre.trim();
+    final key = clean.toLowerCase();
+    for (final c in state) {
+      if (c.tipo == tipo && c.nombre.toLowerCase() == key) return c;
+    }
+    final nueva = CategoriaPropia(id: const Uuid().v4(), nombre: clean, icono: icono, tipo: tipo);
+    state = [...state, nueva];
+    await _save();
+    return nueva;
+  }
+
+  /// Borra la categoría; los movimientos que la usaban se ven como Otros.
+  Future<void> remove(String id) async {
+    state = state.where((c) => c.id != id).toList();
+    await _save();
+  }
+
+  /// Agrega las de un respaldo que todavía no están (por id); no pisa las tuyas.
+  Future<void> merge(List<CategoriaPropia> others) async {
+    final ids = state.map((c) => c.id).toSet();
+    final nuevas = others.where((c) => !ids.contains(c.id)).toList();
+    if (nuevas.isEmpty) return;
+    state = [...state, ...nuevas];
+    await _save();
+  }
 }
 
 // 7. Expenses State Notifier Provider
@@ -422,6 +477,7 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
     required double amount,
     required String merchant,
     required Categoria category,
+    String? categoriaPropia,
     PaymentSource source = PaymentSource.manual,
   }) async {
     final movimiento = Movimiento(
@@ -429,6 +485,7 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
       amount: amount,
       merchant: merchant,
       category: category,
+      categoriaPropia: categoriaPropia,
       source: source,
       date: DateTime.now(),
       tipo: tipo,
@@ -445,7 +502,7 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
     final current = state.where((e) => e.id == id).firstOrNull;
     if (current == null) return;
     await updateExpense(current.copyWith(
-      category: category ?? current.category,
+      category: category,
       estado: EstadoMovimiento.confirmado,
     ));
   }
@@ -463,6 +520,7 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
         presupuesto: _repo.getBudget(),
         aprendidas: _repo.getAllCategoryOverrides(),
         alias: _repo.getAllAliases(),
+        categoriasPropias: _ref.read(customCategoriesProvider),
         creado: DateTime.now().toUtc(),
       );
 
@@ -491,6 +549,7 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
       if (!propios.containsKey(e.key)) await _repo.saveAlias(e.key, e.value);
     }
     _ref.read(aliasesProvider.notifier).reload();
+    await _ref.read(customCategoriesProvider.notifier).merge(contents.categoriasPropias);
     await _repo.saveBudget(contents.presupuesto);
     _ref.read(budgetProvider.notifier).state = contents.presupuesto;
     if (mounted && nuevos.isNotEmpty) {
@@ -535,17 +594,25 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
 
   /// Cambia la categoría de un movimiento. Con [remember], la app la recuerda
   /// para ese comercio y la aplica a los pagos anteriores de los gastos.
-  Future<void> changeCategory(String id, Categoria category, {bool remember = false}) async {
+  ///
+  /// [propia] es el id de una categoría propia: en ese caso [category] es la de siempre que
+  /// le corresponde y lo que la app recuerda para los pagos futuros no cambia (solo aprende
+  /// las categorías de siempre).
+  Future<void> changeCategory(String id, Categoria category,
+      {bool remember = false, String? propia}) async {
     final current = state.where((e) => e.id == id).firstOrNull;
     if (current == null) return;
-    await updateExpense(current.copyWith(category: category));
+    await updateExpense(current.copyWith(category: category, categoriaPropia: propia));
     if (!remember || current.esIngreso) return;
 
-    await _repo.saveCategoryOverride(current.merchant, category);
+    if (propia == null) await _repo.saveCategoryOverride(current.merchant, category);
     final key = current.merchant.toLowerCase().trim();
     for (final m in state.where((e) =>
-        e.esGasto && e.id != id && e.merchant.toLowerCase().trim() == key && e.category != category)) {
-      await updateExpense(m.copyWith(category: category));
+        e.esGasto &&
+        e.id != id &&
+        e.merchant.toLowerCase().trim() == key &&
+        (e.category != category || e.categoriaPropia != propia))) {
+      await updateExpense(m.copyWith(category: category, categoriaPropia: propia));
     }
   }
 

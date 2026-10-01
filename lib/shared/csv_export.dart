@@ -1,11 +1,15 @@
+import '../domain/categoria_propia.dart';
 import '../domain/entities/movimiento.dart';
-import 'labels.dart';
+import 'category_display.dart';
 
 String _quote(String value) => '"${value.replaceAll('"', '""')}"';
 
 /// CSV de movimientos. No incluye la ubicación: solo viaja lo que el usuario
 /// ve en la lista.
-String movimientosToCsv(Iterable<Movimiento> movimientos) {
+String movimientosToCsv(
+  Iterable<Movimiento> movimientos, {
+  List<CategoriaPropia> categoriasPropias = const [],
+}) {
   final buffer = StringBuffer()
     ..writeln('ID,Tipo,Monto,Contraparte,Categoria,Fuente,Canal,Estado,Fecha,Notas');
   for (final m in movimientos) {
@@ -14,7 +18,7 @@ String movimientosToCsv(Iterable<Movimiento> movimientos) {
       m.tipo.name,
       m.amount.toStringAsFixed(2),
       _quote(m.merchant),
-      categoryLabel(m.category),
+      _quote(categoryDisplay(m.category, m.categoriaPropia, categoriasPropias).label),
       m.source.name,
       m.canal.name,
       m.estado.name,

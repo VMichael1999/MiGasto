@@ -16,6 +16,7 @@ import '../../data/services/backup_service.dart';
 import '../../data/services/payment_reader.dart';
 import '../../domain/entities/movimiento.dart';
 import '../../shared/csv_export.dart';
+import '../../shared/widgets/custom_icons.dart';
 import '../../shared/format.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../expenses/alias_dialog.dart';
@@ -213,6 +214,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
               ),
               _SettingRow(
                 icon: AppIcons.tag,
+                title: 'Mis categorías',
+                subtitle: 'Las que creaste, con tu ícono',
+                onTap: () => _showCustomCategories(context),
+              ),
+              _SettingRow(
+                icon: AppIcons.tag,
                 title: 'Nombres guardados',
                 subtitle: 'Cómo ves a cada persona o comercio',
                 onTap: () => _showAliases(context),
@@ -355,6 +362,70 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     if (value == null) return;
     await notifier.updateBudget(value);
     messenger.showSnackBar(const SnackBar(content: Text('Presupuesto actualizado')));
+  }
+
+  void _showCustomCategories(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => Consumer(
+        builder: (context, ref, _) {
+          final theme = Theme.of(context);
+          final propias = ref.watch(customCategoriesProvider);
+          return SafeArea(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text('Mis categorías', style: theme.textTheme.titleLarge),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Las creas al registrar un movimiento, con "Nueva". Si borras una, sus movimientos pasan a verse como "Otros".',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 8),
+                    if (propias.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Text('Aún no creaste ninguna.', style: theme.textTheme.bodyMedium),
+                      )
+                    else
+                      Flexible(
+                        child: ListView(
+                          shrinkWrap: true,
+                          children: [
+                            for (final p in propias)
+                              ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                minTileHeight: AppSizes.minTouch,
+                                leading: Icon(customIconFor(p.icono),
+                                    color: theme.colorScheme.onSurfaceVariant),
+                                title: Text(p.nombre),
+                                subtitle: Text(p.tipo == TipoMovimiento.ingreso ? 'Ingreso' : 'Gasto'),
+                                trailing: IconButton(
+                                  tooltip: 'Borrar ${p.nombre}',
+                                  icon: AppIcon(AppIcons.trash,
+                                      size: AppIconSize.small,
+                                      color: theme.colorScheme.onSurfaceVariant),
+                                  onPressed: () =>
+                                      ref.read(customCategoriesProvider.notifier).remove(p.id),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   void _showAliases(BuildContext context) {
@@ -537,7 +608,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
 
   Future<void> _exportCsv(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
-    final csv = movimientosToCsv(ref.read(expensesStateProvider));
+    final csv = movimientosToCsv(
+      ref.read(expensesStateProvider),
+      categoriasPropias: ref.read(customCategoriesProvider),
+    );
     await Clipboard.setData(ClipboardData(text: csv));
     messenger.showSnackBar(const SnackBar(content: Text('Movimientos copiados al portapapeles')));
   }

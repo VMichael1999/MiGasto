@@ -9,11 +9,11 @@ import '../../core/theme/app_tokens.dart';
 import '../../domain/aliases.dart';
 import '../../domain/entities/movimiento.dart';
 import '../../domain/setup_issues.dart';
+import '../../shared/category_display.dart';
 import '../../shared/format.dart';
 import '../../shared/labels.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/big_amount.dart';
-import '../../shared/widgets/category_icon.dart';
 import '../../shared/widgets/movement_row.dart';
 import '../expenses/expense_detail_dialog.dart';
 import '../providers.dart';
@@ -607,6 +607,7 @@ class _TodaySection extends ConsumerWidget {
     final colors = context.appColors;
     final timeFormat = DateFormat('HH:mm');
     final aliases = ref.watch(aliasesProvider);
+    final propias = ref.watch(customCategoriesProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -641,7 +642,7 @@ class _TodaySection extends ConsumerWidget {
         for (var i = 0; i < movements.length; i++) ...[
           if (i > 0) Divider(color: theme.colorScheme.outline, height: 1),
           MovementRow(
-            icon: categoryIcon(movements[i].category),
+            icon: categoryDisplay(movements[i].category, movements[i].categoriaPropia, propias).glyph,
             title: displayName(movements[i].merchant, aliases),
             amount: movements[i].amount,
             sourceName: movements[i].source.name,

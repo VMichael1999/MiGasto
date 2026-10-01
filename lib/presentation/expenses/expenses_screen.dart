@@ -11,7 +11,7 @@ import '../../shared/csv_export.dart';
 import '../../shared/format.dart';
 import '../../shared/labels.dart';
 import '../../shared/widgets/app_icons.dart';
-import '../../shared/widgets/category_icon.dart';
+import '../../shared/category_display.dart';
 import '../../shared/widgets/movement_row.dart';
 import '../providers.dart';
 import 'expense_detail_dialog.dart';
@@ -30,7 +30,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   String _searchQuery = '';
   bool _isSearching = false;
   final _searchController = TextEditingController();
-  Categoria? _filterCategory;
+  /// Clave de la categoría filtrada: nombre de la de siempre o id de la propia.
+  String? _filterCategory;
   PaymentSource? _filterSource;
   RangeValues? _filterAmountRange;
 
@@ -222,7 +223,10 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
           !displayName(m.merchant, ref.read(aliasesProvider)).toLowerCase().contains(query)) {
         return false;
       }
-      if (_filterCategory != null && m.category != _filterCategory) return false;
+      if (_filterCategory != null &&
+          categoryKey(m, ref.read(customCategoriesProvider)) != _filterCategory) {
+        return false;
+      }
       if (_filterSource != null && m.source != _filterSource) return false;
       final range = _filterAmountRange;
       if (range != null && (m.amount < range.start || m.amount > range.end)) return false;
@@ -374,7 +378,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
           );
       },
       child: MovementRow(
-        icon: categoryIcon(m.category),
+        icon: categoryDisplay(m.category, m.categoriaPropia, ref.watch(customCategoriesProvider)).glyph,
         title: displayName(m.merchant, ref.watch(aliasesProvider)),
         amount: m.amount,
         sourceName: m.source.name,
@@ -452,11 +456,13 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   }
 
   void _showFilterSheet(BuildContext context) {
-    Categoria? tempCategory = _filterCategory;
+    String? tempCategory = _filterCategory;
     PaymentSource? tempSource = _filterSource;
     RangeValues tempRange = _filterAmountRange ?? const RangeValues(0, 500);
     bool rangeActive = _filterAmountRange != null;
     final categories = _type == _TypeFilter.income ? Categoria.ingresos : Categoria.gastos;
+    final propias = ref.read(customCategoriesProvider).where((c) =>
+        _type == _TypeFilter.income ? c.tipo == TipoMovimiento.ingreso : c.tipo == TipoMovimiento.gasto).toList();
 
     showModalBottomSheet(
       context: context,
@@ -506,8 +512,14 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                         for (final cat in categories)
                           _Chip(
                             label: categoryLabel(cat),
-                            selected: tempCategory == cat,
-                            onTap: () => setSheetState(() => tempCategory = cat),
+                            selected: tempCategory == cat.name,
+                            onTap: () => setSheetState(() => tempCategory = cat.name),
+                          ),
+                        for (final p in propias)
+                          _Chip(
+                            label: p.nombre,
+                            selected: tempCategory == p.id,
+                            onTap: () => setSheetState(() => tempCategory = p.id),
                           ),
                       ],
                     ),

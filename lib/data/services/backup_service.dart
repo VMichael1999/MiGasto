@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
 
+import '../../domain/categoria_propia.dart';
 import '../../domain/entities/movimiento.dart';
 
 /// Lo que viaja dentro de un respaldo.
@@ -15,6 +16,7 @@ class BackupContents {
     required this.aprendidas,
     required this.creado,
     this.alias = const {},
+    this.categoriasPropias = const [],
   });
 
   final List<Movimiento> movimientos;
@@ -25,6 +27,9 @@ class BackupContents {
 
   /// Nombres que el usuario le puso a personas y comercios (clave normalizada -> nombre).
   final Map<String, String> alias;
+
+  /// Categorías que creó el usuario, con su ícono.
+  final List<CategoriaPropia> categoriasPropias;
   final DateTime creado;
 }
 
@@ -173,6 +178,7 @@ class BackupService {
         'presupuesto': c.presupuesto,
         'aprendidas': c.aprendidas,
         'alias': c.alias,
+        'categoriasPropias': c.categoriasPropias.map((e) => e.toJson()).toList(),
         'movimientos': c.movimientos.map(_movimientoToJson).toList(),
       };
 
@@ -195,6 +201,8 @@ class BackupService {
         // Los respaldos hechos antes de los alias no traen este campo.
         alias: ((map['alias'] as Map<String, dynamic>?) ?? const {})
             .map((k, v) => MapEntry(k, v as String)),
+        // Los respaldos hechos antes de las categorías propias no traen este campo.
+        categoriasPropias: categoriasPropiasDesdeJson(map['categoriasPropias']),
         movimientos: (map['movimientos'] as List)
             .map((m) => _movimientoFromJson(m as Map<String, dynamic>))
             .toList(),
@@ -211,6 +219,7 @@ class BackupService {
         'monto': m.amount,
         'contraparte': m.merchant,
         'categoria': m.category.name,
+        'categoriaPropia': m.categoriaPropia,
         'fuente': m.source.name,
         'fecha': m.date.toIso8601String(),
         'notas': m.notes,
@@ -237,6 +246,7 @@ class BackupService {
         amount: (j['monto'] as num).toDouble(),
         merchant: j['contraparte'] as String,
         category: _byName(Categoria.values, j['categoria'], Categoria.otros),
+        categoriaPropia: j['categoriaPropia'] as String?,
         source: _byName(PaymentSource.values, j['fuente'], PaymentSource.otro),
         date: DateTime.parse(j['fecha'] as String),
         notes: (j['notas'] as String?) ?? '',

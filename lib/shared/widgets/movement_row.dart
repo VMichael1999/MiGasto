@@ -5,7 +5,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../presentation/providers.dart';
 import '../format.dart';
-import 'app_icons.dart';
+import 'category_icon.dart';
 
 /// Fila de movimiento: ícono, nombre, punto de color de la fuente, hora y monto
 /// alineado a la derecha. Los ingresos van en azul con signo `+`; los pendientes
@@ -24,7 +24,7 @@ class MovementRow extends ConsumerWidget {
     this.onTap,
   });
 
-  final AppIcons icon;
+  final CategoryGlyph icon;
   final String title;
   final double amount;
   final String sourceName;
@@ -76,9 +76,7 @@ class MovementRow extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(AppRadius.icon),
                   ),
                   alignment: Alignment.center,
-                  child: AppIcon(
-                    icon,
-                    size: AppIconSize.small,
+                  child: icon.build(
                     color: isIncome ? colors.income : scheme.onSurfaceVariant,
                   ),
                 ),
