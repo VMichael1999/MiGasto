@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../presentation/dashboard/dashboard_screen.dart';
 import '../../presentation/expenses/expenses_screen.dart';
+import '../../presentation/expenses/manual_entry_screen.dart';
 import '../../presentation/onboarding/onboarding_screen.dart';
 import '../../presentation/reports/reports_screen.dart';
 import '../../presentation/settings/settings_screen.dart';
@@ -24,6 +25,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/onboarding',
         builder: (context, state) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        path: '/new',
+        builder: (context, state) => const ManualEntryScreen(),
       ),
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
@@ -98,120 +103,8 @@ class MainScaffoldWrapper extends ConsumerWidget {
             context.go('/settings');
           }
         },
-        onAdd: () => _showQuickAddDialog(context, ref),
+        onAdd: () => context.push('/new'),
       ),
-    );
-  }
-
-  void _showQuickAddDialog(BuildContext context, WidgetRef ref) {
-    final amountController = TextEditingController();
-    final conceptController = TextEditingController();
-    Categoria selectedCategory = Categoria.compras;
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: AppTheme.cardBg,
-              title: const Text(
-                'Registrar Gasto Manual',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: amountController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      autofocus: true,
-                      decoration: InputDecoration(
-                        labelText: 'Monto (S/)',
-                        labelStyle: TextStyle(color: Colors.grey),
-                        prefixText: 'S/ ',
-                        prefixStyle: TextStyle(color: Colors.white),
-                        enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF2E2B3B))),
-                        focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.neonGreen)),
-                      ),
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: conceptController,
-                      decoration: InputDecoration(
-                        labelText: 'Establecimiento / Detalle',
-                        labelStyle: TextStyle(color: Colors.grey),
-                        enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF2E2B3B))),
-                        focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.neonGreen)),
-                      ),
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<Categoria>(
-                      initialValue: selectedCategory,
-                      dropdownColor: AppTheme.cardBg,
-                      decoration: InputDecoration(
-                        labelText: 'Categoría',
-                        labelStyle: TextStyle(color: Colors.grey),
-                        enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF2E2B3B))),
-                        focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.neonGreen)),
-                      ),
-                      style: const TextStyle(color: Colors.white),
-                      items: Categoria.values.map((cat) {
-                        String name = cat.name;
-                        if (cat == Categoria.alimentacion) name = 'Alimentación';
-                        if (cat == Categoria.transporte) name = 'Transporte';
-                        if (cat == Categoria.compras) name = 'Compras';
-                        if (cat == Categoria.servicios) name = 'Servicios';
-                        if (cat == Categoria.entretenimiento) name = 'Entretenimiento';
-                        if (cat == Categoria.otros) name = 'Otros';
-
-                        return DropdownMenuItem(
-                          value: cat,
-                          child: Text(name, style: const TextStyle(color: Colors.white, fontSize: 13)),
-                        );
-                      }).toList(),
-                      onChanged: (cat) {
-                        if (cat != null) {
-                          setDialogState(() {
-                            selectedCategory = cat;
-                          });
-                        }
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    final amt = double.tryParse(amountController.text) ?? 0.0;
-                    final concept = conceptController.text.trim();
-                    if (amt > 0 && concept.isNotEmpty) {
-                      ref.read(expensesStateProvider.notifier).addManualExpense(amt, concept, selectedCategory);
-                      Navigator.pop(context);
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.neonGreen,
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Text('Guardar', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ],
-            );
-          },
-        );
-      },
     );
   }
 }

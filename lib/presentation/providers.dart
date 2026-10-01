@@ -89,6 +89,7 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
   }
 
   @override
+  // ignore: avoid_renaming_method_parameters
   void didChangeAppLifecycleState(AppLifecycleState lifecycleState) {
     if (lifecycleState == AppLifecycleState.resumed) drainNativeQueue();
   }
@@ -227,7 +228,7 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
     // Regla de duplicados: mismo monto y fuente dentro de 2 minutos.
     final pendingNow = _ref.read(pendingExpenseProvider);
     if (isDuplicateMovement(
-      [...state, if (pendingNow != null) pendingNow],
+      [...state, ?pendingNow],
       amount: amount,
       source: source,
       date: now,
