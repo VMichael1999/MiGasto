@@ -1,10 +1,17 @@
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mi_gasto/presentation/providers.dart';
+import 'package:mi_gasto/data/services/nlp_classifier_service.dart';
 import 'package:mi_gasto/domain/entities/movimiento.dart';
 
 void main() {
+  setUpAll(() {
+    NlpClassifierService.configure(
+        File('assets/category_rules.json').readAsStringSync());
+  });
+
   group('Expenses Notifier & State Tests', () {
     late ProviderContainer container;
 

@@ -1,9 +1,11 @@
+import 'dart:io';
 import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mi_gasto/data/datasource/local_database.dart';
 import 'package:mi_gasto/domain/duplicate_rule.dart';
+import 'package:mi_gasto/data/services/nlp_classifier_service.dart';
 import 'package:mi_gasto/domain/entities/movimiento.dart';
 import 'package:mi_gasto/presentation/providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -25,6 +27,11 @@ Movimiento _m({
     );
 
 void main() {
+  setUpAll(() {
+    NlpClassifierService.configure(
+        File('assets/category_rules.json').readAsStringSync());
+  });
+
   group('Regla de duplicados', () {
     final base = DateTime(2026, 9, 27, 12, 41);
 

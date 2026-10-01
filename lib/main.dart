@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/theme/theme.dart';
 import 'core/navigation/navigation.dart';
+import 'data/services/nlp_classifier_service.dart';
 import 'presentation/providers.dart';
 
 void main() async {
@@ -44,6 +45,7 @@ class _MyAppState extends ConsumerState<MyApp> {
 
   Future<void> _initDatabase() async {
     final db = ref.read(localDatabaseProvider);
+    await NlpClassifierService.loadFromAsset();
     await db.init();
     
     // Warm up the expensesStateProvider to load data or insert mock values
