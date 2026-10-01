@@ -56,6 +56,16 @@ class ReaderRules private constructor(
     /** Número de operación de una constancia (identifica el pago aunque la pantalla se lea otra vez). */
     fun operationId(text: String): String? = operationIdRegex?.find(text)?.groupValues?.get(1)
 
+    private val operationStampRegex = rules.optString("operationStamp").takeIf { it.isNotEmpty() }
+        ?.let { Regex(it, RegexOption.IGNORE_CASE) }
+
+    /**
+     * Fecha y hora impresas en una constancia ("01 oct. 2026 12:36 p. m."). Sirve para reconocer la
+     * misma constancia cuando el número de operación no se alcanza a ver en pantalla.
+     */
+    fun operationStamp(text: String): String? =
+        operationStampRegex?.find(text)?.value?.lowercase()?.replace(Regex("[\\s.]+"), "")
+
     /** `null` si el texto no es un pago reconocible. */
     fun parse(text: String): ParseResult? {
         val provider = provider(text) ?: return null

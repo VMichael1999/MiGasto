@@ -58,6 +58,12 @@ class MyAccessibilityService : AccessibilityService() {
             rules.operationId(text)?.let { id ->
                 if (!HandledStore.markHandled(context, "op|$id")) return
             }
+            // Si el número de operación no está a la vista, la fecha y hora de la constancia
+            // identifican igual el mismo pago (mismo monto y misma persona en el mismo minuto).
+            rules.operationStamp(text)?.let { stamp ->
+                val key = "st|${result.provider}|${result.type}|${"%.2f".format(result.amount)}|$stamp"
+                if (!HandledStore.markHandled(context, key)) return
+            }
             if (isDuplicate(result)) return
 
             // No se registra el texto completo: puede traer datos personales.
@@ -69,7 +75,9 @@ class MyAccessibilityService : AccessibilityService() {
 
         private fun deliver(context: Context, result: ParseResult, rawText: String) {
             // Con el teléfono en uso y desbloqueado se muestra la ventana flotante.
-            if (PaymentNotifier.canShowOverlay(context)) {
+            val overlay = PaymentNotifier.canShowOverlay(context)
+            Log.d(TAG, "ventana flotante posible: $overlay")
+            if (overlay) {
                 val category = ReaderRules.get(context)?.classify(
                     rawText, result.peer, result.type, NativeQueue.categoryOverrides(context),
                 ) ?: "otros"
@@ -94,6 +102,7 @@ class MyAccessibilityService : AccessibilityService() {
             // las reglas de siempre (un gasto se guarda; un ingreso, solo si el usuario lo activó)
             // y se avisa con una notificación.
             val saved = result.type != "ingreso" || NativeQueue.autoSaveIncome(context)
+            Log.d(TAG, "sin ventana: se guarda=$saved y se avisa con notificación")
             NativeQueue.enqueue(
                 context, result.amount, result.peer, result.provider, result.type, rawText,
                 confirmed = saved,

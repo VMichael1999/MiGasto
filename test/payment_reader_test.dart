@@ -154,6 +154,15 @@ void main() {
       expect(op('Titular: VALDIVIEZO MAZ* Nº de operación: 05205445 Yapear otro servicio'), '05205445');
     });
 
+    test('la fecha y hora de la constancia identifican el pago si falta el número', () {
+      final stamp = RegExp(rules['operationStamp'] as String, caseSensitive: false, unicode: true);
+      expect(stamp.firstMatch('¡Yapeaste! S/ 1 Michael 01 oct. 2026 09:48 a. m. DATOS')?.group(0),
+          '01 oct. 2026 09:48 a. m.');
+      expect(stamp.firstMatch('S/ 134.85 BanBif 01 oct. 2026 12:36 p. m. DATOS')?.group(0),
+          '01 oct. 2026 12:36 p. m.');
+      expect(stamp.hasMatch('Yape! MICHAEL te envió un pago por S/ 1'), isFalse);
+    });
+
     test('un texto sin número de operación no inventa uno', () {
       expect(op('Yape! MICHAEL te envió un pago por S/ 1'), isNull);
       expect(op('Código de cliente: 73654903'), isNull);

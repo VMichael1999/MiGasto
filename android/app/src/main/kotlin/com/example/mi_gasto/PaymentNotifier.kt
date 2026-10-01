@@ -10,6 +10,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -28,6 +29,7 @@ object PaymentNotifier {
     private const val KEY_SHOW_LOCKED = "flutter.migasto_show_amount_locked"
     private const val CHANNEL_DETECTED = "pagos_detectados"
     private const val CHANNEL_SAVED = "pagos_guardados"
+    private const val TAG = "PaymentNotifier"
 
     /** La ventana flotante se puede ver: permiso, pantalla encendida y teléfono desbloqueado. */
     fun canShowOverlay(context: Context): Boolean {
@@ -75,7 +77,10 @@ object PaymentNotifier {
 
     /** Avisa de un pago detectado. [saved] indica si ya quedó guardado o espera confirmación. */
     fun notify(context: Context, amount: Double, peer: String, provider: String, type: String, saved: Boolean) {
-        if (!canNotify(context)) return
+        if (!canNotify(context)) {
+            Log.w(TAG, "sin permiso para publicar notificaciones")
+            return
+        }
         ensureChannels(context)
 
         val isIncome = type == "ingreso"
@@ -121,7 +126,9 @@ object PaymentNotifier {
 
         try {
             NotificationManagerCompat.from(context).notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), builder.build())
+            Log.d(TAG, "notificación publicada en el canal $channel")
         } catch (e: SecurityException) {
+            Log.w(TAG, "el sistema rechazó la notificación", e)
             // Sin permiso en este momento: no es esencial.
         }
     }
