@@ -448,9 +448,10 @@ class PasscodeNotifier extends StateNotifier<bool> {
 
   PasscodeNotifier(this._prefs) : super(_prefs.getBool(_key) ?? false);
 
-  Future<void> toggle() async {
-    final next = !state;
-    await _prefs.setBool(_key, next);
-    state = next;
+  Future<void> toggle() => setEnabled(!state);
+
+  Future<void> setEnabled(bool value) async {
+    await _prefs.setBool(_key, value);
+    state = value;
   }
 }

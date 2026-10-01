@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/theme/theme.dart';
 import 'core/navigation/navigation.dart';
 import 'data/services/nlp_classifier_service.dart';
+import 'presentation/lock/lock_gate.dart';
 import 'presentation/providers.dart';
 
 void main() async {
@@ -77,7 +78,7 @@ class _MyAppState extends ConsumerState<MyApp> {
             ),
           );
         }
-        return child ?? const SizedBox();
+        return LockGate(child: child ?? const SizedBox());
       },
     );
   }

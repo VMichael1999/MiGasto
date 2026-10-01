@@ -2,10 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_tokens.dart';
 import '../../data/services/payment_reader.dart';
+import '../../shared/csv_export.dart';
+import '../../shared/format.dart';
+import '../../shared/widgets/app_icons.dart';
+import '../lock/lock_gate.dart';
 import '../providers.dart';
-import '../../core/theme/theme.dart';
-import '../../domain/entities/movimiento.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -14,180 +19,306 @@ class SettingsScreen extends ConsumerStatefulWidget {
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  final _budgetController = TextEditingController();
-  final _simTextController = TextEditingController();
-  
-  bool _isAccessibilityEnabled = false;
-  bool _isOverlayGranted = false;
+class _SettingsScreenState extends ConsumerState<SettingsScreen>
+    with WidgetsBindingObserver {
+  bool _accessibilityOn = false;
+  bool _overlayOn = false;
+  final _simController = TextEditingController();
+
+  bool get _isAndroid => defaultTargetPlatform == TargetPlatform.android;
 
   @override
   void initState() {
     super.initState();
-    _budgetController.text = ref.read(budgetProvider).toStringAsFixed(0);
-    _checkNativePermissions();
+    WidgetsBinding.instance.addObserver(this);
+    _refreshPermissions();
   }
 
   @override
   void dispose() {
-    _budgetController.dispose();
-    _simTextController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    _simController.dispose();
     super.dispose();
   }
 
-  Future<void> _checkNativePermissions() async {
-    final access = await ref.read(permissionsCheckerProvider).isAccessibilityEnabled();
-    final overlay = await ref.read(permissionsCheckerProvider).isOverlayGranted();
-    if (mounted) {
-      setState(() {
-        _isAccessibilityEnabled = access;
-        _isOverlayGranted = overlay;
-      });
-    }
+  // Al volver de los ajustes del sistema se vuelve a leer el estado.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refreshPermissions();
   }
 
-  void _showEditProfileDialog(BuildContext context, String currentName, String currentEmail) {
-    final nameController = TextEditingController(text: currentName);
-    final emailController = TextEditingController(text: currentEmail);
+  Future<void> _refreshPermissions() async {
+    if (!_isAndroid) return;
+    final permissions = ref.read(permissionsCheckerProvider);
+    final accessibility = await permissions.isAccessibilityEnabled();
+    final overlay = await permissions.isOverlayGranted();
+    if (!mounted) return;
+    setState(() {
+      _accessibilityOn = accessibility;
+      _overlayOn = overlay;
+    });
+  }
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: AppTheme.cardBg,
-          title: const Text('Editar Perfil', style: TextStyle(color: Colors.white)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Nombre',
-                  labelStyle: TextStyle(color: Colors.grey),
-                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
-                  focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppTheme.neonGreen)),
+  // ------------------------------------------------------------------ build
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final providers = ref.watch(providersEnabledProvider);
+    final budget = ref.watch(budgetProvider);
+    final lockOn = ref.watch(passcodeEnabledProvider);
+    final permissions = ref.read(permissionsCheckerProvider);
+
+    return Scaffold(
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(AppSpacing.xl, 6, AppSpacing.xl, 18),
+          children: [
+            Text('Ajustes', style: theme.textTheme.headlineMedium),
+            const SizedBox(height: 10),
+            if (_isAndroid) ...[
+              _label(context, 'Registro automático'),
+              _box(context, [
+                _SettingRow(
+                  icon: AppIcons.bell,
+                  title: 'Lectura de pagos',
+                  subtitle: 'Lee las notificaciones de Yape, Plin y Google Wallet',
+                  trailing: _status(context, _accessibilityOn),
+                  onTap: () async {
+                    await permissions.openAccessibilitySettings();
+                  },
                 ),
-                style: const TextStyle(color: Colors.white),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: emailController,
-                decoration: const InputDecoration(
-                  labelText: 'Correo electrónico',
-                  labelStyle: TextStyle(color: Colors.grey),
-                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
-                  focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppTheme.neonGreen)),
+                _SettingRow(
+                  icon: AppIcons.card,
+                  title: 'Ventana flotante',
+                  subtitle: 'Muestra cada pago para que lo confirmes',
+                  trailing: _status(context, _overlayOn),
+                  onTap: () async {
+                    await permissions.requestOverlayPermission();
+                  },
                 ),
-                style: const TextStyle(color: Colors.white),
-              ),
+                _SourceSwitch(label: 'Yape', sourceKey: 'yape', enabled: providers['yape'] ?? false),
+                _SourceSwitch(label: 'Plin', sourceKey: 'plin', enabled: providers['plin'] ?? false),
+                _SourceSwitch(
+                  label: 'Google Wallet',
+                  sourceKey: 'googlePay',
+                  enabled: providers['googlePay'] ?? false,
+                ),
+              ]),
+            ] else ...[
+              _label(context, 'Registro'),
+              _box(context, [
+                _SettingRow(
+                  icon: AppIcons.hand,
+                  title: 'Registro manual',
+                  subtitle: 'Toca + para agregar un gasto o un ingreso',
+                ),
+              ]),
             ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+            _label(context, 'Tus datos'),
+            _box(context, [
+              _SettingRow(
+                icon: AppIcons.wallet,
+                title: 'Presupuesto de gastos',
+                trailingText: formatSoles(budget),
+                onTap: () => _editBudget(context, budget),
+              ),
+              _SettingRow(
+                icon: AppIcons.tag,
+                title: 'Aprendidas de tus cambios',
+                subtitle: 'Categorías que la app ya recuerda por comercio',
+                onTap: () => _showLearned(context),
+              ),
+              _SettingRow(
+                icon: AppIcons.file,
+                title: 'Exportar a CSV',
+                subtitle: 'Copia tus movimientos, sin ubicaciones',
+                onTap: () => _exportCsv(context),
+              ),
+              _SettingRow(
+                icon: AppIcons.lock,
+                title: 'Bloqueo con huella o PIN',
+                subtitle: 'Usa el desbloqueo de tu teléfono',
+                switchValue: lockOn,
+                onSwitch: (v) => _toggleLock(context, v),
+              ),
+            ]),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 12, 4, 0),
+              child: Text(
+                'Tus datos se guardan solo en este teléfono.',
+                style: theme.textTheme.bodySmall,
+              ),
             ),
-            TextButton(
-              onPressed: () {
-                final name = nameController.text.trim();
-                final email = emailController.text.trim();
-                if (name.isNotEmpty && email.isNotEmpty) {
-                  ref.read(profileNameProvider.notifier).updateValue(name);
-                  ref.read(profileEmailProvider.notifier).updateValue(email);
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Perfil actualizado')),
-                  );
-                }
-              },
-              child: const Text('Guardar', style: TextStyle(color: AppTheme.neonGreen, fontWeight: FontWeight.bold)),
-            ),
+            if (kDebugMode) ...[
+              _label(context, 'Solo desarrollo'),
+              _simulator(context),
+            ],
           ],
-        );
-      },
+        ),
+      ),
     );
   }
 
-  void _showCategoriesDialog(BuildContext context) {
-    final repo = ref.read(expenseRepositoryProvider);
-    final overrides = repo.getAllCategoryOverrides();
+  Widget _label(BuildContext context, String text) => Padding(
+        padding: const EdgeInsets.fromLTRB(4, 12, 4, 6),
+        child: Text(
+          text,
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall!
+              .copyWith(fontWeight: FontWeight.w600),
+        ),
+      );
 
-    showDialog(
+  Widget _box(BuildContext context, List<Widget> rows) {
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadius.box),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (var i = 0; i < rows.length; i++) ...[
+            if (i > 0) Divider(color: theme.colorScheme.outline, height: 1),
+            rows[i],
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Estado con ícono y texto, nunca solo color.
+  Widget _status(BuildContext context, bool on) {
+    final colors = context.appColors;
+    final color = on ? colors.budgetOk : colors.budgetWarning;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AppIcon(on ? AppIcons.checkCircle : AppIcons.alert, size: AppIconSize.small, color: color),
+        const SizedBox(width: 5),
+        Text(
+          on ? 'Activa' : 'Activar',
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall!
+              .copyWith(fontWeight: FontWeight.w600, color: color),
+        ),
+      ],
+    );
+  }
+
+  // ---------------------------------------------------------------- acciones
+
+  Future<void> _editBudget(BuildContext context, double current) async {
+    final controller = TextEditingController(text: current.toStringAsFixed(0));
+    final messenger = ScaffoldMessenger.of(context);
+    final notifier = ref.read(expensesStateProvider.notifier);
+    final value = await showDialog<double>(
       context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            final list = overrides.entries.toList();
-            return AlertDialog(
-              backgroundColor: AppTheme.cardBg,
-              title: const Text('Categorías Aprendidas (IA)', style: TextStyle(color: Colors.white)),
-              content: list.isEmpty
-                  ? const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24.0),
-                      child: Text(
-                        'Aún no hay comercios aprendidos por la IA.',
-                        style: TextStyle(color: Colors.grey, fontSize: 13),
-                        textAlign: TextAlign.center,
-                      ),
-                    )
-                  : SizedBox(
-                      width: double.maxFinite,
-                      child: ListView.separated(
-                        shrinkWrap: true,
-                        itemCount: list.length,
-                        separatorBuilder: (context, index) => const Divider(color: Color(0xFF25232F)),
-                        itemBuilder: (context, index) {
-                          final entry = list[index];
-                          final merchant = entry.key;
-                          final categoryStr = entry.value;
-                          final cat = Categoria.values.firstWhere((c) => c.name == categoryStr, orElse: () => Categoria.otros);
-                          final catColor = AppTheme.getCategoryColor(cat);
+      builder: (context) => AlertDialog(
+        title: const Text('Presupuesto de gastos'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(prefixText: 'S/ ', hintText: '1200'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () {
+              final parsed = double.tryParse(controller.text.replaceAll(',', '.'));
+              if (parsed != null && parsed > 0) Navigator.pop(context, parsed);
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (value == null) return;
+    await notifier.updateBudget(value);
+    messenger.showSnackBar(const SnackBar(content: Text('Presupuesto actualizado')));
+  }
 
-                          return ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(
-                              merchant.toUpperCase(),
-                              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Text(
-                              AppTheme.getCategoryNameEs(cat),
-                              style: TextStyle(color: catColor, fontSize: 11, fontWeight: FontWeight.bold),
-                            ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                              onPressed: () async {
-                                await repo.deleteCategoryOverride(merchant);
-                                setDialogState(() {
-                                  overrides.remove(merchant);
-                                });
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Clasificación para "$merchant" eliminada')),
-                                );
-                              },
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-              actions: [
-                if (list.isNotEmpty)
-                  TextButton(
-                    onPressed: () async {
-                      await repo.clearAllCategoryOverrides();
-                      setDialogState(() {
-                        overrides.clear();
-                      });
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Todas las clasificaciones aprendidas han sido eliminadas')),
-                      );
-                    },
-                    child: const Text('Limpiar Todo', style: TextStyle(color: Colors.redAccent)),
-                  ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cerrar', style: TextStyle(color: Colors.grey)),
+  void _showLearned(BuildContext context) {
+    final repo = ref.read(expenseRepositoryProvider);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        final theme = Theme.of(context);
+        return StatefulBuilder(
+          builder: (context, setSheet) {
+            final overrides = repo.getAllCategoryOverrides().entries.toList()
+              ..sort((a, b) => a.key.compareTo(b.key));
+            return SafeArea(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.7,
                 ),
-              ],
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text('Aprendidas de tus cambios', style: theme.textTheme.titleLarge),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Cuando cambias la categoría de un pago, la app lo recuerda para ese comercio.',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 8),
+                      if (overrides.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          child: Text('Todavía no cambiaste ninguna categoría.',
+                              style: theme.textTheme.bodyMedium),
+                        )
+                      else
+                        Flexible(
+                          child: ListView(
+                            shrinkWrap: true,
+                            children: [
+                              for (final e in overrides)
+                                ListTile(
+                                  minTileHeight: AppSizes.minTouch,
+                                  contentPadding: EdgeInsets.zero,
+                                  title: Text(e.key),
+                                  subtitle: Text(_categoryName(e.value)),
+                                  trailing: IconButton(
+                                    tooltip: 'Olvidar ${e.key}',
+                                    onPressed: () async {
+                                      await repo.deleteCategoryOverride(e.key);
+                                      setSheet(() {});
+                                    },
+                                    icon: AppIcon(
+                                      AppIcons.trash,
+                                      color: context.appColors.budgetOver,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      if (overrides.isNotEmpty)
+                        TextButton(
+                          onPressed: () async {
+                            await repo.clearAllCategoryOverrides();
+                            setSheet(() {});
+                          },
+                          child: const Text('Olvidar todas'),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
             );
           },
         );
@@ -195,566 +326,276 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  void _showSourcesDialog(BuildContext context) {
-    final expenses = ref.read(expensesStateProvider).where((e) => e.isConfirmed && e.esGasto).toList();
-    
-    final sourceCounts = <PaymentSource, int>{};
-    final sourceTotals = <PaymentSource, double>{};
-    for (final exp in expenses) {
-      sourceCounts[exp.source] = (sourceCounts[exp.source] ?? 0) + 1;
-      sourceTotals[exp.source] = (sourceTotals[exp.source] ?? 0.0) + exp.amount;
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: AppTheme.cardBg,
-          title: const Text('Cuentas y Fuentes', style: TextStyle(color: Colors.white)),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView(
-              shrinkWrap: true,
-              children: PaymentSource.values.map((src) {
-                final count = sourceCounts[src] ?? 0;
-                final total = sourceTotals[src] ?? 0.0;
-                
-                Color color;
-                String name;
-                switch (src) {
-                  case PaymentSource.yape:
-                    color = AppTheme.yapePurple;
-                    name = 'Yape';
-                    break;
-                  case PaymentSource.plin:
-                    color = AppTheme.plinTeal;
-                    name = 'Plin';
-                    break;
-                  case PaymentSource.googlePay:
-                    color = AppTheme.googlePayBlue;
-                    name = 'Google Pay';
-                    break;
-                  default:
-                    color = AppTheme.manualGray;
-                    name = 'Registro Manual';
-                }
-
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(
-                    backgroundColor: color,
-                    radius: 14,
-                    child: Text(name[0], style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                  ),
-                  title: Text(name, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
-                  subtitle: Text('$count transacciones', style: const TextStyle(color: Colors.grey, fontSize: 11)),
-                  trailing: Text('S/ ${total.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
-                );
-              }).toList(),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cerrar', style: TextStyle(color: Colors.grey)),
-            ),
-          ],
-        );
-      },
-    );
+  String _categoryName(String name) {
+    const names = {
+      'alimentacion': 'Alimentación',
+      'transporte': 'Transporte',
+      'compras': 'Compras',
+      'servicios': 'Servicios',
+      'entretenimiento': 'Entretenimiento',
+      'otros': 'Otros',
+    };
+    return names[name] ?? name;
   }
 
-  void _showBackupDialog(BuildContext context) {
-    final expenses = ref.read(expensesStateProvider).where((e) => e.isConfirmed && e.esGasto).toList();
-    
-    // Generate CSV
-    final csvBuf = StringBuffer();
-    csvBuf.writeln('ID,Fecha,Establecimiento,Monto,Categoria,Fuente,Notas');
-    for (final exp in expenses) {
-      csvBuf.writeln(
-        '${exp.id},'
-        '${exp.date.toIso8601String()},'
-        '"${exp.merchant.replaceAll('"', '""')}",'
-        '${exp.amount.toStringAsFixed(2)},'
-        '${exp.category.name},'
-        '${exp.source.name},'
-        '"${exp.notes.replaceAll('"', '""')}"'
-      );
-    }
-    final csvText = csvBuf.toString();
+  Future<void> _exportCsv(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final csv = movimientosToCsv(ref.read(expensesStateProvider));
+    await Clipboard.setData(ClipboardData(text: csv));
+    messenger.showSnackBar(const SnackBar(content: Text('Movimientos copiados al portapapeles')));
+  }
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: AppTheme.cardBg,
-          title: const Text('Respaldo y Sincronización', style: TextStyle(color: Colors.white)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+  Future<void> _toggleLock(BuildContext context, bool enable) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final notifier = ref.read(passcodeEnabledProvider.notifier);
+    final auth = ref.read(localAuthProvider);
+
+    if (!enable) {
+      await notifier.setEnabled(false);
+      return;
+    }
+    // Se comprueba que el teléfono tenga un desbloqueo antes de activarlo.
+    var ok = false;
+    try {
+      if (await auth.isDeviceSupported()) {
+        ok = await auth.authenticate(
+          localizedReason: 'Confirma para activar el bloqueo de MiGasto',
+        );
+      } else {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Configura un PIN, huella o rostro en tu teléfono para usar el bloqueo.'),
+          ),
+        );
+        return;
+      }
+    } catch (_) {
+      ok = false;
+    }
+    if (ok) await notifier.setEnabled(true);
+  }
+
+  // -------------------------------------------------------------- simulador
+
+  Widget _simulator(BuildContext context) {
+    final theme = Theme.of(context);
+    const samples = [
+      'Yapeaste S/ 18.50 a Starbucks',
+      'Juan Pérez te yapeó S/ 15.00',
+      'Compra por S/ 89.20 en Metro con Google Wallet',
+    ];
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadius.box),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Probar la lectura de pagos', style: theme.textTheme.titleSmall),
+          const SizedBox(height: 4),
+          Text(
+            'Escribe un texto como el de una notificación. Pasa por el mismo camino que un pago real.',
+            style: theme.textTheme.bodySmall,
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              Text(
-                'Hemos generado un respaldo en formato CSV con tus ${expenses.length} transacciones confirmadas.',
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                constraints: const BoxConstraints(maxHeight: 120),
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF131219),
-                  borderRadius: BorderRadius.circular(8),
+              for (final s in samples)
+                ActionChip(
+                  label: Text(s, style: const TextStyle(fontSize: 12)),
+                  onPressed: () => setState(() => _simController.text = s),
                 ),
-                child: SingleChildScrollView(
-                  child: Text(
-                    csvText.isEmpty ? 'Sin transacciones para respaldar.' : csvText,
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 10, color: Colors.greenAccent),
-                  ),
-                ),
-              ),
             ],
           ),
-          actions: [
-            if (expenses.isNotEmpty)
-              TextButton.icon(
-                onPressed: () {
-                  // Copy to clipboard
-                  Clipboard.setData(ClipboardData(text: csvText));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Respaldo CSV copiado al portapapeles')),
-                  );
-                },
-                icon: const Icon(Icons.copy, size: 16, color: AppTheme.neonGreen),
-                label: const Text('Copiar CSV', style: TextStyle(color: AppTheme.neonGreen)),
-              ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Respaldo exportado al portapapeles')),
-                );
-              },
-              child: const Text('Sincronizar ahora', style: TextStyle(color: AppTheme.neonGreen, fontWeight: FontWeight.bold)),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cerrar', style: TextStyle(color: Colors.grey)),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final providers = ref.watch(providersEnabledProvider);
-    final colorScheme = Theme.of(context).colorScheme;
-    final profileName = ref.watch(profileNameProvider);
-    final profileEmail = ref.watch(profileEmailProvider);
-    final passcodeEnabled = ref.watch(passcodeEnabledProvider);
-
-    // Dynamic initials
-    final initials = profileName.split(' ').map((e) => e.isNotEmpty ? e[0].toUpperCase() : '').join();
-    final initialsToShow = initials.length > 2 ? initials.substring(0, 2) : initials;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Ajustes'),
-      ),
-      body: ListView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-        children: [
-          // PROFILE HEADER CARD (Screen 6 Mockup)
-          Card(
-            color: AppTheme.cardBg,
-            child: ListTile(
-              leading: CircleAvatar(
-                radius: 20,
-                backgroundColor: AppTheme.neonGreen,
-                child: Text(
-                  initialsToShow.isNotEmpty ? initialsToShow : 'U',
-                  style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-                ),
-              ),
-              title: Text(
-                profileName.isNotEmpty ? profileName : 'Configurar Nombre',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: profileName.isNotEmpty ? Colors.white : Colors.grey[500],
-                  fontSize: 15,
-                ),
-              ),
-              subtitle: Text(
-                profileEmail.isNotEmpty ? profileEmail : 'correo@ejemplo.com',
-                style: TextStyle(
-                  color: profileEmail.isNotEmpty ? Colors.grey[400] : Colors.grey[600],
-                  fontSize: 12,
-                ),
-              ),
-              trailing: const Icon(Icons.edit_outlined, color: Colors.grey, size: 20),
-              onTap: () => _showEditProfileDialog(context, profileName, profileEmail),
-            ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _simController,
+            minLines: 1,
+            maxLines: 3,
+            decoration: const InputDecoration(hintText: 'Texto de la notificación'),
           ),
-          const SizedBox(height: 16),
-
-          // BUDGET ADJUSTER
-          Card(
-            color: AppTheme.cardBg,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    'Presupuesto mensual',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _budgetController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            prefixText: 'S/ ',
-                            labelText: 'Límite',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          ),
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      ElevatedButton(
-                        onPressed: () {
-                          final newLimit = double.tryParse(_budgetController.text) ?? 1200.0;
-                          ref.read(expensesStateProvider.notifier).updateBudget(newLimit);
-                          FocusScope.of(context).unfocus();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Presupuesto actualizado')),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.neonGreen,
-                          foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: const Text('Guardar'),
-                      )
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // DETECCIÓN AUTOMÁTICA CARD (Screen 6 Mockup)
-          Card(
-            color: AppTheme.cardBg,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Text(
-                    'Detección automática',
-                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white70, fontSize: 12),
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.notifications_outlined, color: Colors.white),
-                  title: const Text('Notificaciones', style: TextStyle(fontSize: 14, color: Colors.white)),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _isAccessibilityEnabled ? 'Activado' : 'Configurar',
-                        style: TextStyle(
-                          color: _isAccessibilityEnabled ? Colors.greenAccent : Colors.orangeAccent,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
-                    ],
-                  ),
-                  onTap: () async {
-                    await ref.read(permissionsCheckerProvider).openAccessibilitySettings();
-                    Future.delayed(const Duration(seconds: 2), _checkNativePermissions);
-                  },
-                ),
-                const Divider(height: 1, color: Color(0xFF25232F)),
-                ListTile(
-                  leading: const Icon(Icons.remove_red_eye_outlined, color: Colors.white),
-                  title: const Text('Accesibilidad (OCR)', style: TextStyle(fontSize: 14, color: Colors.white)),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _isOverlayGranted ? 'Activado' : 'Permitir',
-                        style: TextStyle(
-                          color: _isOverlayGranted ? Colors.greenAccent : Colors.orangeAccent,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
-                    ],
-                  ),
-                  onTap: () async {
-                    await ref.read(permissionsCheckerProvider).requestOverlayPermission();
-                    Future.delayed(const Duration(seconds: 2), _checkNativePermissions);
-                  },
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // PROVIDER TOGGLES
-          Card(
-            color: AppTheme.cardBg,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Text(
-                    'Aplicaciones Activas',
-                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white70, fontSize: 12),
-                  ),
-                ),
-                SwitchListTile(
-                  value: providers['yape'] ?? false,
-                  title: const Text('Yape', style: TextStyle(fontSize: 14)),
-                  activeColor: AppTheme.yapePurple,
-                  onChanged: (_) {
-                    ref.read(providersEnabledProvider.notifier).toggleProvider('yape');
-                  },
-                ),
-                const Divider(height: 1, color: Color(0xFF25232F)),
-                SwitchListTile(
-                  value: providers['plin'] ?? false,
-                  title: const Text('Plin', style: TextStyle(fontSize: 14)),
-                  activeColor: AppTheme.plinTeal,
-                  onChanged: (_) {
-                    ref.read(providersEnabledProvider.notifier).toggleProvider('plin');
-                  },
-                ),
-                const Divider(height: 1, color: Color(0xFF25232F)),
-                SwitchListTile(
-                  value: providers['googlePay'] ?? false,
-                  title: const Text('Google Pay', style: TextStyle(fontSize: 14)),
-                  activeColor: AppTheme.googlePayBlue,
-                  onChanged: (_) {
-                    ref.read(providersEnabledProvider.notifier).toggleProvider('googlePay');
-                  },
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // PERSONALIZACIÓN CARD (Screen 6 Mockup)
-          Card(
-            color: AppTheme.cardBg,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Text(
-                    'Personalización',
-                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white70, fontSize: 12),
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.style_outlined, color: Colors.white),
-                  title: const Text('Categorías', style: TextStyle(fontSize: 14, color: Colors.white)),
-                  trailing: const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
-                  onTap: () => _showCategoriesDialog(context),
-                ),
-                const Divider(height: 1, color: Color(0xFF25232F)),
-                ListTile(
-                  leading: const Icon(Icons.account_balance_wallet_outlined, color: Colors.white),
-                  title: const Text('Cuentas y fuentes', style: TextStyle(fontSize: 14, color: Colors.white)),
-                  trailing: const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
-                  onTap: () => _showSourcesDialog(context),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // GENERAL CARD (Screen 6 Mockup)
-          Card(
-            color: AppTheme.cardBg,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Text(
-                    'General',
-                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white70, fontSize: 12),
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.sync_outlined, color: Colors.white),
-                  title: const Text('Respaldo y sincronización', style: TextStyle(fontSize: 14, color: Colors.white)),
-                  trailing: const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
-                  onTap: () => _showBackupDialog(context),
-                ),
-                const Divider(height: 1, color: Color(0xFF25232F)),
-                SwitchListTile(
-                  secondary: const Icon(Icons.lock_outline, color: Colors.white),
-                  title: const Text('Bloqueo de PIN (Simulado)', style: TextStyle(fontSize: 14, color: Colors.white)),
-                  subtitle: const Text('(Próximamente)', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                  value: passcodeEnabled,
-                  activeColor: AppTheme.neonGreen,
-                  onChanged: (_) {
-                    ref.read(passcodeEnabledProvider.notifier).toggle();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Bloqueo PIN ${!passcodeEnabled ? "activado" : "desactivado"}')),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // SANDBOX SIMULATOR AREA
-          if (kDebugMode) Card(
-            color: colorScheme.primary.withOpacity(0.04),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.bug_report_outlined, color: AppTheme.neonGreen),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Simulador OCR / Notificaciones',
-                        style: TextStyle(
-                          color: colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Simula un mensaje para ver en tiempo real la categorización por IA y activar el panel flotante.',
-                    style: TextStyle(color: Colors.grey[400], fontSize: 11),
-                  ),
-                  const SizedBox(height: 12),
-                  
-                  // Examples chips
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      _buildQuickSimChip('☕ Starbucks S/ 18.50', 'Yapeaste S/ 18.50 a Starbucks Coffee'),
-                      _buildQuickSimChip('🚕 Uber S/ 15.00', 'Plin: Recibiste S/ 15.00 de Pedro Uber'),
-                      _buildQuickSimChip('🛒 Metro S/ 89.20', 'Compra Google Pay de S/ 89.20 en Metro Limatambo'),
-                      _buildQuickSimChip('🍿 Netflix S/ 44.90', 'Cargo Google Pay S/ 44.90 a Netflix Peru'),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
-                  TextField(
-                    controller: _simTextController,
-                    maxLines: 2,
-                    decoration: const InputDecoration(
-                      labelText: 'Mensaje de Notificación',
-                      hintText: 'Ej: Yape S/ 25.50 a Tambo',
-                      border: OutlineInputBorder(),
-                    ),
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
-                  ),
-                  const SizedBox(height: 12),
-                  ElevatedButton.icon(
-                    onPressed: () async {
-                      final text = _simTextController.text.trim();
-                      if (text.isEmpty) return;
-                      final messenger = ScaffoldMessenger.of(context);
-                      final notifier = ref.read(expensesStateProvider.notifier);
-                      final permissions = ref.read(permissionsCheckerProvider);
-
-                      // Mismas reglas que usa la detección real (assets/reader_rules.json).
-                      final reader = await PaymentReader.fromAsset();
-                      final parsed = reader.parse(text);
-                      if (parsed == null) {
-                        messenger.showSnackBar(
-                          const SnackBar(
-                            content: Text('No pudimos leer este pago. Incluye el monto, por ejemplo S/ 15.00, y la app (Yape, Plin o Google Wallet).'),
-                          ),
-                        );
-                        return;
-                      }
-
-                      if (defaultTargetPlatform == TargetPlatform.android) {
-                        // Pasa por el mismo camino que una notificación real.
-                        await permissions.simulateNotification(text);
-                      } else {
-                        await notifier.triggerIncomingPayment(
-                          amount: parsed.amount,
-                          merchant: parsed.peer,
-                          providerStr: parsed.provider,
-                          rawText: text,
-                          tipoStr: parsed.type,
-                        );
-                      }
-                      messenger.showSnackBar(
-                        SnackBar(content: Text('Simulado: ${parsed.type} de S/ ${parsed.amount.toStringAsFixed(2)}')),
-                      );
-                    },
-                    icon: const Icon(Icons.play_arrow),
-                    label: const Text('Procesar y Simular'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.neonGreen,
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 10),
+          FilledButton(onPressed: _runSimulation, child: const Text('Probar')),
         ],
       ),
     );
   }
 
-  Widget _buildQuickSimChip(String label, String text) {
-    return ActionChip(
-      label: Text(label, style: const TextStyle(fontSize: 10)),
-      backgroundColor: const Color(0xFF131219),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
+  Future<void> _runSimulation() async {
+    final text = _simController.text.trim();
+    if (text.isEmpty) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final notifier = ref.read(expensesStateProvider.notifier);
+    final permissions = ref.read(permissionsCheckerProvider);
+
+    // Mismas reglas que usa la detección real (assets/reader_rules.json).
+    final reader = await PaymentReader.fromAsset();
+    final parsed = reader.parse(text);
+    if (parsed == null) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No pudimos leer este pago. Incluye el monto, por ejemplo S/ 15.00, y la app (Yape, Plin o Google Wallet).',
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (_isAndroid) {
+      // Pasa por el mismo camino que una notificación real.
+      await permissions.simulateNotification(text);
+    } else {
+      await notifier.triggerIncomingPayment(
+        amount: parsed.amount,
+        merchant: parsed.peer,
+        providerStr: parsed.provider,
+        rawText: text,
+        tipoStr: parsed.type,
+      );
+    }
+    messenger.showSnackBar(
+      SnackBar(content: Text('Leído: ${parsed.type} de ${formatSoles(parsed.amount)}')),
+    );
+  }
+}
+
+/// Fila de ajustes: ícono, título, subtítulo y, a la derecha, estado, valor,
+/// interruptor o flecha.
+class _SettingRow extends StatelessWidget {
+  const _SettingRow({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    this.trailing,
+    this.trailingText,
+    this.onTap,
+    this.switchValue,
+    this.onSwitch,
+  });
+
+  final AppIcons icon;
+  final String title;
+  final String? subtitle;
+  final Widget? trailing;
+  final String? trailingText;
+  final VoidCallback? onTap;
+  final bool? switchValue;
+  final ValueChanged<bool>? onSwitch;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isSwitch = switchValue != null;
+
+    Widget? right = trailing;
+    if (isSwitch) {
+      right = Switch(value: switchValue!, onChanged: onSwitch);
+    } else if (trailingText != null) {
+      right = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            trailingText!,
+            style: AppText.amount(
+                theme.textTheme.bodyMedium!.copyWith(fontWeight: FontWeight.w600)),
+          ),
+          const SizedBox(width: 4),
+          AppIcon(AppIcons.chevron, size: AppIconSize.small, color: scheme.onSurfaceVariant),
+        ],
+      );
+    } else if (right == null && onTap != null) {
+      right = AppIcon(AppIcons.chevron, size: AppIconSize.small, color: scheme.onSurfaceVariant);
+    }
+
+    return Semantics(
+      container: true,
+      button: onTap != null && !isSwitch,
+      toggled: isSwitch ? switchValue : null,
+      label: [title, ?subtitle].join('. '),
+      excludeSemantics: !isSwitch,
+      child: InkWell(
+        onTap: isSwitch ? () => onSwitch?.call(!switchValue!) : onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: AppSizes.minTouch + 8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              children: [
+                AppIcon(icon, color: scheme.onSurfaceVariant),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: theme.textTheme.titleSmall),
+                      if (subtitle != null)
+                        Text(subtitle!, style: theme.textTheme.bodySmall!.copyWith(fontSize: 12)),
+                    ],
+                  ),
+                ),
+                if (right != null) ...[const SizedBox(width: 8), right],
+              ],
+            ),
+          ),
+        ),
       ),
-      onPressed: () {
-        setState(() {
-          _simTextController.text = text;
-        });
-      },
+    );
+  }
+}
+
+/// Interruptor de una fuente de pago, con su punto de color.
+class _SourceSwitch extends ConsumerWidget {
+  const _SourceSwitch({
+    required this.label,
+    required this.sourceKey,
+    required this.enabled,
+  });
+
+  final String label;
+  final String sourceKey;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final color = context.appColors.sourceColor(sourceKey);
+    return Semantics(
+      container: true,
+      toggled: enabled,
+      label: 'Registrar pagos de $label',
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: () => ref.read(providersEnabledProvider.notifier).toggleProvider(sourceKey),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: AppSizes.minTouch + 8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Row(
+              children: [
+                const SizedBox(width: 5),
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 17),
+                Expanded(child: Text('Registrar pagos de $label', style: theme.textTheme.titleSmall)),
+                Switch(
+                  value: enabled,
+                  onChanged: (_) =>
+                      ref.read(providersEnabledProvider.notifier).toggleProvider(sourceKey),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

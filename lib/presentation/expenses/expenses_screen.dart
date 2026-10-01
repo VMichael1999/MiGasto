@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../domain/entities/movimiento.dart';
+import '../../shared/csv_export.dart';
 import '../../shared/format.dart';
 import '../../shared/labels.dart';
 import '../../shared/widgets/app_icons.dart';
@@ -433,29 +434,9 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     );
   }
 
-  String _csv(String value) => '"${value.replaceAll('"', '""')}"';
-
   void _exportToCsv(BuildContext context) {
-    final all = ref.read(expensesStateProvider);
-    final buffer = StringBuffer();
-    // Sin ubicación: solo viaja lo que el usuario ve en la lista.
-    buffer.writeln('ID,Tipo,Monto,Contraparte,Categoria,Fuente,Canal,Estado,Fecha,Notas');
-    for (final m in all) {
-      buffer.writeln([
-        m.id,
-        m.tipo.name,
-        m.amount.toStringAsFixed(2),
-        _csv(m.merchant),
-        categoryLabel(m.category),
-        m.source.name,
-        m.canal.name,
-        m.estado.name,
-        m.date.toIso8601String(),
-        _csv(m.notes),
-      ].join(','));
-    }
-
-    Clipboard.setData(ClipboardData(text: buffer.toString())).then((_) {
+    final csv = movimientosToCsv(ref.read(expensesStateProvider));
+    Clipboard.setData(ClipboardData(text: csv)).then((_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Movimientos copiados al portapapeles')),
