@@ -66,7 +66,10 @@ class _MyAppState extends ConsumerState<MyApp> {
     return MaterialApp.router(
       title: 'MisGastos',
       debugShowCheckedModeBanner: false,
-      theme: widget.themeOverride ?? AppTheme.darkTheme, // Slate-dark mockup theme
+      // Claro u oscuro según el sistema.
+      theme: widget.themeOverride ?? AppTheme.lightTheme,
+      darkTheme: widget.themeOverride ?? AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
       routerConfig: router,
       builder: (context, child) {
         if (!_dbInitialized) {

@@ -5,95 +5,13 @@ import 'app_colors.dart';
 import 'app_tokens.dart';
 
 class AppTheme {
-  // Brand colors
-  // Alias del modo oscuro; en pantallas nuevas usa context.appColors.
-  static const Color yapePurple = Color(0xFF9B4FD6);
-  static const Color plinTeal = Color(0xFF10BFAF);
-  static const Color googlePayBlue = Color(0xFF5B9BF8);
-  static const Color manualGray = Color(0xFF8A8794);
-
-  // App Theme Accent Colors
-  static const Color neonGreen = Color(0xFF8CE885);
+  // Colores base. Los demás (ingreso, presupuesto, fuentes de pago, mapa) están
+  // en AppColors, con su versión clara y oscura.
+  static const Color neonGreen = Color(0xFF8CE885); // verde de marca
   static const Color darkBg = Color(0xFF0F0E13);
   static const Color cardBg = Color(0xFF1B1922);
-
-  // Modo claro
   static const Color lightBg = Color(0xFFF4F3F6);
   static const Color lightSurface = Color(0xFFFFFFFF);
-
-  static Color getSourceColor(String sourceName) {
-    switch (sourceName.toLowerCase()) {
-      case 'yape':
-        return yapePurple;
-      case 'plin':
-        return plinTeal;
-      case 'googlepay':
-      case 'google_pay':
-        return googlePayBlue;
-      default:
-        return manualGray;
-    }
-  }
-
-  static String getCategoryEmoji(dynamic category) {
-    final catName = category.toString().split('.').last;
-    switch (catName) {
-      case 'alimentacion':
-        return '🍔';
-      case 'transporte':
-        return '🚗';
-      case 'compras':
-        return '🛍️';
-      case 'servicios':
-        return '💡';
-      case 'entretenimiento':
-        return '🍿';
-      default:
-        return '📦';
-    }
-  }
-
-  static String getCategoryNameEs(dynamic category) {
-    final catName = category.toString().split('.').last;
-    switch (catName) {
-      case 'alimentacion':
-        return 'Alimentación';
-      case 'transporte':
-        return 'Transporte';
-      case 'compras':
-        return 'Compras';
-      case 'servicios':
-        return 'Servicios';
-      case 'entretenimiento':
-        return 'Entretenimiento';
-      case 'sueldo':
-        return 'Sueldo';
-      case 'transferenciaRecibida':
-        return 'Transferencia recibida';
-      case 'venta':
-        return 'Venta';
-      default:
-        return 'Otros';
-    }
-  }
-
-  static Color getCategoryColor(dynamic category) {
-    final catName = category.toString().split('.').last;
-    switch (catName) {
-      case 'alimentacion':
-        return const Color(0xFFBC85E8); // Purple-lavender
-      case 'transporte':
-        return const Color(0xFF45A5F5); // Light blue
-      case 'compras':
-        return const Color(0xFFFFB74D); // Orange
-      case 'servicios':
-        return const Color(0xFF4DB6AC); // Teal
-      case 'entretenimiento':
-        return const Color(0xFFF06292); // Pink
-      default:
-        return Colors.grey;
-    }
-  }
 
   static ThemeData get darkTheme => _build(
         brightness: Brightness.dark,
