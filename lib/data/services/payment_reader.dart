@@ -31,7 +31,8 @@ class ParsedPayment {
 /// lo mismo.
 class PaymentReader {
   PaymentReader._(this._rules)
-      : _amount = RegExp(_rules['amount'] as String, caseSensitive: false),
+      : _amount =
+            RegExp(_rules['amount'] as String, caseSensitive: false, unicode: true),
         _income = _compileAll(_rules['income']),
         _expense = _compileAll(_rules['expense']);
 
@@ -49,7 +50,7 @@ class PaymentReader {
   final List<RegExp> _expense;
 
   static List<RegExp> _compileAll(dynamic list) => (list as List)
-      .map((p) => RegExp(p as String, caseSensitive: false))
+      .map((p) => RegExp(p as String, caseSensitive: false, unicode: true))
       .toList();
 
   /// `null` si el texto no es un pago reconocible (no se inventa un gasto).
@@ -80,7 +81,9 @@ class PaymentReader {
       final map = p as Map<String, dynamic>;
       for (final k in (map['keywords'] as List).cast<String>()) {
         final found = map['wordBoundary'] == true
-            ? RegExp('\\b${RegExp.escape(k)}\\b').hasMatch(lower)
+            ? RegExp('(?<![\\p{L}\\p{N}])${RegExp.escape(k)}(?![\\p{L}\\p{N}])',
+                    unicode: true)
+                .hasMatch(lower)
             : lower.contains(k);
         if (found) return map['id'] as String;
       }

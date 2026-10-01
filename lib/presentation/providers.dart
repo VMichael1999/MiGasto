@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -63,15 +66,108 @@ final expensesStateProvider = StateNotifierProvider<ExpensesNotifier, List<Movim
   return ExpensesNotifier(repo, ref);
 });
 
-class ExpensesNotifier extends StateNotifier<List<Movimiento>> {
+class ExpensesNotifier extends StateNotifier<List<Movimiento>>
+    with WidgetsBindingObserver {
   final ExpenseRepository _repo;
   final Ref _ref;
   static const _channel = MethodChannel('com.example.mi_gasto/accessibility');
   final _uuid = const Uuid();
 
   ExpensesNotifier(this._repo, this._ref) : super([]) {
-    _loadExpenses();
+    _boot();
     _initChannel();
+    try {
+      WidgetsBinding.instance.addObserver(this);
+    } catch (_) {
+      // Sin binding (algunas pruebas): no hay ciclo de vida que escuchar.
+    }
+  }
+
+  Future<void> _boot() async {
+    await _loadExpenses();
+    await drainNativeQueue();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState lifecycleState) {
+    if (lifecycleState == AppLifecycleState.resumed) drainNativeQueue();
+  }
+
+  @override
+  void dispose() {
+    try {
+      WidgetsBinding.instance.removeObserver(this);
+    } catch (_) {}
+    super.dispose();
+  }
+
+  /// Guarda los pagos que el código nativo detectó (incluso con la app cerrada).
+  Future<void> drainNativeQueue() async {
+    String? raw;
+    try {
+      raw = await _channel.invokeMethod<String>('takeNativeQueue');
+    } catch (_) {
+      return; // plataforma sin código nativo de detección
+    }
+    if (raw == null || raw.isEmpty) return;
+
+    List<dynamic> items;
+    try {
+      items = jsonDecode(raw) as List<dynamic>;
+    } catch (_) {
+      return;
+    }
+    for (final item in items) {
+      if (!mounted) return;
+      await _ingestNative(item as Map<String, dynamic>);
+    }
+  }
+
+  Future<void> _ingestNative(Map<String, dynamic> item) async {
+    final amount = (item['amount'] as num).toDouble();
+    final peer = (item['peer'] as String?) ?? 'Desconocido';
+    final providerStr = (item['provider'] as String?) ?? 'otro';
+    final rawText = (item['rawText'] as String?) ?? '';
+    final tipo = item['type'] == 'ingreso' ? TipoMovimiento.ingreso : TipoMovimiento.gasto;
+    final confirmed = item['confirmed'] == true;
+    final at = DateTime.fromMillisecondsSinceEpoch(
+        (item['at'] as num?)?.toInt() ?? DateTime.now().millisecondsSinceEpoch);
+    final source = PaymentSource.values.firstWhere(
+      (s) => s.name == providerStr,
+      orElse: () => PaymentSource.otro,
+    );
+
+    // Un pago confirmado que llegó por dos vías cuenta una sola vez.
+    if (isDuplicateMovement(state, amount: amount, source: source, date: at, tipo: tipo)) {
+      return;
+    }
+
+    final movimiento = Movimiento(
+      id: _uuid.v4(),
+      amount: amount,
+      merchant: peer,
+      category: await _categoryFor(tipo, rawText, peer),
+      source: source,
+      date: at,
+      tipo: tipo,
+      canal: CanalMovimiento.notificacion,
+      estado: confirmed ? EstadoMovimiento.confirmado : EstadoMovimiento.pendiente,
+      textoOriginal: rawText,
+    );
+    await _repo.saveExpense(movimiento);
+    if (!mounted) return;
+    state = [movimiento, ...state]..sort((a, b) => b.date.compareTo(a.date));
+  }
+
+  Future<Categoria> _categoryFor(TipoMovimiento tipo, String rawText, String peer) async {
+    if (tipo == TipoMovimiento.ingreso) {
+      return NlpClassifierService.classifyIncome(rawText, peer);
+    }
+    // 1. Categoría aprendida de los cambios del usuario para este comercio
+    final learned = await _repo.getCategoryOverride(peer);
+    if (learned != null && !learned.esDeIngreso) return learned;
+    // 2. Reglas por palabras clave
+    return NlpClassifierService.classify(rawText, peer);
   }
 
   Future<void> _loadExpenses() async {
@@ -105,7 +201,7 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>> {
           );
         }
       } else if (call.method == 'onTransactionSaved') {
-        _loadExpenses();
+        drainNativeQueue();
       }
     });
   }
@@ -140,16 +236,7 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>> {
       return;
     }
 
-    Categoria? predicted;
-    if (tipo == TipoMovimiento.ingreso) {
-      predicted = NlpClassifierService.classifyIncome(rawText, merchant);
-    } else {
-      // 1. Categoría aprendida de los cambios del usuario para este comercio
-      final learned = await _repo.getCategoryOverride(merchant);
-      if (learned != null && !learned.esDeIngreso) predicted = learned;
-      // 2. Reglas por palabras clave
-      predicted ??= NlpClassifierService.classify(rawText, merchant);
-    }
+    final predicted = await _categoryFor(tipo, rawText, merchant);
 
     final movimiento = Movimiento(
       id: _uuid.v4(),

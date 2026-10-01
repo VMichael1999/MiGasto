@@ -45,6 +45,10 @@ class MainActivity: FlutterActivity() {
                         result.success(true)
                     }
                 }
+                "takeNativeQueue" -> {
+                    // Pagos que el código nativo detectó mientras la app estaba cerrada.
+                    result.success(NativeQueue.take(this))
+                }
                 "simulateNotification" -> {
                     val text = call.argument<String>("text") ?: ""
                     MyAccessibilityService.simulateNotification(text, this)
@@ -69,6 +73,7 @@ class MainActivity: FlutterActivity() {
             val amount = intent.getDoubleExtra("amount", 0.0)
             val merchant = intent.getStringExtra("merchant") ?: ""
             val provider = intent.getStringExtra("provider") ?: ""
+            val type = intent.getStringExtra("type") ?: "gasto"
             val rawText = intent.getStringExtra("rawText") ?: ""
 
             // Validate inputs
@@ -82,6 +87,7 @@ class MainActivity: FlutterActivity() {
                     "amount" to amount,
                     "peerName" to merchant,
                     "provider" to provider,
+                    "type" to type,
                     "rawText" to rawText
                 ))
             }

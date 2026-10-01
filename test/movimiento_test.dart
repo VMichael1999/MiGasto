@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mi_gasto/data/datasource/local_database.dart';
@@ -218,6 +219,87 @@ void main() {
       expect(container.read(expensesStateProvider), isEmpty);
       await notifier.restoreExpense(m);
       expect(container.read(expensesStateProvider).single.id, m.id);
+    });
+  });
+
+  group('Cola nativa', () {
+    const channel = MethodChannel('com.example.mi_gasto/accessibility');
+
+    Future<ProviderContainer> containerWithQueue(String? queueJson) async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+        if (call.method == 'takeNativeQueue') return queueJson;
+        return null;
+      });
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final c = ProviderContainer(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      );
+      await c.read(localDatabaseProvider).init();
+      c.read(expensesStateProvider.notifier);
+      await Future.delayed(const Duration(milliseconds: 100));
+      return c;
+    }
+
+    tearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null);
+    });
+
+    test('guarda los pagos detectados con la app cerrada', () async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final c = await containerWithQueue(jsonEncode([
+        {
+          'amount': 25.5,
+          'peer': 'Tambo',
+          'provider': 'yape',
+          'type': 'gasto',
+          'rawText': 'Yapeaste S/ 25.50 a Tambo',
+          'confirmed': true,
+          'at': now,
+        },
+        {
+          'amount': 15,
+          'peer': 'Juan Pérez',
+          'provider': 'yape',
+          'type': 'ingreso',
+          'rawText': 'Juan Pérez te yapeó S/ 15.00',
+          'confirmed': false,
+          'at': now,
+        },
+        // El mismo gasto llegó dos veces.
+        {
+          'amount': 25.5,
+          'peer': 'Tambo',
+          'provider': 'yape',
+          'type': 'gasto',
+          'rawText': 'Yapeaste S/ 25.50 a Tambo',
+          'confirmed': true,
+          'at': now + 5000,
+        },
+      ]));
+      addTearDown(c.dispose);
+
+      final list = c.read(expensesStateProvider);
+      expect(list, hasLength(2));
+
+      final gasto = list.firstWhere((m) => m.esGasto);
+      expect(gasto.estado, EstadoMovimiento.confirmado);
+      expect(gasto.category, Categoria.compras);
+      expect(gasto.canal, CanalMovimiento.notificacion);
+      expect(gasto.textoOriginal, 'Yapeaste S/ 25.50 a Tambo');
+
+      final ingreso = list.firstWhere((m) => m.esIngreso);
+      expect(ingreso.estado, EstadoMovimiento.pendiente);
+      expect(ingreso.category, Categoria.transferenciaRecibida);
+    });
+
+    test('una cola vacía no hace nada', () async {
+      final c = await containerWithQueue('[]');
+      addTearDown(c.dispose);
+      expect(c.read(expensesStateProvider), isEmpty);
     });
   });
 }
