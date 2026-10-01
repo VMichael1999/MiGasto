@@ -255,7 +255,7 @@ Para ver el flujo completo sin hacer un pago real, en una versión de **depuraci
 
 1. **Onboarding:** acepta y activa la lectura, o elige «Usar solo registro manual».
 2. **Permisos:** en Ajustes activa «Lectura de pagos» (Acceso a notificaciones) y, si quieres, «Ventana flotante», «Pagos que envías» y «Avisos de pagos».
-3. **Probar la lectura:** al final de Ajustes, en **Solo desarrollo**, escribe un texto como el de una notificación (por ejemplo `Yapeaste S/ 18.50 a Starbucks` o `Ana Torres te yapeó S/ 45.00`) y toca **Probar**. Pasa por el mismo camino que un pago real.
+3. **Probar la lectura:** al final de Ajustes, en **Solo desarrollo**, escribe un texto como el de una notificación (por ejemplo `Yapeaste S/ 18.50 a una tienda` o `Ana te yapeó S/ 45.00`) y toca **Probar**. Pasa por el mismo camino que un pago real.
 4. **Segundo plano:** minimiza la app y repite: verás la **ventana flotante** (o, con la pantalla bloqueada, la **notificación**). Un gasto se guarda solo a los 4 segundos; un ingreso espera tu confirmación (botón **Guardar** o **Ignorar**).
 5. **Respaldo:** en Ajustes crea un respaldo cifrado y restáuralo para ver cómo no se duplica lo que ya tienes.
 

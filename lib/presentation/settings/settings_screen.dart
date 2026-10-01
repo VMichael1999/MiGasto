@@ -789,11 +789,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
 
   Widget _simulator(BuildContext context) {
     final theme = Theme.of(context);
-    const samples = [
-      'Yapeaste S/ 18.50 a Starbucks',
-      'Juan Pérez te yapeó S/ 15.00',
-      'Compra por S/ 89.20 en Metro con Google Wallet',
-    ];
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -810,23 +805,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
             style: theme.textTheme.bodySmall,
           ),
           const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final s in samples)
-                ActionChip(
-                  label: Text(s, style: const TextStyle(fontSize: 12)),
-                  onPressed: () => setState(() => _simController.text = s),
-                ),
-            ],
-          ),
-          const SizedBox(height: 10),
           TextField(
             controller: _simController,
             minLines: 1,
             maxLines: 3,
-            decoration: const InputDecoration(hintText: 'Texto de la notificación'),
+            decoration: const InputDecoration(hintText: 'Ej.: Yapeaste S/ 18.50 a una tienda'),
           ),
           const SizedBox(height: 10),
           FilledButton(onPressed: _runSimulation, child: const Text('Probar')),
