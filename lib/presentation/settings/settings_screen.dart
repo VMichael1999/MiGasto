@@ -22,6 +22,7 @@ import '../../shared/widgets/app_icons.dart';
 import '../expenses/alias_dialog.dart';
 import '../lock/lock_gate.dart';
 import '../providers.dart';
+import '../../shared/dispose_later.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -334,6 +335,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
 
   Future<void> _editBudget(BuildContext context, double current) async {
     final controller = TextEditingController(text: current.toStringAsFixed(0));
+    // Todo el valor queda seleccionado: lo que escribas lo reemplaza, no se pega al final.
+    controller.selection = TextSelection(baseOffset: 0, extentOffset: controller.text.length);
     final messenger = ScaffoldMessenger.of(context);
     final notifier = ref.read(expensesStateProvider.notifier);
     final value = await showDialog<double>(
@@ -358,7 +361,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
         ],
       ),
     );
-    controller.dispose();
+    disposeControllersLater([controller]);
     if (value == null) return;
     await notifier.updateBudget(value);
     messenger.showSnackBar(const SnackBar(content: Text('Presupuesto actualizado')));

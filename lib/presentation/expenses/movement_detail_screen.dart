@@ -21,6 +21,7 @@ import '../../shared/widgets/custom_icons.dart';
 import '../../shared/category_display.dart';
 import '../providers.dart';
 import 'alias_dialog.dart';
+import '../../shared/dispose_later.dart';
 
 /// Abre el detalle de un movimiento.
 void showExpenseDetailSheet(BuildContext context, WidgetRef ref, Movimiento movimiento) {
@@ -534,11 +535,7 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
           ],
         ),
       ),
-    ).whenComplete(() {
-      merchant.dispose();
-      amount.dispose();
-      notes.dispose();
-    });
+    ).whenComplete(() => disposeControllersLater([merchant, amount, notes]));
   }
 
   Future<void> _confirmDelete(BuildContext context, Movimiento m) async {

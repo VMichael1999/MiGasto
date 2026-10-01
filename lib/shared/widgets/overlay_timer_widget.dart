@@ -13,6 +13,7 @@ import '../labels.dart';
 import 'app_icons.dart';
 import 'big_amount.dart';
 import 'category_icon.dart';
+import '../dispose_later.dart';
 
 /// Aviso de "Pago detectado" dentro de la app, con el mismo diseño de la ventana
 /// flotante de Android.
@@ -466,10 +467,6 @@ class _OverlayTimerWidgetState extends ConsumerState<OverlayTimerWidget>
           ],
         ),
       ),
-    ).whenComplete(() {
-      merchant.dispose();
-      amount.dispose();
-      notes.dispose();
-    });
+    ).whenComplete(() => disposeControllersLater([merchant, amount, notes]));
   }
 }
