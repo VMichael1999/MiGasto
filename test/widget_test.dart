@@ -62,11 +62,12 @@ void main() {
     await tester.pump(const Duration(milliseconds: 150));
     await tester.pump();
 
-    // Verify Onboarding screen has loaded by finding the 'Comenzar' button
-    expect(find.text('Comenzar'), findsOneWidget);
+    // El onboarding muestra qué lee la app y deja usarla solo con registro manual
+    expect(find.text('Qué lee la app y qué no'), findsOneWidget);
+    expect(find.text('Usar solo registro manual'), findsOneWidget);
 
-    // Tap the 'Comenzar' button to navigate to the Resumen/Dashboard
-    await tester.tap(find.text('Comenzar'));
+    // Sin dar permisos se puede entrar al Resumen
+    await tester.tap(find.text('Usar solo registro manual'));
     
     // Process route transition frames
     await tester.pump();
