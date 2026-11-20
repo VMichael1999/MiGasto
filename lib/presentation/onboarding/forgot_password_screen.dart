@@ -85,18 +85,22 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         ),
       ),
       const SizedBox(height: 18),
-      Container(
-        width: 54,
-        height: 54,
-        decoration: BoxDecoration(
-          color: const Color(0x227C5CFF),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0x447C5CFF)),
-        ),
-        child: Icon(
-          _sent ? Icons.mark_email_read_outlined : Icons.lock_reset_rounded,
-          size: 26,
-          color: MgColors.acc2,
+      // Align: en una Column con ancho completo el cuadro se estiraba como una barra.
+      Align(
+        alignment: Alignment.centerLeft,
+        child: Container(
+          width: 54,
+          height: 54,
+          decoration: BoxDecoration(
+            color: const Color(0x227C5CFF),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0x447C5CFF)),
+          ),
+          child: Icon(
+            _sent ? Icons.mark_email_read_outlined : Icons.lock_reset_rounded,
+            size: 26,
+            color: MgColors.acc2,
+          ),
         ),
       ),
       const SizedBox(height: 18),
