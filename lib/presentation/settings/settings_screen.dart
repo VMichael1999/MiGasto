@@ -15,6 +15,7 @@ import '../../core/theme/app_tokens.dart';
 import '../../core/theme/mg_colors.dart';
 import '../../core/widgets/confirm_sheet.dart';
 import '../../core/widgets/mg_toast.dart';
+import '../../data/debug_mock_data.dart';
 import '../../data/services/backup_service.dart';
 import '../../data/services/payment_reader.dart';
 import '../../domain/entities/movimiento.dart';
@@ -24,6 +25,7 @@ import '../../shared/profile.dart';
 import '../../shared/widgets/custom_icons.dart';
 import '../lock/lock_gate.dart';
 import '../providers.dart';
+import '../../core/layout/landscape_pane.dart';
 import '../../core/layout/adaptive.dart';
 import '../../shared/dispose_later.dart';
 import 'widgets/connected_accounts_sheet.dart';
@@ -136,15 +138,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     // Teléfono girado: perfil, cuenta y cierre de sesión a la izquierda; datos,
     // seguridad y permisos a la derecha.
     if (context.isLandscapePhone) {
-      Widget side(List<Widget> children) => Expanded(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.only(bottom: 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: children,
-              ),
-            ),
+      Widget side(List<Widget> children) => LandscapePane(
+            padding: const EdgeInsets.only(bottom: 32),
+            children: children,
           );
       return Scaffold(
         backgroundColor: MgColors.bg,
@@ -986,6 +982,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Solo existe en compilaciones de desarrollo.
+          Row(
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Datos de ejemplo',
+                      style: TextStyle(fontWeight: FontWeight.w600, color: MgColors.ink),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Solo en debug: sueldo de S/ 15,000 y unos S/ 7,500 en gastos. No se guardan en la base.',
+                      style: TextStyle(fontSize: 12, color: MgColors.ink2),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Switch(
+                activeThumbColor: MgColors.acc,
+                value: debugMockEnabled(ref.read(sharedPreferencesProvider), runningUnderTest: false),
+                onChanged: (on) async {
+                  await ref.read(sharedPreferencesProvider).setBool(keyDebugMockData, on);
+                  await ref.read(expensesStateProvider.notifier).reload();
+                  if (mounted) setState(() {});
+                },
+              ),
+            ],
+          ),
+          const Divider(color: MgColors.line, height: 20),
           const Text('Probar la lectura de pagos', style: TextStyle(fontWeight: FontWeight.w600, color: MgColors.ink)),
           const SizedBox(height: 4),
           const Text(
