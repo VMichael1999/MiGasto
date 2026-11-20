@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../data/datasource/local_database.dart';
+import '../data/debug_mock_data.dart';
 import '../data/repositories/expense_repository_impl.dart';
 import '../domain/entities/movimiento.dart';
 import '../domain/repositories/expense_repository.dart';
@@ -215,6 +216,9 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
     }
   }
 
+  /// Vuelve a leer los movimientos (p. ej. al encender o apagar los de ejemplo).
+  Future<void> reload() => _loadExpenses();
+
   Future<void> _boot() async {
     await _loadExpenses();
     await drainNativeQueue();
@@ -337,6 +341,11 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
 
   Future<void> _loadExpenses() async {
     final list = await _repo.getExpenses();
+
+    // Solo en debug: movimientos de ejemplo que NO se guardan en la base.
+    if (debugMockEnabled(_ref.read(sharedPreferencesProvider))) {
+      list.addAll(buildDebugMockMovements(DateTime.now()));
+    }
 
     list.sort((a, b) => b.date.compareTo(a.date));
     if (mounted) {
