@@ -1,26 +1,30 @@
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
 import 'app_tokens.dart';
 
+export 'app_colors.dart';
+export 'app_tokens.dart';
+export 'mg_colors.dart';
+
 class AppTheme {
-  // Colores base. Los demás (ingreso, presupuesto, fuentes de pago, mapa) están
-  // en AppColors, con su versión clara y oscura.
-  static const Color neonGreen = Color(0xFF8CE885); // verde de marca
-  static const Color darkBg = Color(0xFF0F0E13);
-  static const Color cardBg = Color(0xFF1B1922);
-  static const Color lightBg = Color(0xFFF4F3F6);
+  // Alias de compatibilidad: neonGreen ahora apunta al violeta oficial #7C5CFF
+  static const Color neonGreen = MgColors.acc;
+  static const Color darkBg = MgColors.bg;
+  static const Color cardBg = MgColors.card;
+  static const Color lightBg = Color(0xFFF4F3F7);
   static const Color lightSurface = Color(0xFFFFFFFF);
 
   static ThemeData get darkTheme => _build(
         brightness: Brightness.dark,
-        bg: darkBg,
-        surface: cardBg,
-        ink: const Color(0xFFF2F0F5),
-        muted: const Color(0xFFA5A1B0),
-        line: const Color(0xFF2A2733),
-        error: const Color(0xFFF07070),
+        bg: MgColors.bg,
+        surface: MgColors.card,
+        ink: MgColors.ink,
+        muted: MgColors.ink2,
+        line: MgColors.line,
+        error: MgColors.down,
         colors: AppColors.dark,
       );
 
@@ -36,28 +40,38 @@ class AppTheme {
       );
 
   static TextTheme _textTheme(Color ink, Color muted) {
-    TextStyle o(double size, FontWeight w, {double spacing = 0, Color? color}) =>
-        GoogleFonts.outfit(
+    TextStyle f(
+      double size,
+      FontWeight w, {
+      double? letterSpacing,
+      Color? color,
+      double height = 1.35,
+      List<FontFeature>? fontFeatures,
+    }) =>
+        GoogleFonts.inter(
           fontSize: size,
           fontWeight: w,
-          letterSpacing: spacing,
+          letterSpacing: letterSpacing,
           color: color ?? ink,
-          height: 1.4,
+          height: height,
+          fontFeatures: fontFeatures,
         );
+
     return TextTheme(
-      displayLarge: o(42, FontWeight.w700, spacing: -1.26), // saldo del Resumen
-      displayMedium: o(38, FontWeight.w700, spacing: -1.14), // monto en ventana flotante
-      headlineMedium: o(24, FontWeight.w700, spacing: -0.48), // título de pantalla
-      headlineSmall: o(22, FontWeight.w700, spacing: -0.33),
-      titleLarge: o(16.5, FontWeight.w600),
-      titleMedium: o(15, FontWeight.w600),
-      titleSmall: o(14.5, FontWeight.w600),
-      bodyLarge: o(14.5, FontWeight.w400),
-      bodyMedium: o(14, FontWeight.w400),
-      bodySmall: o(12.5, FontWeight.w400, color: muted),
-      labelLarge: o(13.5, FontWeight.w600),
-      labelMedium: o(12, FontWeight.w500, color: muted),
-      labelSmall: o(11, FontWeight.w400, color: muted),
+      displayLarge: f(42, FontWeight.w800, letterSpacing: -1.26, fontFeatures: AppText.tabular),
+      displayMedium: f(33, FontWeight.w800, letterSpacing: -0.99, fontFeatures: AppText.tabular),
+      headlineLarge: f(28, FontWeight.w800, letterSpacing: -0.84),
+      headlineMedium: f(24, FontWeight.w700, letterSpacing: -0.48), // títulos de pantalla
+      headlineSmall: f(20, FontWeight.w700, letterSpacing: -0.3),
+      titleLarge: f(17, FontWeight.w700),
+      titleMedium: f(15, FontWeight.w600),
+      titleSmall: f(14, FontWeight.w600),
+      bodyLarge: f(15, FontWeight.w400),
+      bodyMedium: f(14, FontWeight.w400),
+      bodySmall: f(13, FontWeight.w400, color: muted),
+      labelLarge: f(13, FontWeight.w600),
+      labelMedium: f(11.5, FontWeight.w500, color: muted),
+      labelSmall: f(11, FontWeight.w500, color: muted),
     );
   }
 
@@ -73,10 +87,10 @@ class AppTheme {
   }) {
     final scheme = ColorScheme(
       brightness: brightness,
-      primary: neonGreen,
-      onPrimary: darkBg,
-      secondary: colors.income,
-      onSecondary: bg,
+      primary: MgColors.acc,
+      onPrimary: Colors.white,
+      secondary: MgColors.up,
+      onSecondary: Colors.black,
       error: error,
       onError: Colors.white,
       surface: surface,
@@ -84,7 +98,7 @@ class AppTheme {
       onSurfaceVariant: muted,
       outline: line,
       outlineVariant: line,
-      surfaceContainerHighest: colors.raised,
+      surfaceContainerHighest: brightness == Brightness.dark ? MgColors.soft : const Color(0xFFF0EFF4),
     );
     final text = _textTheme(ink, muted);
 
@@ -102,7 +116,11 @@ class AppTheme {
         margin: EdgeInsets.zero,
         color: surface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.box),
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          side: BorderSide(
+            color: brightness == Brightness.dark ? MgColors.borderTenue : line,
+            width: 1,
+          ),
         ),
       ),
       dividerTheme: DividerThemeData(color: line, space: 1, thickness: 1),
@@ -115,87 +133,118 @@ class AppTheme {
         iconTheme: IconThemeData(color: ink),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: surface,
+        backgroundColor: bg,
         surfaceTintColor: Colors.transparent,
         indicatorColor: Colors.transparent,
         elevation: 0,
         iconTheme: WidgetStateProperty.resolveWith((states) {
           return IconThemeData(
             color: states.contains(WidgetState.selected)
-                ? colors.brandInk
+                ? MgColors.acc
                 : muted,
           );
         }),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
-          return GoogleFonts.outfit(
+          return GoogleFonts.inter(
             fontSize: 11,
-            color: selected ? ink : muted,
+            color: selected ? MgColors.acc : muted,
             fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
           );
         }),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: neonGreen,
-          foregroundColor: darkBg,
+          backgroundColor: MgColors.acc,
+          foregroundColor: Colors.white,
           minimumSize: const Size.fromHeight(AppSizes.primaryButton),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.button),
           ),
-          textStyle: text.titleLarge,
+          textStyle: text.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+          elevation: 0,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: ink,
-          minimumSize: const Size(AppSizes.minTouch, AppSizes.actionButton),
-          side: BorderSide(color: line, width: 1.5),
+          minimumSize: const Size.fromHeight(AppSizes.primaryButton),
+          side: BorderSide(color: line, width: 1),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.field),
+            borderRadius: BorderRadius.circular(AppRadius.button),
           ),
-          textStyle: text.titleSmall,
+          textStyle: text.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: colors.brandInk,
-          minimumSize: const Size(AppSizes.minTouch, AppSizes.minTouch),
+          foregroundColor: MgColors.acc,
           textStyle: text.labelLarge,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.button),
+          ),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: surface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-        hintStyle: text.bodyLarge?.copyWith(color: muted),
+        fillColor: brightness == Brightness.dark ? MgColors.soft : Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.field),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(color: line, width: 1),
         ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.field),
+          borderSide: BorderSide(color: line, width: 1),
+        ),
+        // Al enfocar el campo no se pinta ningún marco de color: queda el mismo
+        // borde tenue de siempre.
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.field),
+          borderSide: BorderSide(color: line, width: 1),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.field),
+          borderSide: BorderSide(color: error, width: 1),
+        ),
+        hintStyle: text.bodyMedium?.copyWith(color: muted),
+        labelStyle: text.bodyMedium?.copyWith(color: muted),
+      ),
+      // Chips (períodos, tipo de pago…): seleccionado en violeta suave, sin la
+      // marca de verificación ni el verde del tema base.
+      chipTheme: ChipThemeData(
+        backgroundColor: Colors.transparent,
+        selectedColor: MgColors.accSoft,
+        showCheckmark: false,
+        side: BorderSide(color: line),
+        labelStyle: TextStyle(color: muted, fontSize: 13, fontWeight: FontWeight.w500),
+        secondaryLabelStyle: const TextStyle(
+          color: MgColors.acc2,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
+        secondarySelectedColor: MgColors.accSoft,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       switchTheme: SwitchThemeData(
-        trackColor: WidgetStateProperty.resolveWith((states) =>
-            states.contains(WidgetState.selected) ? ink : line),
-        thumbColor: WidgetStateProperty.resolveWith((states) =>
-            states.contains(WidgetState.selected) ? neonGreen : muted),
-        trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
-      ),
-      bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: surface,
-        surfaceTintColor: Colors.transparent,
-        shape: const RoundedRectangleBorder(
-          borderRadius:
-              BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
-        ),
-      ),
-      snackBarTheme: SnackBarThemeData(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: colors.raised,
-        contentTextStyle: text.bodyMedium,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.card),
-        ),
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return Colors.white;
+          }
+          return muted;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return MgColors.acc;
+          }
+          return brightness == Brightness.dark ? MgColors.soft : line;
+        }),
+        trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
       ),
     );
   }

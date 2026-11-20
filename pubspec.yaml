@@ -56,6 +56,15 @@ dependencies:
   cryptography: ^2.9.0
   share_plus: ^13.3.0
   file_picker: ^13.1.0
+  liquid_glass_widgets: ^1.18.0
+  syncfusion_flutter_charts: ^35.1.43
+  firebase_core: ^5.2.0
+  firebase_auth: ^7.1.0
+  google_sign_in: ^7.2.0
+  sign_in_with_apple: ^8.2.0
+  crypto: ^3.0.8
+  cached_network_image: ^3.4.1
+  video_player: ^2.14.1
 
 dev_dependencies:
   flutter_test:
@@ -89,9 +98,14 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
+    - .env
     - assets/reader_rules.json
     - assets/category_rules.json
     - assets/brand/icon.svg
+    - assets/brand/logo_3d.png
+    - assets/icons/
+    - assets/avatars/
+    - assets/tutorial/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

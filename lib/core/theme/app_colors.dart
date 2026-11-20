@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'mg_colors.dart';
 
-/// Colores semánticos del rediseño v0.2 (oscuro y claro).
+export 'mg_colors.dart';
+
+/// Colores semánticos adaptados a los tokens de migasto-flutter-prompt.md.
 /// Acceso: `Theme.of(context).extension<AppColors>()!` o `context.appColors`.
 @immutable
 class AppColors extends ThemeExtension<AppColors> {
@@ -33,7 +36,7 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.mapLabel,
   });
 
-  /// Verde de marca usado como texto o ícono (en claro es más oscuro).
+  /// Violeta de marca MiGasto (MgColors.acc)
   final Color brandInk;
   final Color brandSoft;
   final Color raised;
@@ -53,7 +56,7 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color bar;
   final Color expenseBar;
 
-  // Fuentes de pago. Mismos valores en OverlayService.kt.
+  // Fuentes de pago.
   final Color yape;
   final Color plin;
   final Color card;
@@ -67,58 +70,60 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color mapSea;
   final Color mapLabel;
 
+  /// Tema oscuro oficial MiGasto
   static const AppColors dark = AppColors(
-    brandInk: Color(0xFF8CE885),
-    brandSoft: Color(0xFF1D2A1E),
-    raised: Color(0xFF23212B),
-    budgetOk: Color(0xFF3FCB5B),
-    budgetOkSoft: Color(0xFF16261A),
-    budgetWarning: Color(0xFFFAB219),
+    brandInk: MgColors.acc,
+    brandSoft: MgColors.accSoft,
+    raised: MgColors.card2,
+    budgetOk: MgColors.up,
+    budgetOkSoft: Color(0xFF16291E),
+    budgetWarning: MgColors.warn,
     budgetWarningSoft: Color(0xFF2E2412),
-    budgetOver: Color(0xFFF07070),
+    budgetOver: MgColors.down,
     budgetOverSoft: Color(0xFF321A1C),
-    income: Color(0xFF7FB6FF),
-    incomeSoft: Color(0xFF18233A),
-    pendingReview: Color(0xFF7FB6FF),
-    pendingReviewSoft: Color(0xFF18233A),
-    bar: Color(0xFF4A4656),
-    expenseBar: Color(0xFF9A96A6),
-    yape: Color(0xFF9B4FD6),
-    plin: Color(0xFF10BFAF),
+    income: MgColors.up,
+    incomeSoft: Color(0xFF16291E),
+    pendingReview: MgColors.acc2,
+    pendingReviewSoft: MgColors.accSoft,
+    bar: MgColors.line,
+    expenseBar: MgColors.down,
+    yape: Color(0xFF8B3FD6),
+    plin: Color(0xFF00C7B1),
     card: Color(0xFFE8B04A),
     googlePay: Color(0xFF5B9BF8),
-    manual: Color(0xFF8A8794),
-    mapBackground: Color(0xFF16141D),
-    mapBlock: Color(0xFF1F1D28),
-    mapRoad: Color(0xFF2E2B38),
+    manual: MgColors.ink3,
+    mapBackground: MgColors.bg,
+    mapBlock: MgColors.card,
+    mapRoad: MgColors.soft,
     mapPark: Color(0xFF19291D),
     mapSea: Color(0xFF111A23),
-    mapLabel: Color(0xFF7C7888),
+    mapLabel: MgColors.ink2,
   );
 
+  /// Versión clara (mapeada consistentemente con el acento violeta)
   static const AppColors light = AppColors(
-    brandInk: Color(0xFF1E7A36),
-    brandSoft: Color(0xFFE4F6E1),
+    brandInk: MgColors.acc,
+    brandSoft: Color(0xFFF1EDFF),
     raised: Color(0xFFFFFFFF),
-    budgetOk: Color(0xFF1C8A34),
-    budgetOkSoft: Color(0xFFE4F6E1),
-    budgetWarning: Color(0xFF9A6400),
-    budgetWarningSoft: Color(0xFFFCEFD2),
-    budgetOver: Color(0xFFC23434),
-    budgetOverSoft: Color(0xFFFBE4E4),
-    income: Color(0xFF2458C6),
-    incomeSoft: Color(0xFFE3EBFA),
-    pendingReview: Color(0xFF2458C6),
-    pendingReviewSoft: Color(0xFFE3EBFA),
-    bar: Color(0xFFCFCCD7),
-    expenseBar: Color(0xFF8B8896),
+    budgetOk: Color(0xFF1E9E64),
+    budgetOkSoft: Color(0xFFE5F8EE),
+    budgetWarning: Color(0xFFD98204),
+    budgetWarningSoft: Color(0xFFFFF6E5),
+    budgetOver: Color(0xFFE5394E),
+    budgetOverSoft: Color(0xFFFFECEF),
+    income: Color(0xFF1E9E64),
+    incomeSoft: Color(0xFFE5F8EE),
+    pendingReview: MgColors.acc,
+    pendingReviewSoft: Color(0xFFF1EDFF),
+    bar: Color(0xFFE4E3E8),
+    expenseBar: Color(0xFFE5394E),
     yape: Color(0xFF742284),
     plin: Color(0xFF00857A),
     card: Color(0xFFA56A00),
     googlePay: Color(0xFF1A73E8),
     manual: Color(0xFF6B6876),
-    mapBackground: Color(0xFFE9E8EE),
-    mapBlock: Color(0xFFDCDAE3),
+    mapBackground: Color(0xFFF4F3F7),
+    mapBlock: Color(0xFFE8E7ED),
     mapRoad: Color(0xFFFFFFFF),
     mapPark: Color(0xFFD3E8D2),
     mapSea: Color(0xFFD6E3EC),
@@ -207,41 +212,38 @@ class AppColors extends ThemeExtension<AppColors> {
   @override
   AppColors lerp(ThemeExtension<AppColors>? other, double t) {
     if (other is! AppColors) return this;
-    Color l(Color a, Color b) => Color.lerp(a, b, t)!;
     return AppColors(
-      brandInk: l(brandInk, other.brandInk),
-      brandSoft: l(brandSoft, other.brandSoft),
-      raised: l(raised, other.raised),
-      budgetOk: l(budgetOk, other.budgetOk),
-      budgetOkSoft: l(budgetOkSoft, other.budgetOkSoft),
-      budgetWarning: l(budgetWarning, other.budgetWarning),
-      budgetWarningSoft: l(budgetWarningSoft, other.budgetWarningSoft),
-      budgetOver: l(budgetOver, other.budgetOver),
-      budgetOverSoft: l(budgetOverSoft, other.budgetOverSoft),
-      income: l(income, other.income),
-      incomeSoft: l(incomeSoft, other.incomeSoft),
-      pendingReview: l(pendingReview, other.pendingReview),
-      pendingReviewSoft: l(pendingReviewSoft, other.pendingReviewSoft),
-      bar: l(bar, other.bar),
-      expenseBar: l(expenseBar, other.expenseBar),
-      yape: l(yape, other.yape),
-      plin: l(plin, other.plin),
-      card: l(card, other.card),
-      googlePay: l(googlePay, other.googlePay),
-      manual: l(manual, other.manual),
-      mapBackground: l(mapBackground, other.mapBackground),
-      mapBlock: l(mapBlock, other.mapBlock),
-      mapRoad: l(mapRoad, other.mapRoad),
-      mapPark: l(mapPark, other.mapPark),
-      mapSea: l(mapSea, other.mapSea),
-      mapLabel: l(mapLabel, other.mapLabel),
+      brandInk: Color.lerp(brandInk, other.brandInk, t)!,
+      brandSoft: Color.lerp(brandSoft, other.brandSoft, t)!,
+      raised: Color.lerp(raised, other.raised, t)!,
+      budgetOk: Color.lerp(budgetOk, other.budgetOk, t)!,
+      budgetOkSoft: Color.lerp(budgetOkSoft, other.budgetOkSoft, t)!,
+      budgetWarning: Color.lerp(budgetWarning, other.budgetWarning, t)!,
+      budgetWarningSoft: Color.lerp(budgetWarningSoft, other.budgetWarningSoft, t)!,
+      budgetOver: Color.lerp(budgetOver, other.budgetOver, t)!,
+      budgetOverSoft: Color.lerp(budgetOverSoft, other.budgetOverSoft, t)!,
+      income: Color.lerp(income, other.income, t)!,
+      incomeSoft: Color.lerp(incomeSoft, other.incomeSoft, t)!,
+      pendingReview: Color.lerp(pendingReview, other.pendingReview, t)!,
+      pendingReviewSoft: Color.lerp(pendingReviewSoft, other.pendingReviewSoft, t)!,
+      bar: Color.lerp(bar, other.bar, t)!,
+      expenseBar: Color.lerp(expenseBar, other.expenseBar, t)!,
+      yape: Color.lerp(yape, other.yape, t)!,
+      plin: Color.lerp(plin, other.plin, t)!,
+      card: Color.lerp(card, other.card, t)!,
+      googlePay: Color.lerp(googlePay, other.googlePay, t)!,
+      manual: Color.lerp(manual, other.manual, t)!,
+      mapBackground: Color.lerp(mapBackground, other.mapBackground, t)!,
+      mapBlock: Color.lerp(mapBlock, other.mapBlock, t)!,
+      mapRoad: Color.lerp(mapRoad, other.mapRoad, t)!,
+      mapPark: Color.lerp(mapPark, other.mapPark, t)!,
+      mapSea: Color.lerp(mapSea, other.mapSea, t)!,
+      mapLabel: Color.lerp(mapLabel, other.mapLabel, t)!,
     );
   }
 }
 
 extension AppColorsContext on BuildContext {
-  /// Si el tema no incluye la extensión (p. ej. un `ThemeData` de prueba),
-  /// usa la paleta que corresponde al brillo.
   AppColors get appColors {
     final theme = Theme.of(this);
     return theme.extension<AppColors>() ??

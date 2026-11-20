@@ -12,17 +12,28 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../core/theme/mg_colors.dart';
+import '../../core/widgets/confirm_sheet.dart';
+import '../../core/widgets/mg_toast.dart';
+import '../../data/debug_mock_data.dart';
 import '../../data/services/backup_service.dart';
 import '../../data/services/payment_reader.dart';
 import '../../domain/entities/movimiento.dart';
 import '../../shared/csv_export.dart';
-import '../../shared/widgets/custom_icons.dart';
 import '../../shared/format.dart';
-import '../../shared/widgets/app_icons.dart';
-import '../expenses/alias_dialog.dart';
+import '../../shared/labels.dart';
+import '../../shared/profile.dart';
+import '../../shared/widgets/custom_icons.dart';
 import '../lock/lock_gate.dart';
+import '../auth/account_link.dart';
 import '../providers.dart';
+import '../../core/layout/landscape_pane.dart';
+import '../../core/layout/adaptive.dart';
+import '../../core/widgets/adaptive_sheet.dart';
 import '../../shared/dispose_later.dart';
+import '../payments/scheduled_payments_providers.dart';
+import '../plan/plan_providers.dart';
+import 'widgets/connected_accounts_sheet.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -56,7 +67,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     super.dispose();
   }
 
-  // Al volver de los ajustes del sistema se vuelve a leer el estado.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) _refreshPermissions();
@@ -80,283 +90,671 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     });
   }
 
-  // ------------------------------------------------------------------ build
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final providers = ref.watch(providersEnabledProvider);
-    final budget = ref.watch(budgetProvider);
     final lockOn = ref.watch(passcodeEnabledProvider);
+    final budget = ref.watch(budgetProvider);
     final permissions = ref.read(permissionsCheckerProvider);
 
+    final catCount = Categoria.gastos.length + ref.watch(customCategoriesProvider).length;
+
+    final privacyNote = Padding(
+                padding: const EdgeInsets.fromLTRB(22, 22, 22, 0),
+                child: Column(
+                  children: const [
+                    Text(
+                      'Tus datos se guardan solo en este teléfono.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: MgColors.ink3,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'MiGasto v1.0.0',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: MgColors.ink3,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+    // Solo en compilaciones de desarrollo.
+    final debugSimulator = kDebugMode
+        ? Padding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
+            child: _simulator(context),
+          )
+        : null;
+    final topNav = _buildTopNav(context);
+    final userCard = _buildUserCard(context);
+    final accountGroup = _buildAccountGroup(context, catCount);
+    final dataGroup = _buildDataSecurityGroup(context, budget, lockOn);
+    final androidGroup = _isAndroid ? _buildAndroidGroup(context, permissions) : null;
+    final logout = Padding(
+      padding: const EdgeInsets.fromLTRB(18, 22, 18, 0),
+      child: _buildLogoutCard(context),
+    );
+
+    // Teléfono girado: perfil, cuenta y cierre de sesión a la izquierda; datos,
+    // seguridad y permisos a la derecha.
+    if (context.isLandscapePhone) {
+      Widget side(List<Widget> children) => LandscapePane(
+            padding: const EdgeInsets.only(bottom: 32),
+            children: children,
+          );
+      return Scaffold(
+        backgroundColor: MgColors.bg,
+        body: SafeArea(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              side([topNav, userCard, accountGroup, logout]),
+              side([
+                dataGroup,
+                ?androidGroup,
+                privacyNote,
+                ?debugSimulator,
+              ]),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
+      backgroundColor: MgColors.bg,
       body: SafeArea(
-        bottom: false,
-        child: ListView(
+        child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(AppSpacing.xl, 6, AppSpacing.xl, 18),
-          children: [
-            Text('Ajustes', style: theme.textTheme.headlineMedium),
-            const SizedBox(height: 10),
-            if (_isAndroid) ...[
-              _label(context, 'Registro automático'),
-              _box(context, [
-                _SettingRow(
-                  icon: AppIcons.bell,
-                  title: 'Lectura de pagos',
-                  subtitle: 'Lee las notificaciones de Yape, Plin y Google Wallet',
-                  trailing: _status(context, _notificationsOn),
-                  onTap: () async {
-                    await permissions.openNotificationListenerSettings();
-                  },
-                ),
-                _SettingRow(
-                  icon: AppIcons.arrowUp,
-                  title: 'Pagos que envías',
-                  subtitle: 'Lee la constancia de Yape al pagar o enviar',
-                  trailing: _status(context, _screenOn),
-                  onTap: () async {
-                    await permissions.openAccessibilitySettings();
-                  },
-                ),
-                _SettingRow(
-                  icon: AppIcons.bell,
-                  title: 'Avisos de pagos',
-                  subtitle: 'Una notificación cuando detecta un pago con la pantalla bloqueada',
-                  trailing: _status(context, _alertsOn),
-                  onTap: () async {
-                    await permissions.requestPostNotifications();
-                  },
-                ),
-                _SettingRow(
-                  icon: AppIcons.lock,
-                  title: 'Monto en pantalla bloqueada',
-                  subtitle: ref.watch(showAmountLockedProvider)
-                      ? 'Se ve el monto y el nombre sin desbloquear'
-                      : 'Oculto: solo dice "Pago detectado"',
-                  switchValue: ref.watch(showAmountLockedProvider),
-                  onSwitch: (_) => ref.read(showAmountLockedProvider.notifier).toggle(),
-                ),
-                _SettingRow(
-                  icon: AppIcons.bolt,
-                  title: 'Batería sin restricciones',
-                  subtitle: 'Evita que el teléfono duerma la lectura y se pierdan pagos',
-                  trailing: _status(context, _batteryOn),
-                  onTap: () async {
-                    await permissions.openBatterySettings();
-                  },
-                ),
-                _SettingRow(
-                  icon: AppIcons.card,
-                  title: 'Ventana flotante',
-                  subtitle: 'Muestra cada pago para que lo confirmes',
-                  trailing: _status(context, _overlayOn),
-                  onTap: () async {
-                    await permissions.requestOverlayPermission();
-                  },
-                ),
-                const _AutoIncomeSwitch(),
-                _SourceSwitch(label: 'Yape', sourceKey: 'yape', enabled: providers['yape'] ?? false),
-                _SourceSwitch(label: 'Plin', sourceKey: 'plin', enabled: providers['plin'] ?? false),
-                _SourceSwitch(
-                  label: 'Google Wallet',
-                  sourceKey: 'googlePay',
-                  enabled: providers['googlePay'] ?? false,
-                ),
-              ]),
-            ] else ...[
-              _label(context, 'Registro automático'),
-              _box(context, [
-                _SettingRow(
-                  icon: AppIcons.nfc,
-                  title: 'Apple Pay en el POS',
-                  subtitle: _lastWalletText(),
-                  trailing: _status(context, _hasWalletPayment(), onText: 'Activo', offText: 'Configurar'),
-                  onTap: () => context.push('/setup/apple-pay'),
-                ),
-                _SettingRow(
-                  icon: AppIcons.img,
-                  title: 'Capturas de Yape y Plin',
-                  subtitle: 'Comparte la captura de la constancia a MiGasto',
-                ),
-              ]),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              topNav,
+              userCard,
+              accountGroup,
+              dataGroup,
+              ?androidGroup,
+              logout,
+              privacyNote,
+              ?debugSimulator,
+              const SizedBox(height: 32),
             ],
-            if (ref.watch(expensesStateProvider).any((m) => m.tieneUbicacion || m.lugar != null)) ...[
-              _label(context, 'Ubicación'),
-              _box(context, [
-                _SettingRow(
-                  icon: AppIcons.pin,
-                  title: 'Dónde pagaste',
-                  subtitle: 'Tus pagos con ubicación, por zona',
-                  onTap: () => context.push('/where'),
-                ),
-                _SettingRow(
-                  icon: AppIcons.trash,
-                  title: 'Borrar todas las ubicaciones',
-                  subtitle: 'Los movimientos se mantienen',
-                  onTap: () => _clearLocations(context),
-                ),
-              ]),
-            ],
-            _label(context, 'Tus datos'),
-            _box(context, [
-              _SettingRow(
-                icon: AppIcons.wallet,
-                title: 'Presupuesto de gastos',
-                trailingText: budget > 0 ? formatSoles(budget) : 'Sin definir',
-                onTap: () => _editBudget(context, budget),
-              ),
-              _SettingRow(
-                icon: AppIcons.tag,
-                title: 'Aprendidas de tus cambios',
-                subtitle: 'Categorías que la app ya recuerda por comercio',
-                onTap: () => _showLearned(context),
-              ),
-              _SettingRow(
-                icon: AppIcons.tag,
-                title: 'Mis categorías',
-                subtitle: 'Las que creaste, con tu ícono',
-                onTap: () => _showCustomCategories(context),
-              ),
-              _SettingRow(
-                icon: AppIcons.tag,
-                title: 'Nombres guardados',
-                subtitle: 'Cómo ves a cada persona o comercio',
-                onTap: () => _showAliases(context),
-              ),
-              _SettingRow(
-                icon: AppIcons.file,
-                title: 'Exportar a CSV',
-                subtitle: 'Copia tus movimientos, sin ubicaciones',
-                onTap: () => _exportCsv(context),
-              ),
-              _SettingRow(
-                icon: AppIcons.lock,
-                title: 'Respaldo cifrado',
-                subtitle: _backupSubtitle(ref.watch(lastBackupProvider)),
-                onTap: () => _crearRespaldo(context),
-              ),
-              _SettingRow(
-                icon: AppIcons.file,
-                title: 'Restaurar un respaldo',
-                subtitle: 'Desde un archivo .mgb, con tu contraseña',
-                onTap: () => _restaurarRespaldo(context),
-              ),
-              _SettingRow(
-                icon: AppIcons.lock,
-                title: 'Bloqueo con huella o PIN',
-                subtitle: 'Usa el desbloqueo de tu teléfono',
-                switchValue: lockOn,
-                onSwitch: (v) => _toggleLock(context, v),
-              ),
-            ]),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(4, 12, 4, 0),
-              child: Text(
-                'Tus datos se guardan solo en este teléfono.',
-                style: theme.textTheme.bodySmall,
-              ),
-            ),
-            if (kDebugMode) ...[
-              _label(context, 'Solo desarrollo'),
-              _simulator(context),
-            ],
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _label(BuildContext context, String text) => Padding(
-        padding: const EdgeInsets.fromLTRB(4, 12, 4, 6),
-        child: Text(
-          text,
-          style: Theme.of(context)
-              .textTheme
-              .bodySmall!
-              .copyWith(fontWeight: FontWeight.w600),
-        ),
-      );
-
-  Widget _box(BuildContext context, List<Widget> rows) {
-    final theme = Theme.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(AppRadius.box),
+  /// Barra de navegación superior con botón volver y título Perfil
+  Widget _buildTopNav(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(17),
+            onTap: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/dashboard');
+              }
+            },
+            child: Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.04),
+              ),
+              child: const Icon(
+                Icons.chevron_left_rounded,
+                size: 22,
+                color: MgColors.ink2,
+              ),
+            ),
+          ),
+          const Text(
+            'Perfil',
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              color: MgColors.ink,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(width: 34),
+        ],
       ),
-      clipBehavior: Clip.antiAlias,
+    );
+  }
+
+  /// Tarjeta de usuario (.pf-card): iniciales, nombre y correo guardados por el usuario.
+  Widget _buildUserCard(BuildContext context) {
+    final name = ref.watch(profileNameProvider).trim();
+    final email = ref.watch(profileEmailProvider).trim();
+    final initials = initialsOf(name);
+    return Container(
+      margin: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: MgColors.card,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+      ),
       child: Column(
         children: [
-          for (var i = 0; i < rows.length; i++) ...[
-            if (i > 0) Divider(color: theme.colorScheme.outline, height: 1),
-            rows[i],
+      Row(
+        children: [
+          // Avatar 56×56 (.pf-av)
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: const Color(0x227C5CFF),
+              borderRadius: BorderRadius.circular(19),
+              border: Border.all(color: const Color(0x447C5CFF)),
+            ),
+            alignment: Alignment.center,
+            child: initials.isEmpty
+                ? const Icon(Icons.person_outline_rounded,
+                    size: 26, color: MgColors.acc2)
+                : Text(
+                    initials,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: MgColors.acc2,
+                    ),
+                  ),
+          ),
+          const SizedBox(width: 14),
+          // Nombre y correo
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name.isEmpty ? 'Tu perfil' : name,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: MgColors.ink,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  email.isEmpty ? 'Agrega tu nombre y correo' : email,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: MgColors.ink2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Botón editar perfil
+          InkWell(
+            borderRadius: BorderRadius.circular(17),
+            onTap: () => _editProfile(context),
+            child: Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.04),
+              ),
+              child: const Icon(
+                Icons.edit_outlined,
+                size: 17,
+                color: MgColors.ink2,
+              ),
+            ),
+          ),
+        ],
+      ),
+          if (ref.watch(isGuestProvider)) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: FilledButton.icon(
+                onPressed: () => showLinkAccountSheet(context),
+                icon: const Icon(Icons.link_rounded, size: 18),
+                label: const Text('Vincular cuenta'),
+                style: FilledButton.styleFrom(minimumSize: const Size(120, 44)),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Hoy usas MiGasto como invitado: tus datos están solo en este teléfono.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 11.5, color: MgColors.ink3),
+            ),
           ],
         ],
       ),
     );
   }
 
-  /// Estado con ícono y texto, nunca solo color.
-  bool _hasWalletPayment() =>
-      ref.watch(expensesStateProvider).any((m) => m.canal == CanalMovimiento.wallet);
-
-  String _lastWalletText() {
-    final last = ref
-        .watch(expensesStateProvider)
-        .where((m) => m.canal == CanalMovimiento.wallet)
-        .firstOrNull;
-    if (last == null) return 'Todavía no registramos ningún pago';
-    return 'Último pago registrado: ${DateFormat("d MMM, HH:mm", 'es').format(last.date)}';
-  }
-
-  Widget _status(BuildContext context, bool on,
-      {String onText = 'Activa', String offText = 'Activar'}) {
-    final colors = context.appColors;
-    final color = on ? colors.budgetOk : colors.budgetWarning;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+  /// Grupo: Cuenta (.grp)
+  Widget _buildAccountGroup(BuildContext context, int catCount) {
+    final providers = ref.watch(providersEnabledProvider);
+    final activeCount = providers.values.where((on) => on).length;
+    return _buildGroup(
+      title: 'CUENTA',
       children: [
-        AppIcon(on ? AppIcons.checkCircle : AppIcons.alert, size: AppIconSize.small, color: color),
-        const SizedBox(width: 5),
-        Text(
-          on ? onText : offText,
-          style: Theme.of(context)
-              .textTheme
-              .bodySmall!
-              .copyWith(fontWeight: FontWeight.w600, color: color),
+        // Yape, Plin y Google Wallet: solo se detectan en Android (lectura de notificaciones).
+        if (_isAndroid) ...[
+          _buildRow(
+            icon: Icons.account_balance_outlined,
+            title: 'Pagos detectados',
+            tag: '$activeCount de ${providers.length}',
+            onTap: () => ConnectedAccountsSheet.show(context),
+          ),
+          _buildDivider(),
+        ],
+        _buildRow(
+          icon: Icons.sell_outlined,
+          title: 'Categorías',
+          tag: '$catCount',
+          onTap: () => _showCustomCategories(context),
         ),
       ],
     );
   }
 
+  /// Grupo: Datos y seguridad (.grp)
+  Widget _buildDataSecurityGroup(BuildContext context, double budget, bool lockOn) {
+    final lastBackup = ref.watch(lastBackupProvider);
+    return _buildGroup(
+      title: 'DATOS Y SEGURIDAD',
+      children: [
+        _buildRow(
+          icon: Icons.map_outlined,
+          title: 'Dónde gasto',
+          onTap: () => context.push('/where'),
+        ),
+        _buildDivider(),
+        _buildRow(
+          icon: Icons.pie_chart_outline_rounded,
+          title: 'Presupuesto mensual',
+          tag: budget > 0 ? formatSoles(budget) : 'Sin definir',
+          onTap: () => _editBudget(context, budget),
+        ),
+        _buildDivider(),
+        _buildRow(
+          icon: Icons.description_outlined,
+          title: 'Exportar a CSV',
+          onTap: () => _exportCsv(context),
+        ),
+        _buildDivider(),
+        _buildRow(
+          icon: Icons.lock_outline_rounded,
+          title: 'Respaldo cifrado',
+          tag: lastBackup != null ? 'Hecho' : 'Pendiente',
+          onTap: () => _crearRespaldo(context),
+        ),
+        _buildDivider(),
+        _buildRow(
+          icon: Icons.file_upload_outlined,
+          title: 'Restaurar respaldo',
+          onTap: () => _restaurarRespaldo(context),
+        ),
+        _buildDivider(),
+        _buildRow(
+          icon: Icons.image_outlined,
+          title: 'Logos de comercios',
+          subtitle: 'Busca el logo por internet. Solo se envía el sitio web del comercio (por ejemplo, spotify.com), nunca montos ni datos tuyos.',
+          trailing: Switch(
+            value: ref.watch(merchantLogosProvider),
+            onChanged: (v) => ref.read(merchantLogosProvider.notifier).set(v),
+          ),
+        ),
+        _buildDivider(),
+        _buildRow(
+          icon: Icons.fingerprint_rounded,
+          title: 'Bloqueo con huella o PIN',
+          trailing: Switch(
+            value: lockOn,
+            onChanged: (v) => _toggleLock(context, v),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Grupo Android: Permisos automáticos
+  Widget _buildAndroidGroup(BuildContext context, dynamic permissions) {
+    return _buildGroup(
+      title: 'REGISTRO AUTOMÁTICO (ANDROID)',
+      children: [
+        _buildRow(
+          icon: Icons.notifications_active_outlined,
+          title: 'Lectura de notificaciones',
+          tag: _notificationsOn ? 'Activo' : 'Activar',
+          onTap: () => permissions.openNotificationListenerSettings(),
+        ),
+        _buildDivider(),
+        _buildRow(
+          icon: Icons.touch_app_outlined,
+          title: 'Lectura de pantalla',
+          tag: _screenOn ? 'Activo' : 'Activar',
+          onTap: () => permissions.openAccessibilitySettings(),
+        ),
+        _buildDivider(),
+        _buildRow(
+          icon: Icons.notifications_none_outlined,
+          title: 'Avisos de pagos',
+          tag: _alertsOn ? 'Activo' : 'Activar',
+          onTap: () => permissions.requestPostNotifications(),
+        ),
+        _buildDivider(),
+        _buildRow(
+          icon: Icons.picture_in_picture_alt_outlined,
+          title: 'Ventana flotante',
+          tag: _overlayOn ? 'Activo' : 'Activar',
+          onTap: () => permissions.requestOverlayPermission(),
+        ),
+        _buildDivider(),
+        _buildRow(
+          icon: Icons.battery_charging_full_outlined,
+          title: 'Batería sin restricciones',
+          tag: _batteryOn ? 'Activo' : 'Activar',
+          onTap: () => permissions.openBatterySettings(),
+        ),
+      ],
+    );
+  }
+
+  /// Tarjeta de cerrar sesión al final de la pantalla
+  Widget _buildLogoutCard(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: MgColors.card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.055)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () async {
+            final confirm = await ConfirmSheet.show(
+              context,
+              title: '¿Cerrar sesión?',
+              message: ref.read(isGuestProvider)
+                  ? 'Volverás a la pantalla de inicio. Tus datos siguen guardados en este teléfono.'
+                  : 'Tendrás que volver a iniciar sesión para acceder a tus movimientos.',
+              confirmLabel: 'Cerrar sesión',
+              isDestructive: true,
+              icon: Icons.logout_rounded,
+            );
+            if (confirm && context.mounted) {
+              if (!ref.read(isGuestProvider)) await signOutAccount(ref);
+              await ref.read(sharedPreferencesProvider).setBool('is_logged_in', false);
+              if (context.mounted) {
+                MgToast.show(context, message: 'Sesión cerrada.');
+                context.go('/login');
+              }
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: const Color(0x22FF5C6E),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.logout_rounded,
+                    size: 16,
+                    color: MgColors.down,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Cerrar sesión',
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w600,
+                    color: MgColors.down,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Contenedor de grupo de opciones (.grp)
+  Widget _buildGroup({required String title, required List<Widget> children}) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 22, 18, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 9),
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1.0,
+                color: MgColors.ink3,
+              ),
+            ),
+          ),
+          Material(
+            color: MgColors.card,
+            borderRadius: BorderRadius.circular(18),
+            clipBehavior: Clip.antiAlias,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+              ),
+              child: Column(
+                children: children,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Fila estándar interactiva (.rw) con InkWell confinado al radio de la tarjeta
+  Widget _buildRow({
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    String? tag,
+    Widget? trailing,
+    bool isDestructive = false,
+    VoidCallback? onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        splashColor: MgColors.acc.withValues(alpha: 0.12),
+        highlightColor: MgColors.acc.withValues(alpha: 0.08),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          child: Row(
+          children: [
+            // Ícono dentro de squircle suave (.rw .ic)
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: isDestructive ? const Color(0x22FF5C6E) : MgColors.soft,
+                borderRadius: BorderRadius.circular(11),
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                icon,
+                size: 17,
+                color: isDestructive ? MgColors.down : MgColors.ink2,
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Título
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: isDestructive ? MgColors.down : MgColors.ink,
+                    ),
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(fontSize: 11.5, height: 1.35, color: MgColors.ink3),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            // Etiqueta tag (.tag)
+            if (tag != null) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: tag == 'En uso'
+                      ? const Color(0x227C5CFF)
+                      : Colors.white.withValues(alpha: 0.04),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  tag,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: tag == 'En uso' ? FontWeight.w600 : FontWeight.w400,
+                    color: tag == 'En uso' ? MgColors.acc2 : MgColors.ink2,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+            ],
+            // Trailing o Chevron
+            if (trailing != null)
+              trailing
+            else if (!isDestructive)
+              const Icon(
+                Icons.chevron_right_rounded,
+                size: 18,
+                color: MgColors.ink3,
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+  Widget _buildDivider() {
+    return Divider(
+      height: 1,
+      thickness: 1,
+      color: Colors.white.withValues(alpha: 0.05),
+    );
+  }
+
   // ---------------------------------------------------------------- acciones
+
+  Future<void> _editProfile(BuildContext context) async {
+    final nameCtrl = TextEditingController(text: ref.read(profileNameProvider));
+    final emailCtrl = TextEditingController(text: ref.read(profileEmailProvider));
+    final nameNotifier = ref.read(profileNameProvider.notifier);
+    final emailNotifier = ref.read(profileEmailProvider.notifier);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: MgColors.card,
+        title: const Text('Tu perfil', style: TextStyle(color: MgColors.ink)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameCtrl,
+              autofocus: true,
+              textCapitalization: TextCapitalization.words,
+              style: const TextStyle(color: MgColors.ink),
+              decoration: const InputDecoration(labelText: 'Nombre'),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              style: const TextStyle(color: MgColors.ink),
+              decoration: const InputDecoration(labelText: 'Correo (opcional)'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Guardar')),
+        ],
+      ),
+    );
+    final name = nameCtrl.text.trim();
+    final email = emailCtrl.text.trim();
+    disposeControllersLater([nameCtrl, emailCtrl]);
+    if (ok != true) return;
+    await nameNotifier.updateValue(name);
+    await emailNotifier.updateValue(email);
+    await markProfileAsOwn(ref);
+  }
 
   Future<void> _editBudget(BuildContext context, double current) async {
     final controller = TextEditingController(text: current > 0 ? current.toStringAsFixed(0) : '');
-    // Todo el valor queda seleccionado: lo que escribas lo reemplaza, no se pega al final.
     controller.selection = TextSelection(baseOffset: 0, extentOffset: controller.text.length);
-    final messenger = ScaffoldMessenger.of(context);
     final notifier = ref.read(expensesStateProvider.notifier);
     final value = await showDialog<double>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Presupuesto de gastos'),
+      builder: (ctx) => AlertDialog(
+        backgroundColor: MgColors.card,
+        title: const Text('Presupuesto de gastos', style: TextStyle(color: MgColors.ink)),
         content: TextField(
           controller: controller,
           autofocus: true,
+          style: const TextStyle(color: MgColors.ink),
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           decoration: const InputDecoration(prefixText: 'S/ ', hintText: 'Monto del mes'),
         ),
         actions: [
           if (current > 0)
-            TextButton(onPressed: () => Navigator.pop(context, 0.0), child: const Text('Quitar')),
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+            TextButton(onPressed: () => Navigator.pop(ctx, 0.0), child: const Text('Quitar')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
           TextButton(
             onPressed: () {
               final parsed = double.tryParse(controller.text.replaceAll(',', '.'));
-              if (parsed != null && parsed > 0) Navigator.pop(context, parsed);
+              if (parsed != null && parsed > 0) Navigator.pop(ctx, parsed);
             },
             child: const Text('Guardar'),
           ),
@@ -364,273 +762,140 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
       ),
     );
     disposeControllersLater([controller]);
-    if (value == null) return;
+    if (value == null || !context.mounted) return;
     await notifier.updateBudget(value);
-    messenger.showSnackBar(
-      SnackBar(content: Text(value > 0 ? 'Presupuesto actualizado' : 'Presupuesto quitado')),
-    );
+    if (context.mounted) {
+      MgToast.show(context, message: value > 0 ? 'Presupuesto actualizado' : 'Presupuesto quitado');
+    }
   }
 
   void _showCustomCategories(BuildContext context) {
-    showModalBottomSheet<void>(
+    showAdaptiveSheet<void>(
       context: context,
+      useRootNavigator: true,
+      backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (sheetContext) => Consumer(
-        builder: (context, ref, _) {
-          final theme = Theme.of(context);
+        builder: (ctx, ref, _) {
           final propias = ref.watch(customCategoriesProvider);
-          return SafeArea(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text('Mis categorías', style: theme.textTheme.titleLarge),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Las creas al registrar un movimiento, con "Nueva". Si borras una, sus movimientos pasan a verse como "Otros".',
-                      style: theme.textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 8),
-                    if (propias.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        child: Text('Aún no creaste ninguna.', style: theme.textTheme.bodyMedium),
-                      )
-                    else
-                      Flexible(
-                        child: ListView(
-                          shrinkWrap: true,
-                          children: [
-                            for (final p in propias)
-                              ListTile(
-                                contentPadding: EdgeInsets.zero,
-                                minTileHeight: AppSizes.minTouch,
-                                leading: Icon(customIconFor(p.icono),
-                                    color: theme.colorScheme.onSurfaceVariant),
-                                title: Text(p.nombre),
-                                subtitle: Text(p.tipo == TipoMovimiento.ingreso ? 'Ingreso' : 'Gasto'),
-                                trailing: IconButton(
-                                  tooltip: 'Borrar ${p.nombre}',
-                                  icon: AppIcon(AppIcons.trash,
-                                      size: AppIconSize.small,
-                                      color: theme.colorScheme.onSurfaceVariant),
-                                  onPressed: () =>
-                                      ref.read(customCategoriesProvider.notifier).remove(p.id),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
+          return Container(
+            decoration: const BoxDecoration(
+              color: MgColors.card,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              border: Border(top: BorderSide(color: Color(0x1FFFFFFF), width: 1)),
             ),
-          );
-        },
-      ),
-    );
-  }
-
-  void _showAliases(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (sheetContext) => Consumer(
-        builder: (context, ref, _) {
-          final theme = Theme.of(context);
-          final entries = ref.watch(aliasesProvider).entries.toList()
-            ..sort((a, b) => a.value.toLowerCase().compareTo(b.value.toLowerCase()));
-          return SafeArea(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text('Nombres guardados', style: theme.textTheme.titleLarge),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Para ponerle nombre a alguien, abre un movimiento suyo y toca "De" o "Para".',
-                      style: theme.textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 8),
-                    if (entries.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        child: Text('Aún no has guardado ninguno.', style: theme.textTheme.bodyMedium),
-                      )
-                    else
-                      Flexible(
-                        child: ListView(
-                          shrinkWrap: true,
-                          children: [
-                            for (final e in entries)
-                              ListTile(
-                                contentPadding: EdgeInsets.zero,
-                                minTileHeight: AppSizes.minTouch,
-                                title: Text(e.value),
-                                subtitle: Text(e.key, maxLines: 1, overflow: TextOverflow.ellipsis),
-                                onTap: () => showAliasDialog(context, ref, e.key),
-                                trailing: IconButton(
-                                  tooltip: 'Quitar nombre de ${e.value}',
-                                  icon: AppIcon(AppIcons.trash,
-                                      size: AppIconSize.small,
-                                      color: theme.colorScheme.onSurfaceVariant),
-                                  onPressed: () => ref.read(aliasesProvider.notifier).remove(e.key),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  void _showLearned(BuildContext context) {
-    final repo = ref.read(expenseRepositoryProvider);
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        final theme = Theme.of(context);
-        return StatefulBuilder(
-          builder: (context, setSheet) {
-            final overrides = repo.getAllCategoryOverrides().entries.toList()
-              ..sort((a, b) => a.key.compareTo(b.key));
-            return SafeArea(
+            child: SafeArea(
               child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.7,
-                ),
+                constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.7),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text('Aprendidas de tus cambios', style: theme.textTheme.titleLarge),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Cuando cambias la categoría de un pago, la app lo recuerda para ese comercio.',
-                        style: theme.textTheme.bodySmall,
-                      ),
-                      const SizedBox(height: 8),
-                      if (overrides.isEmpty)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          child: Text('Todavía no cambiaste ninguna categoría.',
-                              style: theme.textTheme.bodyMedium),
-                        )
-                      else
-                        Flexible(
-                          child: ListView(
-                            shrinkWrap: true,
-                            children: [
-                              for (final e in overrides)
-                                ListTile(
-                                  minTileHeight: AppSizes.minTouch,
-                                  contentPadding: EdgeInsets.zero,
-                                  title: Text(e.key),
-                                  subtitle: Text(_categoryName(e.value)),
-                                  trailing: IconButton(
-                                    tooltip: 'Olvidar ${e.key}',
-                                    onPressed: () async {
-                                      await repo.deleteCategoryOverride(e.key);
-                                      setSheet(() {});
-                                    },
-                                    icon: AppIcon(
-                                      AppIcons.trash,
-                                      color: context.appColors.budgetOver,
-                                    ),
-                                  ),
-                                ),
-                            ],
+                      Center(
+                        child: Container(
+                          width: 38,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(2),
                           ),
                         ),
-                      if (overrides.isNotEmpty)
-                        TextButton(
-                          onPressed: () async {
-                            await repo.clearAllCategoryOverrides();
-                            setSheet(() {});
-                          },
-                          child: const Text('Olvidar todas'),
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        'Mis categorías',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: MgColors.ink,
                         ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Las creas al registrar un movimiento. Si borras una, sus movimientos pasan a verse como "Otros".',
+                        style: TextStyle(fontSize: 12, color: MgColors.ink2),
+                      ),
+                      const SizedBox(height: 12),
+                      Flexible(
+                        child: ListView(
+                          shrinkWrap: true,
+                          children: [
+                            const Text(
+                              'De MiGasto',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: MgColors.ink2),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                for (final c in Categoria.gastos)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                                    decoration: BoxDecoration(
+                                      color: MgColors.soft,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(categoryLabel(c),
+                                        style: const TextStyle(fontSize: 12.5, color: MgColors.ink)),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Tuyas',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: MgColors.ink2),
+                            ),
+                            if (propias.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 14),
+                                child: Text(
+                                  'Aún no has creado ninguna categoría propia.',
+                                  style: TextStyle(color: MgColors.ink2),
+                                ),
+                              ),
+                              for (final p in propias)
+                                ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  minTileHeight: AppSizes.minTouch,
+                                  leading: Icon(customIconFor(p.icono), color: MgColors.acc2),
+                                  title: Text(p.nombre, style: const TextStyle(color: MgColors.ink)),
+                                  subtitle: Text(p.tipo == TipoMovimiento.ingreso ? 'Ingreso' : 'Gasto',
+                                      style: const TextStyle(color: MgColors.ink2, fontSize: 12)),
+                                  trailing: IconButton(
+                                    tooltip: 'Borrar ${p.nombre}',
+                                    icon: const Icon(Icons.delete_outline, size: 20, color: MgColors.down),
+                                    onPressed: () =>
+                                        ref.read(customCategoriesProvider.notifier).remove(p.id),
+                                  ),
+                                ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  String _categoryName(String name) {
-    const names = {
-      'alimentacion': 'Alimentación',
-      'transporte': 'Transporte',
-      'compras': 'Compras',
-      'servicios': 'Servicios',
-      'entretenimiento': 'Entretenimiento',
-      'otros': 'Otros',
-    };
-    return names[name] ?? name;
-  }
-
-  Future<void> _clearLocations(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final notifier = ref.read(expensesStateProvider.notifier);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Borrar todas las ubicaciones'),
-        content: const Text('Se borra dónde hiciste cada pago. Tus gastos e ingresos se mantienen.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: context.appColors.budgetOver),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Borrar'),
-          ),
-        ],
+            ),
+          );
+        },
       ),
     );
-    if (ok != true) return;
-    await notifier.clearAllLocations();
-    messenger.showSnackBar(const SnackBar(content: Text('Ubicaciones borradas')));
   }
 
   Future<void> _exportCsv(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
     final csv = movimientosToCsv(
       ref.read(expensesStateProvider),
       categoriasPropias: ref.read(customCategoriesProvider),
     );
     await Clipboard.setData(ClipboardData(text: csv));
-    messenger.showSnackBar(const SnackBar(content: Text('Movimientos copiados al portapapeles')));
+    if (context.mounted) {
+      MgToast.show(context, message: 'Movimientos copiados al portapapeles');
+    }
   }
 
-  // ------------------------------------------------------------ respaldo
-
-  String _backupSubtitle(DateTime? last) {
-    if (last == null) return 'Aún no has hecho uno. Si pierdes el teléfono, pierdes tus datos.';
-    return 'Último: ${DateFormat('d MMM y, HH:mm', 'es').format(last)}';
-  }
-
-  /// Muestra una espera mientras corre [task] (derivar la clave puede tardar unos segundos).
   Future<T> _conEspera<T>(BuildContext context, String mensaje, Future<T> Function() task) async {
     final navigator = Navigator.of(context, rootNavigator: true);
     showDialog<void>(
@@ -639,11 +904,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
       builder: (_) => PopScope(
         canPop: false,
         child: AlertDialog(
+          backgroundColor: MgColors.card,
           content: Row(
             children: [
-              const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 3)),
+              SizedBox(width: 28, height: 28, child: CircularProgressIndicator(color: MgColors.acc, strokeWidth: 3)),
               const SizedBox(width: 20),
-              Expanded(child: Text(mensaje)),
+              Expanded(child: Text(mensaje, style: const TextStyle(color: MgColors.ink))),
             ],
           ),
         ),
@@ -657,7 +923,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   }
 
   Future<void> _crearRespaldo(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
     final notifier = ref.read(expensesStateProvider.notifier);
     final lastBackup = ref.read(lastBackupProvider.notifier);
     final prefs = ref.read(sharedPreferencesProvider);
@@ -687,25 +952,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
       final now = DateTime.now();
       await prefs.setString(keyLastBackup, now.toUtc().toIso8601String());
       lastBackup.state = now;
-      messenger.showSnackBar(const SnackBar(
-        content: Text('Respaldo creado. Guárdalo en un lugar seguro (Drive, correo, tu computadora).'),
-      ));
+      if (context.mounted) {
+        MgToast.show(context, message: 'Respaldo creado con éxito.');
+      }
     } on BackupException catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+      if (context.mounted) MgToast.show(context, message: e.message);
     } catch (_) {
-      messenger.showSnackBar(const SnackBar(content: Text('No se pudo crear el respaldo.')));
+      if (context.mounted) MgToast.show(context, message: 'No se pudo crear el respaldo.');
     }
   }
 
   Future<void> _restaurarRespaldo(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
     final notifier = ref.read(expensesStateProvider.notifier);
-
     final picked = await FilePicker.pickFiles(dialogTitle: 'Elige tu respaldo de MiGasto');
     if (picked.isEmpty || !context.mounted) return;
     final path = picked.first.path;
     if (path == null) {
-      messenger.showSnackBar(const SnackBar(content: Text('No se pudo leer el archivo.')));
+      MgToast.show(context, message: 'No se pudo leer el archivo.');
       return;
     }
     final data = await File(path).readAsBytes();
@@ -728,12 +991,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
       final ok = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Restaurar respaldo'),
+          backgroundColor: MgColors.card,
+          title: const Text('Restaurar respaldo', style: TextStyle(color: MgColors.ink)),
           content: Text(
             'Creado el ${DateFormat('d MMM y, HH:mm', 'es').format(contents.creado.toLocal())}.\n\n'
             '• ${contents.movimientos.length} movimientos en el respaldo, $nuevos nuevos para este teléfono.\n'
             '• Presupuesto: ${formatSoles(contents.presupuesto)}.\n\n'
             'No se borra nada de lo que ya tienes.',
+            style: const TextStyle(color: MgColors.ink2),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
@@ -741,22 +1006,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
           ],
         ),
       );
-      if (ok != true) return;
+      if (ok != true || !context.mounted) return;
       final agregados = await notifier.restaurarRespaldo(contents);
-      messenger.showSnackBar(SnackBar(
-        content: Text(agregados == 0
-            ? 'No había nada nuevo: ya tenías todos esos movimientos.'
-            : 'Se restauraron $agregados movimientos.'),
-      ));
+      if (context.mounted) {
+        MgToast.show(
+          context,
+          message: agregados == 0
+              ? 'No había nada nuevo: ya tenías todos esos movimientos.'
+              : 'Se restauraron $agregados movimientos.',
+        );
+      }
     } on BackupException catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+      if (context.mounted) MgToast.show(context, message: e.message);
     } catch (_) {
-      messenger.showSnackBar(const SnackBar(content: Text('No se pudo abrir el respaldo.')));
+      if (context.mounted) MgToast.show(context, message: 'No se pudo abrir el respaldo.');
     }
   }
 
   Future<void> _toggleLock(BuildContext context, bool enable) async {
-    final messenger = ScaffoldMessenger.of(context);
     final notifier = ref.read(passcodeEnabledProvider.notifier);
     final auth = ref.read(localAuthProvider);
 
@@ -764,7 +1031,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
       await notifier.setEnabled(false);
       return;
     }
-    // Se comprueba que el teléfono tenga un desbloqueo antes de activarlo.
     var ok = false;
     try {
       if (await auth.isDeviceSupported()) {
@@ -772,11 +1038,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
           localizedReason: 'Confirma para activar el bloqueo de MiGasto',
         );
       } else {
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Text('Configura un PIN, huella o rostro en tu teléfono para usar el bloqueo.'),
-          ),
-        );
+        if (context.mounted) {
+          MgToast.show(context, message: 'Configura un PIN, huella o rostro en tu teléfono para usar el bloqueo.');
+        }
         return;
       }
     } catch (_) {
@@ -788,31 +1052,68 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   // -------------------------------------------------------------- simulador
 
   Widget _simulator(BuildContext context) {
-    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(AppRadius.box),
+        color: MgColors.card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Probar la lectura de pagos', style: theme.textTheme.titleSmall),
+          // Solo existe en compilaciones de desarrollo.
+          Row(
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Datos de ejemplo',
+                      style: TextStyle(fontWeight: FontWeight.w600, color: MgColors.ink),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Solo en debug: sueldo de S/ 15,000 y unos S/ 7,500 en gastos. No se guardan en la base.',
+                      style: TextStyle(fontSize: 12, color: MgColors.ink2),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Switch(
+                activeThumbColor: MgColors.acc,
+                value: debugMockEnabled(ref.read(sharedPreferencesProvider), runningUnderTest: false),
+                onChanged: (on) async {
+                  await ref.read(sharedPreferencesProvider).setBool(keyDebugMockData, on);
+                  await ref.read(expensesStateProvider.notifier).reload();
+                  // Los planes y pagos de ejemplo también se vuelven a leer.
+                  ref.invalidate(categoryLimitsProvider);
+                  ref.invalidate(savingsGoalProvider);
+                  ref.invalidate(scheduledPaymentsProvider);
+                  if (mounted) setState(() {});
+                },
+              ),
+            ],
+          ),
+          const Divider(color: MgColors.line, height: 20),
+          const Text('Probar la lectura de pagos', style: TextStyle(fontWeight: FontWeight.w600, color: MgColors.ink)),
           const SizedBox(height: 4),
-          Text(
+          const Text(
             'Escribe un texto como el de una notificación. Pasa por el mismo camino que un pago real.',
-            style: theme.textTheme.bodySmall,
+            style: TextStyle(fontSize: 12, color: MgColors.ink2),
           ),
           const SizedBox(height: 10),
           TextField(
             controller: _simController,
             minLines: 1,
             maxLines: 3,
+            style: const TextStyle(color: MgColors.ink),
             decoration: const InputDecoration(hintText: 'Ej.: Yapeaste S/ 18.50 a una tienda'),
           ),
           const SizedBox(height: 10),
-          FilledButton(onPressed: _runSimulation, child: const Text('Probar')),
+          ElevatedButton(onPressed: _runSimulation, child: const Text('Probar')),
         ],
       ),
     );
@@ -821,29 +1122,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   Future<void> _runSimulation() async {
     final text = _simController.text.trim();
     if (text.isEmpty) return;
-    final messenger = ScaffoldMessenger.of(context);
     final notifier = ref.read(expensesStateProvider.notifier);
     final permissions = ref.read(permissionsCheckerProvider);
 
-    // Mismas reglas que usa la detección real (assets/reader_rules.json).
     final reader = await PaymentReader.fromAsset();
     final parsed = reader.parse(text);
     if (parsed == null) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text(
-            'No pudimos leer este pago. Incluye el monto, por ejemplo S/ 15.00, y la app (Yape, Plin o Google Wallet).',
-          ),
-        ),
-      );
+      if (mounted) {
+        MgToast.show(
+          context,
+          message: 'No pudimos leer este pago. Incluye el monto y la app (Yape, Plin o Google Wallet).',
+        );
+      }
       return;
     }
 
     if (_isAndroid) {
-      // Pasa por el mismo camino que una notificación real.
       await permissions.simulateNotification(text);
     } else {
-      // iPhone: el pago pasa por la cola nativa, como el de la acción de Atajos.
       await permissions.debugEnqueue({
         'amount': parsed.amount,
         'peer': parsed.peer,
@@ -857,99 +1153,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
       });
       await notifier.drainNativeQueue();
     }
-    messenger.showSnackBar(
-      SnackBar(content: Text('Leído: ${parsed.type} de ${formatSoles(parsed.amount)}')),
-    );
-  }
-}
-
-/// Fila de ajustes: ícono, título, subtítulo y, a la derecha, estado, valor,
-/// interruptor o flecha.
-class _SettingRow extends StatelessWidget {
-  const _SettingRow({
-    required this.icon,
-    required this.title,
-    this.subtitle,
-    this.trailing,
-    this.trailingText,
-    this.onTap,
-    this.switchValue,
-    this.onSwitch,
-  });
-
-  final AppIcons icon;
-  final String title;
-  final String? subtitle;
-  final Widget? trailing;
-  final String? trailingText;
-  final VoidCallback? onTap;
-  final bool? switchValue;
-  final ValueChanged<bool>? onSwitch;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final isSwitch = switchValue != null;
-
-    Widget? right = trailing;
-    if (isSwitch) {
-      right = Switch(value: switchValue!, onChanged: onSwitch);
-    } else if (trailingText != null) {
-      right = Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            trailingText!,
-            style: AppText.amount(
-                theme.textTheme.bodyMedium!.copyWith(fontWeight: FontWeight.w600)),
-          ),
-          const SizedBox(width: 4),
-          AppIcon(AppIcons.chevron, size: AppIconSize.small, color: scheme.onSurfaceVariant),
-        ],
-      );
-    } else if (right == null && onTap != null) {
-      right = AppIcon(AppIcons.chevron, size: AppIconSize.small, color: scheme.onSurfaceVariant);
+    if (mounted) {
+      MgToast.show(context, message: 'Leído: ${parsed.type} de ${formatSoles(parsed.amount)}');
     }
-
-    return Semantics(
-      container: true,
-      button: onTap != null && !isSwitch,
-      toggled: isSwitch ? switchValue : null,
-      label: [title, ?subtitle].join('. '),
-      excludeSemantics: !isSwitch,
-      child: InkWell(
-        onTap: isSwitch ? () => onSwitch?.call(!switchValue!) : onTap,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: AppSizes.minTouch + 8),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            child: Row(
-              children: [
-                AppIcon(icon, color: scheme.onSurfaceVariant),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title, style: theme.textTheme.titleSmall),
-                      if (subtitle != null)
-                        Text(subtitle!, style: theme.textTheme.bodySmall!.copyWith(fontSize: 12)),
-                    ],
-                  ),
-                ),
-                if (right != null) ...[const SizedBox(width: 8), right],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }
 
-/// Interruptor de una fuente de pago, con su punto de color.
-/// Pide la contraseña del respaldo. Al crear pide confirmarla.
 class _PassphraseDialog extends StatefulWidget {
   const _PassphraseDialog({required this.creating});
 
@@ -992,28 +1201,27 @@ class _PassphraseDialogState extends State<_PassphraseDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return AlertDialog(
-      title: const Text('Contraseña del respaldo'),
+      backgroundColor: MgColors.card,
+      title: const Text('Contraseña del respaldo', style: TextStyle(color: MgColors.ink)),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (widget.creating)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+              const Padding(
+                padding: EdgeInsets.only(bottom: 12),
                 child: Text(
                   'Elige una contraseña que recuerdes. MiGasto no la guarda: si la olvidas, nadie podrá abrir el respaldo.',
-                  style: theme.textTheme.bodySmall,
+                  style: TextStyle(fontSize: 12, color: MgColors.ink2),
                 ),
               ),
             TextField(
               controller: _first,
               obscureText: !_visible,
               autofocus: true,
-              autocorrect: false,
-              enableSuggestions: false,
+              style: const TextStyle(color: MgColors.ink),
               decoration: InputDecoration(
                 labelText: 'Contraseña',
                 suffixIcon: IconButton(
@@ -1029,8 +1237,7 @@ class _PassphraseDialogState extends State<_PassphraseDialog> {
               TextField(
                 controller: _second,
                 obscureText: !_visible,
-                autocorrect: false,
-                enableSuggestions: false,
+                style: const TextStyle(color: MgColors.ink),
                 decoration: const InputDecoration(labelText: 'Repite la contraseña'),
                 onSubmitted: (_) => _submit(),
               ),
@@ -1040,7 +1247,7 @@ class _PassphraseDialogState extends State<_PassphraseDialog> {
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
                   _error!,
-                  style: theme.textTheme.bodySmall!.copyWith(color: theme.colorScheme.error),
+                  style: const TextStyle(fontSize: 12, color: MgColors.down),
                 ),
               ),
           ],
@@ -1053,101 +1260,6 @@ class _PassphraseDialogState extends State<_PassphraseDialog> {
           child: Text(widget.creating ? 'Crear respaldo' : 'Abrir'),
         ),
       ],
-    );
-  }
-}
-
-class _AutoIncomeSwitch extends ConsumerWidget {
-  const _AutoIncomeSwitch();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final on = ref.watch(autoSaveIncomeProvider);
-    final notifier = ref.read(autoSaveIncomeProvider.notifier);
-    return Semantics(
-      container: true,
-      toggled: on,
-      label: 'Guardar ingresos automáticamente',
-      excludeSemantics: true,
-      child: InkWell(
-        onTap: notifier.toggle,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: AppSizes.minTouch + 8),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Guardar ingresos automáticamente', style: theme.textTheme.titleSmall),
-                      Text(
-                        on
-                            ? 'Los ingresos se guardan solos, como los gastos.'
-                            : 'Apagado: cada ingreso espera tu confirmación.',
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
-                Switch(value: on, onChanged: (_) => notifier.toggle()),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SourceSwitch extends ConsumerWidget {
-  const _SourceSwitch({
-    required this.label,
-    required this.sourceKey,
-    required this.enabled,
-  });
-
-  final String label;
-  final String sourceKey;
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final color = context.appColors.sourceColor(sourceKey);
-    return Semantics(
-      container: true,
-      toggled: enabled,
-      label: 'Registrar pagos de $label',
-      excludeSemantics: true,
-      child: InkWell(
-        onTap: () => ref.read(providersEnabledProvider.notifier).toggleProvider(sourceKey),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: AppSizes.minTouch + 8),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Row(
-              children: [
-                const SizedBox(width: 5),
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                ),
-                const SizedBox(width: 17),
-                Expanded(child: Text('Registrar pagos de $label', style: theme.textTheme.titleSmall)),
-                Switch(
-                  value: enabled,
-                  onChanged: (_) =>
-                      ref.read(providersEnabledProvider.notifier).toggleProvider(sourceKey),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

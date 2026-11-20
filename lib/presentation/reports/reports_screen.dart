@@ -1,31 +1,23 @@
-import 'dart:math' as math;
-
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_tokens.dart';
+import '../../core/theme/mg_colors.dart';
+import '../../core/widgets/category_icon.dart';
+import '../../core/widgets/charts.dart';
+import '../../core/widgets/mg_card.dart';
 import '../../domain/entities/movimiento.dart';
-import '../../shared/format.dart';
-import '../../shared/category_display.dart';
-import '../../shared/widgets/app_icons.dart';
-import '../../shared/widgets/big_amount.dart';
+import '../../shared/labels.dart';
+import '../../shared/widgets/profile_avatar_button.dart';
+import '../../shared/profile.dart';
 import '../providers.dart';
-
-enum _Mode { month, year, range }
-
-const _shortMonths = [
-  'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Dic',
-];
-
-class _Bucket {
-  _Bucket(this.month);
-  final DateTime month;
-  double income = 0;
-  double expense = 0;
-}
+import 'fullscreen_chart_screen.dart';
+import '../../core/layout/landscape_pane.dart';
+import '../../domain/balance_projection.dart';
+import '../../domain/balance_summary.dart';
+import '../dashboard/dashboard_side_cards.dart';
+import '../../core/layout/adaptive.dart';
+import '../../core/widgets/adaptive_sheet.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
@@ -35,169 +27,195 @@ class ReportsScreen extends ConsumerStatefulWidget {
 }
 
 class _ReportsScreenState extends ConsumerState<ReportsScreen> {
-  _Mode _mode = _Mode.month;
-  late DateTime _month = DateTime(DateTime.now().year, DateTime.now().month);
-  late int _year = DateTime.now().year;
-  late DateTimeRange _range = DateTimeRange(
-    start: DateTime.now().subtract(const Duration(days: 30)),
-    end: DateTime.now(),
-  );
+  DateTime _currentMonth = DateTime.now();
+  final String _selectedSpace = 'Personal';
+  int _chartTypeIndex = 1; // 0: Anillos concéntricos (Syncfusion), 1: Dona (DonutChart)
 
-  // -------------------------------------------------------------- períodos
-
-  /// Inicio (incluido) y fin (excluido) del período elegido.
-  (DateTime, DateTime) get _period {
-    switch (_mode) {
-      case _Mode.month:
-        return (_month, DateTime(_month.year, _month.month + 1));
-      case _Mode.year:
-        return (DateTime(_year), DateTime(_year + 1));
-      case _Mode.range:
-        final s = DateTime(_range.start.year, _range.start.month, _range.start.day);
-        final e = DateTime(_range.end.year, _range.end.month, _range.end.day + 1);
-        return (s, e);
-    }
-  }
-
-  /// Período anterior de la misma duración (para comparar).
-  (DateTime, DateTime) get _previous {
-    final (s, e) = _period;
-    switch (_mode) {
-      case _Mode.month:
-        return (DateTime(s.year, s.month - 1), s);
-      case _Mode.year:
-        return (DateTime(s.year - 1), s);
-      case _Mode.range:
-        final d = e.difference(s);
-        return (s.subtract(d), s);
-    }
-  }
-
-  List<Movimiento> _within(List<Movimiento> all, (DateTime, DateTime) p) => all
-      .where((m) => m.isConfirmed && !m.date.isBefore(p.$1) && m.date.isBefore(p.$2))
-      .toList();
-
-  double _sum(Iterable<Movimiento> list, TipoMovimiento tipo) =>
-      list.where((m) => m.tipo == tipo).fold(0.0, (s, m) => s + m.amount);
-
-  String _monthName(DateTime d) => DateFormat('MMMM', 'es').format(d);
-
-  String get _periodLabel {
-    switch (_mode) {
-      case _Mode.month:
-        return toBeginningOfSentenceCase(
-            '${_monthName(_month)} ${_month.year}');
-      case _Mode.year:
-        return '$_year';
-      case _Mode.range:
-        final f = DateFormat('d MMM', 'es');
-        return '${f.format(_range.start)} – ${f.format(_range.end)}';
-    }
-  }
-
-  void _shift(int delta) {
+  void _prevMonth() {
     setState(() {
-      if (_mode == _Mode.month) {
-        _month = DateTime(_month.year, _month.month + delta);
-      } else if (_mode == _Mode.year) {
-        _year += delta;
-      }
+      _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1);
     });
   }
 
-  Future<void> _pickRange() async {
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-      initialDateRange: _range,
-      locale: const Locale('es'),
-    );
-    if (picked != null) setState(() => _range = picked);
+  void _nextMonth() {
+    setState(() {
+      _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1);
+    });
   }
 
-  List<_Bucket> _buckets(List<Movimiento> all) {
-    final (s, e) = _period;
-    late List<DateTime> months;
-    switch (_mode) {
-      case _Mode.month:
-        // Los 4 últimos meses terminando en el elegido.
-        months = [for (var i = 3; i >= 0; i--) DateTime(_month.year, _month.month - i)];
-      case _Mode.year:
-        months = [for (var m = 1; m <= 12; m++) DateTime(_year, m)];
-      case _Mode.range:
-        months = [];
-        var c = DateTime(s.year, s.month);
-        while (c.isBefore(e) && months.length < 12) {
-          months.add(c);
-          c = DateTime(c.year, c.month + 1);
-        }
-    }
-    final buckets = [for (final m in months) _Bucket(m)];
-    for (final m in all.where((m) => m.isConfirmed)) {
-      for (final b in buckets) {
-        if (m.date.year == b.month.year && m.date.month == b.month.month) {
-          if (m.esIngreso) {
-            b.income += m.amount;
-          } else {
-            b.expense += m.amount;
-          }
-        }
-      }
-    }
-    return buckets;
+  String _formatMonthHeader(DateTime date) {
+    final months = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ];
+    return '${months[date.month - 1]} de ${date.year}';
   }
 
-  // ------------------------------------------------------------------ build
+  String _weekdayName(int weekday) {
+    switch (weekday) {
+      case DateTime.monday:
+        return 'Lunes';
+      case DateTime.tuesday:
+        return 'Martes';
+      case DateTime.wednesday:
+        return 'Miércoles';
+      case DateTime.thursday:
+        return 'Jueves';
+      case DateTime.friday:
+        return 'Viernes';
+      case DateTime.saturday:
+        return 'Sábado';
+      case DateTime.sunday:
+        return 'Domingo';
+      default:
+        return 'Martes';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final all = ref.watch(expensesStateProvider);
-    final theme = Theme.of(context);
+    final allMovs = ref.watch(expensesStateProvider);
+    final isHide = ref.watch(balanceHiddenProvider);
 
-    final current = _within(all, _period);
-    final previous = _within(all, _previous);
-    final income = _sum(current, TipoMovimiento.ingreso);
-    final expense = _sum(current, TipoMovimiento.gasto);
-    final balance = income - expense;
-    final prevBalance =
-        _sum(previous, TipoMovimiento.ingreso) - _sum(previous, TipoMovimiento.gasto);
-    final hasPrevious = previous.isNotEmpty;
+    // Movimientos del mes seleccionado
+    final monthMovs = allMovs.where((m) =>
+        m.isConfirmed &&
+        m.date.year == _currentMonth.year &&
+        m.date.month == _currentMonth.month).toList();
+
+    // Mes anterior para comparación
+    final prevMonthDate = DateTime(_currentMonth.year, _currentMonth.month - 1);
+    final prevMonthMovs = allMovs.where((m) =>
+        m.isConfirmed &&
+        m.date.year == prevMonthDate.year &&
+        m.date.month == prevMonthDate.month).toList();
+
+    final currentGastos = monthMovs
+        .where((m) => m.tipo == TipoMovimiento.gasto)
+        .fold<double>(0.0, (s, m) => s + m.amount);
+
+    final prevGastos = prevMonthMovs
+        .where((m) => m.tipo == TipoMovimiento.gasto)
+        .fold<double>(0.0, (s, m) => s + m.amount);
+
+    // Día que más gastas
+    final daySpending = <int, double>{};
+    for (final m in monthMovs.where((m) => m.tipo == TipoMovimiento.gasto)) {
+      daySpending[m.date.weekday] = (daySpending[m.date.weekday] ?? 0.0) + m.amount;
+    }
+    String topDay = '—';
+    if (daySpending.isNotEmpty) {
+      final best = daySpending.entries.reduce((a, b) => a.value > b.value ? a : b);
+      topDay = _weekdayName(best.key);
+    }
+
+    // vs periodo anterior
+    // Sin gastos el mes anterior no hay con qué comparar: no se muestra ningún porcentaje.
+    String vsPeriodoText = '—';
+    Color vsPeriodoColor = MgColors.ink2;
+    if (prevGastos > 0) {
+      final diff = ((currentGastos - prevGastos) / prevGastos) * 100;
+      final sign = diff >= 0 ? '+' : '';
+      vsPeriodoText = '$sign${diff.toStringAsFixed(0)}%';
+      vsPeriodoColor = diff > 0 ? MgColors.down : MgColors.up;
+    }
+
+    // Gastos por categoría
+    final catMap = <Categoria, double>{};
+    for (final m in monthMovs.where((m) => m.tipo == TipoMovimiento.gasto)) {
+      final cat = m.category;
+      catMap[cat] = (catMap[cat] ?? 0.0) + m.amount;
+    }
+
+    final catList = catMap.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    final totalPorCategorias = catList.fold<double>(0.0, (s, e) => s + e.value);
+
+    final segments = catList.map((e) {
+      return DonutSegment(
+        label: categoryLabel(e.key),
+        value: e.value,
+        color: CategoryIcon.colorForCategory(e.key),
+      );
+    }).toList();
+
+    final topBar = _buildTopBar(context, isHide);
+    final monthNav = _buildMonthNav();
+    final miniCards = _buildMiniCards(topDay, vsPeriodoText, vsPeriodoColor);
+    final categoryCard =
+        _buildCategoryCard(context, segments, catList, totalPorCategorias, isHide);
+    final incomeVsExpense = _buildIncomeVsExpenseCard(allMovs);
+    // Saldo a 30 días: el mismo que en Inicio (saldo real, ritmo de los últimos 30 días).
+    final nowDate = DateTime.now();
+    final currentBalance = computeBalanceSummary(allMovs, nowDate).balance;
+    final forecast = Padding(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+      child: BalanceForecastCard(
+        projection: projectBalance(
+          movements: allMovs,
+          currentBalance: currentBalance,
+          now: nowDate,
+        ),
+        history: balanceHistory(
+          movements: allMovs,
+          currentBalance: currentBalance,
+          now: nowDate,
+        ),
+        currentBalance: currentBalance,
+        hidden: isHide,
+      ),
+    );
+
+    // Teléfono girado: gastos por categoría a la izquierda y el resto a la
+    // derecha, cada lado con su propio scroll.
+    if (context.isLandscapePhone) {
+      final bottom = context.tabBarClearance(160);
+      Widget side(List<Widget> children) => LandscapePane(
+            padding: EdgeInsets.only(bottom: bottom),
+            children: children,
+          );
+      return Scaffold(
+        backgroundColor: MgColors.bg,
+        body: SafeArea(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              side([topBar, monthNav, categoryCard]),
+              side([miniCards, forecast, incomeVsExpense]),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
+      backgroundColor: MgColors.bg,
       body: SafeArea(
-        bottom: false,
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(AppSpacing.xl, 6, AppSpacing.xl, 18),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Reportes', style: theme.textTheme.headlineMedium),
-              const SizedBox(height: 14),
-              _modeSelector(context),
-              const SizedBox(height: 10),
-              _periodBar(context),
-              const SizedBox(height: 14),
-              _balanceBlock(context, balance, prevBalance, hasPrevious),
-              const SizedBox(height: 14),
-              _legend(context),
-              const SizedBox(height: 8),
-              _chart(context, _buckets(all)),
-              const SizedBox(height: 14),
-              _categoryTable(
-                context,
-                title: 'Ingresos de ${_titleSuffix()}',
-                emptyText: 'Sin ingresos en este período.',
-                movimientos: current.where((m) => m.esIngreso),
-              ),
-              const SizedBox(height: 14),
-              _categoryTable(
-                context,
-                title: 'Gastos de ${_titleSuffix()}',
-                emptyText: 'Sin gastos en este período.',
-                movimientos: current.where((m) => m.esGasto),
-              ),
+              // Cabecera superior idéntica a inicio y plan
+              topBar,
+
+              // Selector de mes (.mnav)
+              monthNav,
+
+              // Mini cards (.mini)
+              miniCards,
+
+              // Tarjeta 1: Gastos por categoría
+              categoryCard,
+
+              // Tarjeta 2: Saldo a 30 días
+              forecast,
+
+              // Tarjeta 3: Ingresos vs gastos (6 meses)
+              incomeVsExpense,
+
+              SizedBox(height: context.tabBarClearance(160)),
             ],
           ),
         ),
@@ -205,383 +223,781 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     );
   }
 
-  String _titleSuffix() {
-    switch (_mode) {
-      case _Mode.month:
-        return _monthName(_month);
-      case _Mode.year:
-        return '$_year';
-      case _Mode.range:
-        return 'este rango';
-    }
-  }
-
-  Widget _modeSelector(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
-    Widget seg(String label, _Mode mode) {
-      final selected = _mode == mode;
-      return Expanded(
-        child: Semantics(
-          button: true,
-          selected: selected,
-          label: label,
-          excludeSemantics: true,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => setState(() => _mode = mode),
-            child: Container(
-              constraints: const BoxConstraints(minHeight: AppSizes.minTouch - 8),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: selected ? scheme.outline : Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                label,
-                style: theme.textTheme.bodyMedium!.copyWith(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w600,
-                  color: selected ? scheme.onSurface : scheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(AppRadius.field),
-      ),
+  /// Cabecera con selector de espacio, toggle de saldo y botón de notificaciones
+  Widget _buildTopBar(BuildContext context, bool isHide) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
       child: Row(
         children: [
-          seg('Mes', _Mode.month),
-          seg('Año', _Mode.year),
-          seg('Rango', _Mode.range),
+          Container(
+              height: 34,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                color: MgColors.card,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      gradient: MgGradients.brandMark,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      initialsOf(ref.watch(profileNameProvider)).isEmpty
+                          ? 'MG'
+                          : initialsOf(ref.watch(profileNameProvider)),
+                      style: const TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _selectedSpace,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: MgColors.ink,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const Spacer(),
+          // Botón ocultar/mostrar saldos
+          InkWell(
+            borderRadius: BorderRadius.circular(17),
+            onTap: () {
+              ref.read(balanceHiddenProvider.notifier).toggle();
+            },
+            child: Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.04),
+              ),
+              child: Icon(
+                isHide ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                size: 18,
+                color: MgColors.ink2,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          const ProfileAvatarButton(size: 34),
         ],
       ),
     );
   }
 
-  Widget _periodBar(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final canNext = _mode == _Mode.month
-        ? DateTime(_month.year, _month.month + 1).isBefore(DateTime.now())
-        : _mode == _Mode.year && _year < DateTime.now().year;
-
-    Widget arrow(String label, IconData? _, bool enabled, int delta, bool flip) {
-      return Opacity(
-        opacity: enabled ? 1 : 0.35,
-        child: Tooltip(
-          message: label,
-          child: Semantics(
-            button: true,
-            enabled: enabled,
-            label: label,
-            excludeSemantics: true,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(AppRadius.field),
-              onTap: enabled ? () => _shift(delta) : null,
-              child: SizedBox(
-                width: AppSizes.minTouch,
-                height: AppSizes.minTouch,
-                child: Center(
-                  child: Transform.flip(
-                    flipX: flip,
-                    child: AppIcon(AppIcons.chevron, color: scheme.onSurface),
-                  ),
-                ),
+  /// Selector de mes (.mnav)
+  Widget _buildMonthNav() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: _prevMonth,
+            child: Container(
+              width: 32,
+              height: 32,
+              alignment: Alignment.center,
+              child: const Icon(
+                Icons.chevron_left_rounded,
+                size: 22,
+                color: MgColors.ink2,
               ),
             ),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.calendar_today_outlined,
+                size: 15,
+                color: MgColors.ink2,
+              ),
+              const SizedBox(width: 7),
+              Text(
+                _formatMonthHeader(_currentMonth),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: MgColors.ink,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ],
+          ),
+          InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: _nextMonth,
+            child: Container(
+              width: 32,
+              height: 32,
+              alignment: Alignment.center,
+              child: const Icon(
+                Icons.chevron_right_rounded,
+                size: 22,
+                color: MgColors.ink2,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Mini tarjetas resumen (.mini)
+  Widget _buildMiniCards(String topDay, String vsPeriodoText, Color vsPeriodoColor) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+      child: Row(
+        children: [
+          // Tarjeta 1: Día que más gastas
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(13),
+              decoration: BoxDecoration(
+                color: MgColors.card,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.055)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: const Color(0x227C5CFF),
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.calendar_today_rounded,
+                      size: 15,
+                      color: Color(0xFFA78BFA),
+                    ),
+                  ),
+                  const SizedBox(height: 9),
+                  const Text(
+                    'Día que más gastas',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: MgColors.ink2,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    topDay,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: MgColors.ink,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          // Tarjeta 2: vs periodo anterior
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(13),
+              decoration: BoxDecoration(
+                color: MgColors.card,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.055)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: const Color(0x22FF5C6E),
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.arrow_outward_rounded,
+                      size: 16,
+                      color: MgColors.down,
+                    ),
+                  ),
+                  const SizedBox(height: 9),
+                  const Text(
+                    'vs periodo anterior',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: MgColors.ink2,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    vsPeriodoText,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: vsPeriodoColor,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Tarjeta: Gastos por categoría (.card)
+  Widget _buildCategoryCard(
+    BuildContext context,
+    List<DonutSegment> segments,
+    List<MapEntry<Categoria, double>> catList,
+    double total,
+    bool isHide,
+  ) {
+    final top4 = catList.take(4).toList();
+
+    if (catList.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.fromLTRB(18, 14, 18, 0),
+        child: MgCard(
+          padding: EdgeInsets.all(18),
+          child: Text(
+            'Aún no hay gastos registrados este mes.',
+            style: TextStyle(fontSize: 13, color: MgColors.ink2),
           ),
         ),
       );
     }
 
-    if (_mode == _Mode.range) {
-      return Semantics(
-        button: true,
-        label: 'Elegir rango de fechas. $_periodLabel',
-        excludeSemantics: true,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(AppRadius.field),
-          onTap: _pickRange,
-          child: Container(
-            height: AppSizes.minTouch,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(
-              color: scheme.surface,
-              borderRadius: BorderRadius.circular(AppRadius.field),
-            ),
-            child: Row(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+      child: MgCard(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Cabecera con selector de tipo de gráfico y botón expandir
+            Row(
               children: [
-                Expanded(child: Text(_periodLabel, style: theme.textTheme.bodyLarge)),
-                Text('Cambiar',
-                    style: theme.textTheme.labelLarge!
-                        .copyWith(color: scheme.onSurfaceVariant, fontSize: 13)),
-                AppIcon(AppIcons.chevron,
-                    size: AppIconSize.small, color: scheme.onSurfaceVariant),
+                const Expanded(
+                  child: Text(
+                    'Gastos por categoría',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: MgColors.ink,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ),
+                // Selector de vista: Anillos / Dona
+                Container(
+                  height: 28,
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildChartTypeTab(
+                        label: 'Anillos',
+                        icon: Icons.track_changes_rounded,
+                        isSelected: _chartTypeIndex == 0,
+                        onTap: () => setState(() => _chartTypeIndex = 0),
+                      ),
+                      _buildChartTypeTab(
+                        label: 'Dona',
+                        icon: Icons.donut_large_rounded,
+                        isSelected: _chartTypeIndex == 1,
+                        onTap: () => setState(() => _chartTypeIndex = 1),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 6),
+                InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () {
+                    Navigator.of(context, rootNavigator: true).push(
+                      MaterialPageRoute(
+                        builder: (_) => FullscreenChartScreen(
+                          month: _currentMonth,
+                          spaceName: _selectedSpace,
+                          segments: segments,
+                          catList: catList,
+                          total: total,
+                          isHide: isHide,
+                          initialChartIndex: _chartTypeIndex,
+                        ),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.fullscreen_rounded,
+                      size: 20,
+                      color: MgColors.ink2,
+                    ),
+                  ),
+                ),
               ],
             ),
-          ),
-        ),
-      );
-    }
+            const SizedBox(height: 14),
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        arrow('Período anterior', null, true, -1, true),
-        Text(_periodLabel, style: theme.textTheme.titleMedium),
-        arrow('Período siguiente', null, canNext, 1, false),
-      ],
-    );
-  }
-
-  Widget _balanceBlock(
-    BuildContext context,
-    double balance,
-    double prevBalance,
-    bool hasPrevious,
-  ) {
-    final theme = Theme.of(context);
-    final colors = context.appColors;
-    final now = DateTime.now();
-    final isCurrentMonth =
-        _mode == _Mode.month && _month.year == now.year && _month.month == now.month;
-    final isPast = !isCurrentMonth && _mode != _Mode.range;
-
-    final lead = switch (_mode) {
-      _Mode.month => 'En ${_monthName(_month)} te ${isPast ? 'quedaron' : 'quedan'}',
-      _Mode.year => 'En $_year te ${_year < now.year ? 'quedaron' : 'quedan'}',
-      _Mode.range => 'En este rango te quedaron',
-    };
-
-    final diff = balance - prevBalance;
-    String? comparison;
-    if (hasPrevious) {
-      final prevName = switch (_mode) {
-        _Mode.month => _monthName(_previous.$1),
-        _Mode.year => '${_year - 1}',
-        _Mode.range => 'el período anterior',
-      };
-      comparison = diff.abs() < 0.005
-          ? 'Igual que en $prevName'
-          : '${solesOrHidden(diff.abs(), ref.watch(balanceHiddenProvider))} ${diff > 0 ? 'más' : 'menos'} que en $prevName';
-    }
-
-    final negative = balance < 0;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(lead,
-            style: theme.textTheme.bodyMedium!.copyWith(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w500,
-                color: theme.colorScheme.onSurfaceVariant)),
-        const SizedBox(height: 4),
-        BigAmount(
-          balance.abs(),
-          size: 36,
-          prefix: negative && !ref.watch(balanceHiddenProvider) ? '− S/' : 'S/',
-          color: negative && !ref.watch(balanceHiddenProvider) ? colors.budgetOver : null,
-          hidden: ref.watch(balanceHiddenProvider),
-        ),
-        if (comparison != null) ...[
-          const SizedBox(height: 4),
-          Text(comparison, style: theme.textTheme.bodySmall),
-        ],
-      ],
-    );
-  }
-
-  Widget _legend(BuildContext context) {
-    final colors = context.appColors;
-    final style = Theme.of(context).textTheme.bodySmall;
-    Widget item(Color c, String label) => Row(
-          children: [
-            Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(3)),
+            // Gráfico animado (Anillos con Syncfusion o Dona de alta fidelidad)
+            Center(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 320),
+                transitionBuilder: (child, anim) => FadeTransition(
+                  opacity: anim,
+                  child: ScaleTransition(
+                    scale: Tween<double>(begin: 0.95, end: 1.0).animate(anim),
+                    child: child,
+                  ),
+                ),
+                child: _chartTypeIndex == 0
+                    ? RadialRingsChart(
+                        key: const ValueKey('radial_rings_chart'),
+                        segments: segments,
+                        total: total,
+                        size: 210,
+                        centerWidget: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              isHide ? '••••' : 'S/ ${NumberFormat('#,##0.00', 'en').format(total)}',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: MgColors.ink,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'gastado',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: MgColors.ink2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : DonutChart(
+                        key: const ValueKey('donut_chart'),
+                        segments: segments,
+                        total: total,
+                        size: 195,
+                        strokeWidth: 20,
+                        centerWidget: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              isHide ? '••••' : 'S/ ${NumberFormat('#,##0.00', 'en').format(total)}',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: MgColors.ink,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'gastado',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: MgColors.ink2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+              ),
             ),
-            const SizedBox(width: 6),
-            Text(label, style: style),
-          ],
-        );
-    return Row(
-      children: [
-        item(colors.income, 'Ingresos'),
-        const SizedBox(width: 16),
-        item(colors.expenseBar, 'Gastos'),
-      ],
-    );
-  }
+            const SizedBox(height: 16),
 
-  Widget _chart(BuildContext context, List<_Bucket> buckets) {
-    final theme = Theme.of(context);
-    final colors = context.appColors;
-    final scheme = theme.colorScheme;
+            // Leyenda top 4 (.leg)
+            for (var i = 0; i < top4.length; i++) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 9),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: CategoryIcon.colorForCategory(top4[i].key),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    Icon(
+                      CategoryIcon.iconForCategory(top4[i].key),
+                      size: 15,
+                      color: CategoryIcon.colorForCategory(top4[i].key),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        categoryLabel(top4[i].key),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: MgColors.ink,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      isHide ? '••••' : 'S/ ${NumberFormat('#,##0.00', 'en').format(top4[i].value)}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: MgColors.ink,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (i < top4.length - 1)
+                Divider(
+                  height: 1,
+                  color: Colors.white.withValues(alpha: 0.06),
+                ),
+            ],
 
-    final maxValue = buckets.fold<double>(
-        0, (m, b) => math.max(m, math.max(b.income, b.expense)));
-    final top = math.max(1000.0, (maxValue / 1000).ceil() * 1000.0);
-    final last = buckets.length - 1;
+            const SizedBox(height: 10),
 
-    final summary = buckets
-        .map((b) =>
-            '${_shortMonths[b.month.month - 1]}: ${formatAmount(b.income)} de ingresos y ${formatAmount(b.expense)} de gastos')
-        .join('. ');
-
-    return Semantics(
-      label: 'Ingresos y gastos por mes. $summary soles.',
-      child: SizedBox(
-        height: 190,
-        child: BarChart(
-          BarChartData(
-            maxY: top,
-            alignment: BarChartAlignment.spaceAround,
-            gridData: FlGridData(
-              show: true,
-              drawVerticalLine: false,
-              horizontalInterval: top / 4,
-              getDrawingHorizontalLine: (_) =>
-                  FlLine(color: scheme.outline, strokeWidth: 1),
-            ),
-            borderData: FlBorderData(show: false),
-            titlesData: FlTitlesData(
-              topTitles: const AxisTitles(),
-              rightTitles: const AxisTitles(),
-              leftTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 40,
-                  interval: top / 4,
-                  getTitlesWidget: (v, _) => Text(
-                    NumberFormat('#,##0', 'en').format(v),
-                    style: theme.textTheme.labelSmall!.copyWith(fontSize: 10),
+            // Botón "Ver todas"
+            InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => _showAllCategoriesSheet(context, catList, total, isHide),
+              child: Container(
+                height: 38,
+                decoration: BoxDecoration(
+                  color: MgColors.soft,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  'Ver todas (${catList.length})',
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: MgColors.ink2,
                   ),
                 ),
               ),
-              bottomTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 24,
-                  getTitlesWidget: (v, _) {
-                    final i = v.toInt();
-                    if (i < 0 || i >= buckets.length) return const SizedBox.shrink();
-                    final isLast = i == last;
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChartTypeTab({
+    required String label,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: isSelected ? MgColors.acc : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 13,
+              color: isSelected ? Colors.white : MgColors.ink2,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: isSelected ? Colors.white : MgColors.ink2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Tarjeta: Ingresos vs gastos (.card)
+  Widget _buildIncomeVsExpenseCard(List<Movimiento> allMovs) {
+    // Últimos 6 meses (terminando en el mes elegido), con los movimientos reales.
+    final history = <MonthBarItem>[];
+    for (var i = 5; i >= 0; i--) {
+      final month = DateTime(_currentMonth.year, _currentMonth.month - i);
+      final inMonth = allMovs.where((m) =>
+          m.isConfirmed && m.date.year == month.year && m.date.month == month.month);
+      history.add(MonthBarItem(
+        label: toBeginningOfSentenceCase(DateFormat('MMM', 'es').format(month))!,
+        income: inMonth.where((m) => m.esIngreso).fold(0.0, (s, m) => s + m.amount),
+        expense: inMonth.where((m) => m.esGasto).fold(0.0, (s, m) => s + m.amount),
+      ));
+    }
+    final hasData = history.any((h) => h.income > 0 || h.expense > 0);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+      child: MgCard(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Ingresos vs gastos',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: MgColors.ink,
+                letterSpacing: -0.2,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Barras animadas (o aviso si todavía no hay movimientos)
+            if (hasData)
+              IncomeExpenseBars(
+                data: history,
+                height: 140,
+              )
+            else
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 28),
+                child: Center(
+                  child: Text(
+                    'Aún no hay ingresos ni gastos registrados.',
+                    style: TextStyle(fontSize: 13, color: MgColors.ink2),
+                  ),
+                ),
+              ),
+            const SizedBox(height: 12),
+
+            // Leyenda (.leg2)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: MgColors.up,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'Ingresos',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: MgColors.ink2,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 16),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: MgColors.down,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'Gastos',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: MgColors.ink2,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Modal con todas las categorías y su porcentaje
+  void _showAllCategoriesSheet(
+    BuildContext context,
+    List<MapEntry<Categoria, double>> catList,
+    double total,
+    bool isHide,
+  ) {
+    showAdaptiveSheet(
+      context: context,
+      useRootNavigator: true,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: MgColors.card,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border(top: BorderSide(color: Color(0x1FFFFFFF), width: 1)),
+          ),
+          padding: const EdgeInsets.fromLTRB(18, 12, 18, 30),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.75,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 38,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Todas las categorías',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: MgColors.ink,
+                    ),
+                  ),
+                  Text(
+                    isHide ? '••••' : 'S/ ${NumberFormat('#,##0.00', 'en').format(total)}',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: MgColors.ink,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: catList.length,
+                  separatorBuilder: (_, _) => Divider(
+                    height: 1,
+                    color: Colors.white.withValues(alpha: 0.06),
+                  ),
+                  itemBuilder: (_, index) {
+                    final item = catList[index];
+                    final pct = total > 0 ? (item.value / total) * 100 : 0.0;
                     return Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text(
-                        _shortMonths[buckets[i].month.month - 1],
-                        style: theme.textTheme.labelMedium!.copyWith(
-                          fontSize: 11,
-                          fontWeight: isLast ? FontWeight.w600 : FontWeight.w500,
-                          color: isLast ? scheme.onSurface : scheme.onSurfaceVariant,
-                        ),
+                      padding: const EdgeInsets.symmetric(vertical: 11),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: CategoryIcon.colorForCategory(item.key).withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(11),
+                            ),
+                            alignment: Alignment.center,
+                            child: Icon(
+                              CategoryIcon.iconForCategory(item.key),
+                              size: 18,
+                              color: CategoryIcon.colorForCategory(item.key),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  categoryLabel(item.key),
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: MgColors.ink,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${pct.toStringAsFixed(1)} % del total',
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    color: MgColors.ink2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            isHide ? '••••' : 'S/ ${NumberFormat('#,##0.00', 'en').format(item.value)}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: MgColors.ink,
+                            ),
+                          ),
+                        ],
                       ),
                     );
                   },
                 ),
               ),
-            ),
-            barTouchData: BarTouchData(
-              touchTooltipData: BarTouchTooltipData(
-                tooltipBgColor: scheme.outline,
-                fitInsideHorizontally: true,
-                getTooltipItem: (group, _, rod, rodIndex) => BarTooltipItem(
-                  formatSoles(rod.toY),
-                  theme.textTheme.labelMedium!.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: rodIndex == 0 ? colors.income : scheme.onSurface,
-                  ),
-                ),
-              ),
-            ),
-            barGroups: [
-              for (var i = 0; i < buckets.length; i++)
-                BarChartGroupData(
-                  x: i,
-                  barsSpace: 2,
-                  barRods: [
-                    BarChartRodData(
-                      toY: buckets[i].income,
-                      width: buckets.length > 6 ? 7 : 14,
-                      color: colors.income,
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
-                    ),
-                    BarChartRodData(
-                      toY: buckets[i].expense,
-                      width: buckets.length > 6 ? 7 : 14,
-                      color: colors.expenseBar,
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
-                    ),
-                  ],
-                ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _categoryTable(
-    BuildContext context, {
-    required String title,
-    required String emptyText,
-    required Iterable<Movimiento> movimientos,
-  }) {
-    final theme = Theme.of(context);
-    final propias = ref.watch(customCategoriesProvider);
-    final byCategory = <String, double>{};
-    for (final m in movimientos) {
-      final key = categoryKey(m, propias);
-      byCategory[key] = (byCategory[key] ?? 0) + m.amount;
-    }
-    final rows = byCategory.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(title, style: theme.textTheme.titleMedium),
-        const SizedBox(height: 4),
-        if (rows.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Text(emptyText, style: theme.textTheme.bodySmall),
-          ),
-        for (var i = 0; i < rows.length; i++) ...[
-          if (i > 0) Divider(color: theme.colorScheme.outline, height: 1),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 9),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    rows[i].key == Categoria.transferenciaRecibida.name
-                        ? 'Transferencias recibidas'
-                        : displayForKey(rows[i].key, propias).label,
-                    style: theme.textTheme.bodyMedium!.copyWith(fontSize: 13.5),
-                  ),
-                ),
-                Text(
-                  solesOrHidden(rows[i].value, ref.watch(balanceHiddenProvider)),
-                  style: AppText.amount(theme.textTheme.bodyMedium!
-                      .copyWith(fontSize: 13.5, fontWeight: FontWeight.w600)),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ],
+        );
+      },
     );
   }
 }

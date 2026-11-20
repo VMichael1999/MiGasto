@@ -9,7 +9,7 @@ import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/brand_mark.dart';
 import '../providers.dart';
 
-/// Guía para crear la automatización "Transacción" de Wallet en Atajos.
+/// Guía para crear la automatización de Wallet (en inglés "Transaction") en Atajos.
 ///
 /// La app no puede crearla sola: la pantalla guía los pasos y marca los que ya
 /// se cumplen. Cuando llega el primer pago registrado por Wallet, la
@@ -40,7 +40,7 @@ class _ApplePaySetupScreenState extends ConsumerState<ApplePaySetupScreen> {
   Future<void> _later() async {
     if (widget.fromOnboarding) {
       await ref.read(sharedPreferencesProvider).setBool('onboarding_complete', true);
-      if (mounted) context.go('/dashboard');
+      if (mounted) context.go('/login');
     } else {
       context.pop();
     }
@@ -100,16 +100,32 @@ class _ApplePaySetupScreenState extends ConsumerState<ApplePaySetupScreen> {
                       style: theme.textTheme.bodyMedium!
                           .copyWith(fontSize: 14.5, color: scheme.onSurfaceVariant),
                     ),
+                    const SizedBox(height: 16),
+                    // Video de 42 s dentro de la app: explica la automatización paso a paso.
+                    OutlinedButton.icon(
+                      onPressed: () => context.push('/setup/apple-pay/tutorial'),
+                      icon: const Icon(Icons.play_circle_outline_rounded, size: 22),
+                      label: const Text('Ver tutorial en video'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.field)),
+                      ),
+                    ),
                     const SizedBox(height: 20),
                     _step(context, 1, 'MiGasto ya agregó la acción a Atajos',
-                        'Se llama "Registrar movimiento"', true),
+                        'Se llama "Registrar pago de Wallet"', true),
                     const SizedBox(height: 14),
-                    _step(context, 2, 'Crea la automatización "Transacción"',
-                        'En Atajos, Automatización, Transacción: elige tus tarjetas de Wallet y la acción de MiGasto, y pásale el monto, el comercio y la tarjeta',
+                    _step(context, 2, 'Crea la automatización de Wallet',
+                        'En Atajos, Automatización, +, elige "Wallet" (al realizar un pago sin contacto). Agrega la acción "Registrar pago de Wallet" de MiGasto y, en el campo Pago, elige "Entrada de atajo"',
                         verified),
                     const SizedBox(height: 14),
                     _step(context, 3, 'Actívala sin confirmación',
-                        'Así se registra aunque no abras la app', verified),
+                        'Deja "Automatización" activada y "Notificar" apagado. Así se registra aunque no abras la app', verified),
+                    const SizedBox(height: 14),
+                    _step(context, 4, 'Opcional: guarda dónde pagaste',
+                        'En el atajo, antes de "Registrar pago de Wallet" agrega "Obtener ubicación actual" y ponla en el campo Ubicación. Así el pago aparece en el mapa de "Dónde gasto"',
+                        last?.tieneUbicacion ?? false),
                     const SizedBox(height: 20),
                     Container(
                       padding: const EdgeInsets.all(12),
@@ -130,7 +146,7 @@ class _ApplePaySetupScreenState extends ConsumerState<ApplePaySetupScreen> {
                                 children: [
                                   TextSpan(
                                     text: verified
-                                        ? 'Último pago registrado: ${DateFormat("d MMM, HH:mm", 'es').format(last.date)}. '
+                                        ? 'Último pago registrado: ${DateFormat("d MMM, HH:mm", 'es').format(last.date)}. Si fue una prueba con el atajo, paga una vez con Apple Pay para confirmar que corre solo. '
                                         : 'Cuando llegue tu primer pago registrado, marcaremos los pasos. ',
                                   ),
                                   const TextSpan(
@@ -156,12 +172,22 @@ class _ApplePaySetupScreenState extends ConsumerState<ApplePaySetupScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  FilledButton(onPressed: _openShortcuts, child: const Text('Abrir Atajos')),
-                  const SizedBox(height: 4),
-                  TextButton(
-                    onPressed: _later,
-                    child: Text(widget.fromOnboarding ? 'Lo hago después' : 'Cerrar'),
-                  ),
+                  if (verified) ...[
+                    // Ya llegó un pago: se puede seguir. Atajos queda a un toque por si hay que ajustar.
+                    FilledButton(
+                      onPressed: _later,
+                      child: Text(widget.fromOnboarding ? 'Continuar' : 'Listo'),
+                    ),
+                    const SizedBox(height: 4),
+                    TextButton(onPressed: _openShortcuts, child: const Text('Abrir Atajos')),
+                  ] else ...[
+                    FilledButton(onPressed: _openShortcuts, child: const Text('Abrir Atajos')),
+                    const SizedBox(height: 4),
+                    TextButton(
+                      onPressed: _later,
+                      child: Text(widget.fromOnboarding ? 'Lo hago después' : 'Cerrar'),
+                    ),
+                  ],
                 ],
               ),
             ),

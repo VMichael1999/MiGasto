@@ -1,0 +1,114 @@
+{
+  "name": "MiGastoIA",
+  "body": {
+    "primary": {
+      "type": "capsule",
+      "width": 210,
+      "height": 230,
+      "depth": 210,
+      "roundness": 1
+    },
+    "nodes": [
+      {
+        "id": "shape-ear-l",
+        "name": "Sensor L",
+        "surface": {
+          "type": "sphere",
+          "width": 46,
+          "height": 46,
+          "depth": 36,
+          "roundness": 1
+        },
+        "position": [
+          -92,
+          -60,
+          -10
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "color": "#9b82ff"
+      },
+      {
+        "id": "shape-ear-r",
+        "name": "Sensor R",
+        "surface": {
+          "type": "sphere",
+          "width": 46,
+          "height": 46,
+          "depth": 36,
+          "roundness": 1
+        },
+        "position": [
+          92,
+          -60,
+          -10
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "color": "#9b82ff"
+      },
+      {
+        "id": "shape-antenna",
+        "name": "Antenna Gem",
+        "surface": {
+          "type": "sphere",
+          "width": 24,
+          "height": 24,
+          "depth": 24,
+          "roundness": 1
+        },
+        "position": [
+          0,
+          -122,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "color": "#00f0ff"
+      }
+    ]
+  },
+  "colors": {
+    "body": "#7c5cff",
+    "eyes": "#00f0ff"
+  },
+  "style": {
+    "outline": {
+      "enabled": true,
+      "color": "#1e1b2e",
+      "width": 4,
+      "opacity": 1
+    }
+  },
+  "face": {
+    "eyes": {
+      "width": 1.05,
+      "height": 1.05,
+      "gap": 1.1,
+      "shiftY": -0.04
+    },
+    "nose": {
+      "enabled": false
+    },
+    "mouth": {
+      "enabled": true,
+      "shape": "curve",
+      "curve": 35,
+      "width": 18,
+      "height": 4,
+      "x": 0,
+      "y": 28,
+      "angle": 0
+    },
+    "perspective": 1.0
+  }
+}

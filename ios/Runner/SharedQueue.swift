@@ -6,7 +6,7 @@ import Foundation
 /// `takeNativeQueue` al abrir la app y al volver a ella (igual que en Android),
 /// porque Isar no se puede escribir desde Swift.
 enum SharedQueue {
-    static let groupId = "group.com.example.miGasto"
+    static let groupId = "group.com.migasto.co"
     private static let key = "migasto_native_queue"
     private static let lock = NSLock()
 

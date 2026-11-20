@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../core/config/env.dart';
+import '../../core/widgets/mg_toast.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../domain/aliases.dart';
 import '../../domain/entities/movimiento.dart';
@@ -46,6 +47,24 @@ class WhereScreen extends ConsumerStatefulWidget {
 class _WhereScreenState extends ConsumerState<WhereScreen> {
   _Period _period = _Period.week;
   GoogleMapController? _map;
+  bool _locating = false;
+  bool _showMyLocation = false;
+
+  /// Centra el mapa en donde está el usuario ahora. Pide el permiso solo al tocar el botón.
+  Future<void> _centerOnMe() async {
+    if (_locating) return;
+    setState(() => _locating = true);
+    final result = await ref.read(locationServiceProvider).captureCurrent();
+    if (!mounted) return;
+    setState(() => _locating = false);
+    final loc = result.location;
+    if (loc == null) {
+      MgToast.show(context, message: result.message);
+      return;
+    }
+    setState(() => _showMyLocation = true);
+    await _map?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(loc.latitude, loc.longitude), 15.5));
+  }
 
   bool _inPeriod(DateTime d) {
     final now = DateTime.now();
@@ -101,7 +120,10 @@ class _WhereScreenState extends ConsumerState<WhereScreen> {
         children: [
           Expanded(
             flex: 5,
+            // El Stack ocupa todo el espacio: sin esto medía solo lo que el botón de volver
+            // (72 px) y el mapa quedaba como una franja angosta.
             child: Stack(
+              fit: StackFit.expand,
               children: [
                 Positioned.fill(
                   child: Env.hasMapsKey
@@ -124,20 +146,59 @@ class _WhereScreenState extends ConsumerState<WhereScreen> {
                           },
                           zoomControlsEnabled: false,
                           mapToolbarEnabled: false,
+                          myLocationEnabled: _showMyLocation,
                           myLocationButtonEnabled: false,
                         )
-                      : Container(
+                      : ColoredBox(
                           color: scheme.surface,
-                          alignment: Alignment.center,
-                          padding: const EdgeInsets.all(32),
-                          child: Text(
-                            'El mapa necesita la clave de Google Maps en el archivo .env.',
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.bodySmall,
+                          child: SizedBox.expand(
+                            child: Center(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+                                child: Text(
+                                  'El mapa no está disponible en esta versión.',
+                                  textAlign: TextAlign.center,
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                 ),
-                SafeArea(
+                // Botón para centrar el mapa en mi ubicación.
+                Positioned(
+                  right: 14,
+                  bottom: 22,
+                  child: Tooltip(
+                    message: 'Mi ubicación',
+                    child: Material(
+                      color: scheme.surface,
+                      elevation: 3,
+                      borderRadius: BorderRadius.circular(AppRadius.field),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(AppRadius.field),
+                        onTap: _centerOnMe,
+                        child: SizedBox(
+                          width: AppSizes.iconButton + 6,
+                          height: AppSizes.iconButton + 6,
+                          child: Center(
+                            child: _locating
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : Icon(Icons.my_location_rounded, color: scheme.onSurface),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  child: SafeArea(
                   child: Padding(
                     padding: const EdgeInsets.all(14),
                     child: Tooltip(
@@ -158,6 +219,7 @@ class _WhereScreenState extends ConsumerState<WhereScreen> {
                     ),
                   ),
                 ),
+                ),
               ],
             ),
           ),
@@ -173,26 +235,25 @@ class _WhereScreenState extends ConsumerState<WhereScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Dónde pagaste', style: theme.textTheme.headlineSmall),
-                      SegmentedButton<_Period>(
-                        showSelectedIcon: false,
-                        style: const ButtonStyle(visualDensity: VisualDensity.compact),
-                        segments: const [
-                          ButtonSegment(value: _Period.week, label: Text('Semana')),
-                          ButtonSegment(value: _Period.month, label: Text('Mes')),
-                          ButtonSegment(value: _Period.all, label: Text('Todo')),
-                        ],
-                        selected: {_period},
-                        onSelectionChanged: (s) {
-                          setState(() => _period = s.first);
-                          WidgetsBinding.instance.addPostFrameCallback(
-                              (_) => _fit(_zones(ref.read(expensesStateProvider))));
-                        },
-                      ),
+                  Text('Dónde pagaste', style: theme.textTheme.headlineSmall),
+                  const SizedBox(height: 10),
+                  // El selector va debajo del título y ocupa todo el ancho: junto al título
+                  // se apretaban en pantallas angostas.
+                  SegmentedButton<_Period>(
+                    showSelectedIcon: false,
+                    expandedInsets: EdgeInsets.zero,
+                    style: const ButtonStyle(visualDensity: VisualDensity.compact),
+                    segments: const [
+                      ButtonSegment(value: _Period.week, label: Text('Semana')),
+                      ButtonSegment(value: _Period.month, label: Text('Mes')),
+                      ButtonSegment(value: _Period.all, label: Text('Todo')),
                     ],
+                    selected: {_period},
+                    onSelectionChanged: (s) {
+                      setState(() => _period = s.first);
+                      WidgetsBinding.instance.addPostFrameCallback(
+                          (_) => _fit(_zones(ref.read(expensesStateProvider))));
+                    },
                   ),
                   const SizedBox(height: 8),
                   Expanded(

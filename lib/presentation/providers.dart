@@ -1,12 +1,15 @@
 import 'dart:convert';
+import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../data/services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../data/datasource/local_database.dart';
+import '../data/debug_mock_data.dart';
 import '../data/repositories/expense_repository_impl.dart';
 import '../domain/entities/movimiento.dart';
 import '../domain/repositories/expense_repository.dart';
@@ -215,6 +218,9 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
     }
   }
 
+  /// Vuelve a leer los movimientos (p. ej. al encender o apagar los de ejemplo).
+  Future<void> reload() => _loadExpenses();
+
   Future<void> _boot() async {
     await _loadExpenses();
     await drainNativeQueue();
@@ -338,6 +344,11 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
   Future<void> _loadExpenses() async {
     final list = await _repo.getExpenses();
 
+    // Solo en debug: movimientos de ejemplo que NO se guardan en la base.
+    if (debugMockEnabled(_ref.read(sharedPreferencesProvider))) {
+      list.addAll(buildDebugMockMovements(DateTime.now()));
+    }
+
     list.sort((a, b) => b.date.compareTo(a.date));
     if (mounted) {
       state = list;
@@ -392,7 +403,7 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
     // Regla de duplicados: mismo monto y fuente dentro de 2 minutos.
     final pendingNow = _ref.read(pendingExpenseProvider);
     if (isDuplicateMovement(
-      [...state, ?pendingNow],
+      [...state, if (pendingNow != null) pendingNow],
       amount: amount,
       source: source,
       date: now,
@@ -923,3 +934,52 @@ final setupIssuesProvider = Provider<List<SetupIssue>>((ref) {
     batteryDismissedAt: ref.watch(batteryBannerDismissedProvider),
   );
 });
+
+/// Cómo entró el usuario: `guest` (sin cuenta, datos solo en el teléfono) o `account`.
+const authModeKey = 'auth_mode';
+
+final authServiceProvider = Provider<AuthService>((ref) => FirebaseAuthService());
+
+class AuthModeNotifier extends StateNotifier<String> {
+  AuthModeNotifier(this._prefs) : super(_prefs.getString(authModeKey) ?? 'guest');
+  final SharedPreferences _prefs;
+
+  /// Marca la sesión como cuenta vinculada (o vuelve a invitado) y la recuerda.
+  Future<void> set(String mode) async {
+    await _prefs.setString(authModeKey, mode);
+    state = mode;
+  }
+}
+
+final authModeProvider = StateNotifierProvider<AuthModeNotifier, String>(
+  (ref) => AuthModeNotifier(ref.read(sharedPreferencesProvider)),
+);
+
+final isGuestProvider = Provider<bool>((ref) => ref.watch(authModeProvider) == 'guest');
+
+/// Mostrar el logo de cada comercio (se busca por internet con solo su sitio web).
+/// En las pruebas viene apagado para que no salgan a la red.
+const merchantLogosKey = 'migasto_merchant_logos';
+
+class MerchantLogosNotifier extends StateNotifier<bool> {
+  MerchantLogosNotifier(this._prefs)
+      : super(_prefs.getBool(merchantLogosKey) ?? !_underTest());
+  final SharedPreferences _prefs;
+
+  static bool _underTest() {
+    try {
+      return Platform.environment.containsKey('FLUTTER_TEST');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> set(bool value) async {
+    await _prefs.setBool(merchantLogosKey, value);
+    state = value;
+  }
+}
+
+final merchantLogosProvider = StateNotifierProvider<MerchantLogosNotifier, bool>(
+  (ref) => MerchantLogosNotifier(ref.read(sharedPreferencesProvider)),
+);

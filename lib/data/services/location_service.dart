@@ -48,11 +48,40 @@ class LocationResult {
 /// La ubicación se pide solo mientras la app está en uso y solo cuando el usuario
 /// toca "Agregar ubicación": nunca en segundo plano.
 abstract class LocationService {
+  /// ¿La app ya tiene permiso de ubicación (mientras se usa)?
+  Future<bool> hasPermission();
+
+  /// Pide el permiso de ubicación (solo mientras la app está en uso). `true` si quedó concedido.
+  Future<bool> requestPermission();
+
   Future<LocationResult> captureCurrent();
   Future<void> openAppSettings();
 }
 
 class DeviceLocationService implements LocationService {
+  static bool _granted(LocationPermission p) =>
+      p == LocationPermission.whileInUse || p == LocationPermission.always;
+
+  @override
+  Future<bool> hasPermission() async {
+    try {
+      return _granted(await Geolocator.checkPermission());
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> requestPermission() async {
+    try {
+      var p = await Geolocator.checkPermission();
+      if (p == LocationPermission.denied) p = await Geolocator.requestPermission();
+      return _granted(p);
+    } catch (_) {
+      return false;
+    }
+  }
+
   @override
   Future<LocationResult> captureCurrent() async {
     if (!await Geolocator.isLocationServiceEnabled()) {

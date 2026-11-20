@@ -76,6 +76,7 @@ class _LockGateState extends ConsumerState<LockGate> with WidgetsBindingObserver
     final theme = Theme.of(context);
 
     return Stack(
+      fit: StackFit.expand,
       children: [
         widget.child,
         if (showLock)
