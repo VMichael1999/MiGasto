@@ -7,6 +7,7 @@ import 'package:mi_gasto/core/theme/theme.dart';
 import 'package:mi_gasto/domain/entities/movimiento.dart';
 import 'package:mi_gasto/presentation/dashboard/dashboard_screen.dart';
 import 'package:mi_gasto/presentation/dashboard/movement_detail_panel.dart';
+import 'package:mi_gasto/presentation/expenses/movement_detail_screen.dart';
 import 'package:mi_gasto/presentation/plan/plan_providers.dart';
 import 'package:mi_gasto/presentation/providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -126,6 +127,8 @@ void main() {
     expect(find.text('Balance disponible'), findsOneWidget);
     expect(tester.getRect(find.text('Balance disponible')).right, lessThan(panel.left));
     expect(find.text('Detalle'), findsOneWidget);
+    // El detalle usa todo el alto, sin una franja cortada encima de la barra.
+    expect(tester.getRect(find.byType(MovementDetailScreen)).bottom, closeTo(390, 1));
 
     // Deslizar hacia la derecha lo cierra y todo vuelve a como estaba.
     await tester.fling(find.text('Detalle'), const Offset(400, 0), 1500);

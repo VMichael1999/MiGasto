@@ -65,11 +65,7 @@ class _MovementDetailPanelState extends State<MovementDetailPanel> {
                     context: context,
                     // El panel no está en el borde izquierdo: sin el hueco del notch.
                     removeLeft: true,
-                    // Espacio para la barra de pestañas flotante, que queda encima.
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 56),
-                      child: MovementDetailScreen(id: id, onClose: widget.onClose),
-                    ),
+                    child: MovementDetailScreen(id: id, onClose: widget.onClose),
                   )
                 : const SizedBox.expand(),
           ),

@@ -166,7 +166,9 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
                 physics: const AlwaysScrollableScrollPhysics(
                   parent: BouncingScrollPhysics(),
                 ),
-                padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
+                // Incrustado como panel, el contenido llega hasta abajo y pasa por
+                // detrás de la barra flotante; este margen deja el final a la vista.
+                padding: EdgeInsets.fromLTRB(18, 0, 18, widget.onClose != null ? 24 + 64 : 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
