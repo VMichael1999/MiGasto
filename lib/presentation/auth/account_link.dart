@@ -109,21 +109,21 @@ class _LinkAccountSheetState extends ConsumerState<_LinkAccountSheet> {
           const SizedBox(height: 16),
           if (!_emailMode) ...[
             _Option(
-              icon: Icons.g_mobiledata_rounded,
+              leading: Image.asset('assets/icons/google_logo.png', width: 22, height: 22, fit: BoxFit.contain),
               label: 'Continuar con Google',
               onTap: _busy ? null : () => _run((a) => a.signInWithGoogle()),
             ),
             if (showApple) ...[
               const SizedBox(height: 10),
               _Option(
-                icon: Icons.apple_rounded,
+                leading: Image.asset('assets/icons/apple_logo.png', width: 20, height: 20, fit: BoxFit.contain),
                 label: 'Continuar con Apple',
                 onTap: _busy ? null : () => _run((a) => a.signInWithApple()),
               ),
             ],
             const SizedBox(height: 10),
             _Option(
-              icon: Icons.mail_outline_rounded,
+              leading: const Icon(Icons.mail_outline_rounded, size: 22, color: MgColors.ink),
               label: 'Usar correo y contraseña',
               onTap: _busy ? null : () => setState(() => _emailMode = true),
             ),
@@ -185,8 +185,8 @@ class _LinkAccountSheetState extends ConsumerState<_LinkAccountSheet> {
 }
 
 class _Option extends StatelessWidget {
-  const _Option({required this.icon, required this.label, required this.onTap});
-  final IconData icon;
+  const _Option({required this.leading, required this.label, required this.onTap});
+  final Widget leading;
   final String label;
   final VoidCallback? onTap;
 
@@ -207,7 +207,7 @@ class _Option extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(icon, size: 24, color: MgColors.ink),
+              SizedBox(width: 24, child: Center(child: leading)),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
