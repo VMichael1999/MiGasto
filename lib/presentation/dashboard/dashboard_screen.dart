@@ -12,7 +12,10 @@ import '../../domain/setup_issues.dart';
 import '../../shared/format.dart';
 import '../../shared/labels.dart';
 import '../../shared/widgets/profile_avatar_button.dart';
+import '../../domain/balance_projection.dart';
 import '../expenses/expense_detail_dialog.dart';
+import '../plan/plan_providers.dart';
+import 'dashboard_side_cards.dart';
 import '../providers.dart';
 import '../../core/layout/adaptive.dart';
 
@@ -97,6 +100,114 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         .where((m) => m.estado == EstadoMovimiento.pendiente)
         .toList();
 
+    // Piezas compartidas por el diseño vertical y el horizontal.
+    final header = _HomeHeader(
+      now: now,
+      hidden: hidden,
+      onEyeTap: () => ref.read(balanceHiddenProvider.notifier).toggle(),
+    );
+    final prevMonthName = toBeginningOfSentenceCase(
+      DateFormat('MMMM', 'es').format(prevMonthDate),
+    );
+    final balanceCard = _BalanceCard(
+      balance: balance,
+      prevBalance: prevBalance,
+      prevMonthName: prevMonthName,
+      dispPercent: dispPercent,
+      income: income,
+      spent: spent,
+      hidden: hidden,
+      onTap: () => _showBalanceDetail(
+        context,
+        prevMonthName: prevMonthName,
+        prevBalance: prevBalance,
+        income: income,
+        spent: spent,
+        balance: balance,
+        hidden: hidden,
+      ),
+    );
+    final safeCard = _SafeToSpendCard(
+      hasBudget: hasBudget,
+      onDefineBudget: () => context.push('/settings'),
+      safeToSpend: safeToSpend,
+      safePerDay: safePerDay,
+      remainingDays: remainingDays,
+      isOpen: _safeOpen,
+      hidden: hidden,
+      onToggle: () => setState(() => _safeOpen = !_safeOpen),
+    );
+    final banners = <Widget>[
+      // Avisos de permisos y lectura (si existen)
+      if (issues.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+          child: _SetupBanner(issue: issues.first),
+        ),
+      // Avisos de pendientes por confirmar (si existen)
+      if (pending.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+          child: _PendingBanner(pending: pending, hidden: hidden),
+        ),
+    ];
+    final movementsHeader = _MovementsSectionHeader(
+      count: confirmedMonth.length,
+      onSearchTap: () => context.go('/expenses?focus=1'),
+    );
+    final movementsList = _MovementsGroupedList(
+      movements: confirmedMonth,
+      hidden: hidden,
+    );
+
+    // Teléfono girado: tres columnas con scroll propio.
+    if (context.isLandscapePhone) {
+      final monthExpenses = confirmedMonth.where((m) => m.esGasto).toList();
+      final limits = ref.watch(categoryLimitsProvider);
+      final projection = projectBalance(
+        movements: expenses,
+        currentBalance: balance,
+        now: now,
+      );
+      final bottom = context.tabBarClearance(130);
+      Widget column(List<Widget> children, {EdgeInsets padding = EdgeInsets.zero}) =>
+          Expanded(
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+              padding: padding.copyWith(bottom: bottom),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: children,
+              ),
+            ),
+          );
+      return Scaffold(
+        backgroundColor: MgColors.bg,
+        body: SafeArea(
+          bottom: false,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              column([header, balanceCard, safeCard, ...banners]),
+              column([movementsHeader, movementsList]),
+              column(
+                [
+                  LimitsOverviewCard(
+                    limits: limits,
+                    monthExpenses: monthExpenses,
+                    hidden: hidden,
+                  ),
+                  CategoryDonutCard(monthExpenses: monthExpenses, hidden: hidden),
+                  BalanceForecastCard(projection: projection, hidden: hidden),
+                ],
+                padding: const EdgeInsets.fromLTRB(6, 14, 18, 0),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: MgColors.bg,
       body: SafeArea(
@@ -111,77 +222,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // 1. Cabecera común (.top)
-                  _HomeHeader(
-                    now: now,
-                    hidden: hidden,
-                    onEyeTap: () =>
-                        ref.read(balanceHiddenProvider.notifier).toggle(),
-                  ),
-
-                  // 2. Tarjeta de balance (.bal)
-                  _BalanceCard(
-                    balance: balance,
-                    prevBalance: prevBalance,
-                    prevMonthName: toBeginningOfSentenceCase(
-                      DateFormat('MMMM', 'es').format(prevMonthDate),
-                    )!,
-                    dispPercent: dispPercent,
-                    income: income,
-                    spent: spent,
-                    hidden: hidden,
-                    onTap: () => _showBalanceDetail(
-                      context,
-                      prevMonthName: toBeginningOfSentenceCase(
-                        DateFormat('MMMM', 'es').format(prevMonthDate),
-                      )!,
-                      prevBalance: prevBalance,
-                      income: income,
-                      spent: spent,
-                      balance: balance,
-                      hidden: hidden,
-                    ),
-                  ),
-
-                  // 3. Seguro para gastar (.card)
-                  _SafeToSpendCard(
-                    hasBudget: hasBudget,
-                    onDefineBudget: () => context.push('/settings'),
-                    safeToSpend: safeToSpend,
-                    safePerDay: safePerDay,
-                    remainingDays: remainingDays,
-                    isOpen: _safeOpen,
-                    hidden: hidden,
-                    onToggle: () => setState(() => _safeOpen = !_safeOpen),
-                  ),
-
-                  // Avisos de permisos y lectura (si existen)
-                  if (issues.isNotEmpty) ...[
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
-                      child: _SetupBanner(issue: issues.first),
-                    ),
-                  ],
-
-                  // Avisos de pendientes por confirmar (si existen)
-                  if (pending.isNotEmpty) ...[
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
-                      child: _PendingBanner(pending: pending, hidden: hidden),
-                    ),
-                  ],
-
-                  // 4. Encabezado de movimientos (.sec)
-                  _MovementsSectionHeader(
-                    count: confirmedMonth.length,
-                    onSearchTap: () => context.go('/expenses?focus=1'),
-                  ),
-
-                  // 5. Lista de movimientos agrupada por día
-                  _MovementsGroupedList(
-                    movements: confirmedMonth,
-                    hidden: hidden,
-                  ),
+                  header,
+                  balanceCard,
+                  safeCard,
+                  ...banners,
+                  movementsHeader,
+                  movementsList,
                 ],
               ),
             ),
@@ -448,13 +494,17 @@ class _BalanceCard extends StatelessWidget {
                   // Cabecera: Balance disponible ›
                   Row(
                     children: [
-                      Text(
-                        'Balance disponible',
-                        style: TextStyle(
-                          fontFamily: AppText.fontFamily,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white.withValues(alpha: 0.78),
+                      Flexible(
+                        child: Text(
+                          'Balance disponible',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: AppText.fontFamily,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white.withValues(alpha: 0.78),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 4),
@@ -494,7 +544,9 @@ class _BalanceCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
+                      Flexible(child: Text(
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         'SALDO DE $prevMonthName'.toUpperCase(),
                         style: TextStyle(
                           fontFamily: AppText.fontFamily,
@@ -503,7 +555,7 @@ class _BalanceCard extends StatelessWidget {
                           letterSpacing: 0.9,
                           color: Colors.white.withValues(alpha: 0.70),
                         ),
-                      ),
+                      )),
                       Text(
                         hidden
                             ? '•••'
@@ -525,7 +577,9 @@ class _BalanceCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
+                      Flexible(child: Text(
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         'DISPONIBLE',
                         style: TextStyle(
                           fontFamily: AppText.fontFamily,
@@ -534,7 +588,7 @@ class _BalanceCard extends StatelessWidget {
                           letterSpacing: 0.9,
                           color: Colors.white.withValues(alpha: 0.70),
                         ),
-                      ),
+                      )),
                       Text(
                         '$dispPercent%',
                         style: const TextStyle(
@@ -636,7 +690,9 @@ class _GlassCapsule extends StatelessWidget {
                 color: Colors.white.withValues(alpha: 0.85),
               ),
               const SizedBox(width: 5),
-              Text(
+              Flexible(child: Text(
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 label,
                 style: TextStyle(
                   fontFamily: AppText.fontFamily,
@@ -645,7 +701,7 @@ class _GlassCapsule extends StatelessWidget {
                   letterSpacing: 1.0,
                   color: Colors.white.withValues(alpha: 0.80),
                 ),
-              ),
+              )),
             ],
           ),
           const SizedBox(height: 3),
@@ -716,7 +772,9 @@ class _SafeToSpendCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 9),
-              const Text(
+              Flexible(child: Text(
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 'Seguro para gastar',
                 style: TextStyle(
                   fontFamily: AppText.fontFamily,
@@ -724,7 +782,7 @@ class _SafeToSpendCard extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                   color: MgColors.ink,
                 ),
-              ),
+              )),
               const Spacer(),
               Material(
                 color: Colors.transparent,
@@ -864,14 +922,20 @@ class _MovementsSectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 22, 18, 6),
       child: Row(
         children: [
-          const Text(
-            'Movimientos',
-            style: TextStyle(
-              fontFamily: AppText.fontFamily,
-              fontSize: 17,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.025 * 17,
-              color: MgColors.ink,
+          const Flexible(
+            // Casi todo el espacio libre para el título; el resto, al Spacer.
+            flex: 100,
+            child: Text(
+              'Movimientos',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: AppText.fontFamily,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.025 * 17,
+                color: MgColors.ink,
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -1016,7 +1080,9 @@ class _MovementsGroupedList extends ConsumerWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
+                    Flexible(child: Text(
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       _formatDayLabel(dayDate, now),
                       style: const TextStyle(
                         fontFamily: AppText.fontFamily,
@@ -1024,7 +1090,7 @@ class _MovementsGroupedList extends ConsumerWidget {
                         fontWeight: FontWeight.w500,
                         color: MgColors.ink2,
                       ),
-                    ),
+                    )),
                     Text(
                       hidden
                           ? '•••'
