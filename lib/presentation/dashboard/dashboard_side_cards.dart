@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/mg_colors.dart';
+import '../../core/widgets/balance_line_chart.dart';
 import '../../core/widgets/category_icon.dart';
 import '../../core/widgets/charts.dart';
 import '../../core/widgets/mg_card.dart';
@@ -147,70 +148,67 @@ class CategoryDonutCard extends StatelessWidget {
               'Aún no hay gastos este mes.',
               style: TextStyle(fontSize: 12, color: MgColors.ink2),
             )
-          else ...[
-            Center(
-              child: DonutChart(
-                size: 110,
-                strokeWidth: 12,
-                total: total,
-                centerWidget: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      hidden ? 'S/ ••••' : formatSoles(total),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: MgColors.ink,
-                      ),
-                    ),
-                    const Text(
-                      'gastado',
-                      style: TextStyle(fontSize: 10.5, color: MgColors.ink2),
-                    ),
-                  ],
-                ),
-                segments: [
-                  for (final e in entries)
-                    DonutSegment(
-                      label: categoryLabel(e.key),
-                      value: e.value,
-                      color: CategoryIcon.colorForCategory(e.key),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            for (final e in entries.take(3))
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
+          else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                DonutChart(
+                  size: 64,
+                  strokeWidth: 9,
+                  total: total,
+                  // Sin texto al centro: a este tamaño no cabe.
+                  centerWidget: const SizedBox.shrink(),
+                  segments: [
+                    for (final e in entries)
+                      DonutSegment(
+                        label: categoryLabel(e.key),
+                        value: e.value,
                         color: CategoryIcon.colorForCategory(e.key),
-                        shape: BoxShape.circle,
                       ),
-                    ),
-                    const SizedBox(width: 7),
-                    Expanded(
-                      child: Text(
-                        categoryLabel(e.key),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 11.5, color: MgColors.ink2),
-                      ),
-                    ),
-                    Text(
-                      '${(e.value / total * 100).round()}%',
-                      style: const TextStyle(fontSize: 11.5, color: MgColors.ink),
-                    ),
                   ],
                 ),
-              ),
-          ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    children: [
+                      for (final e in entries.take(3))
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 3),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: CategoryIcon.colorForCategory(e.key),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 7),
+                              Expanded(
+                                child: Text(
+                                  categoryLabel(e.key),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 11.5, color: MgColors.ink2),
+                                ),
+                              ),
+                              Text(
+                                '${(e.value / total * 100).round()}%',
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: MgColors.ink,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
     );
@@ -220,9 +218,17 @@ class CategoryDonutCard extends StatelessWidget {
 /// «Saldo a 30 días»: estimación con el ritmo real de los últimos 30 días.
 /// Sin movimientos suficientes no muestra ninguna cifra.
 class BalanceForecastCard extends StatelessWidget {
-  const BalanceForecastCard({super.key, required this.projection, required this.hidden});
+  const BalanceForecastCard({
+    super.key,
+    required this.projection,
+    required this.history,
+    required this.currentBalance,
+    required this.hidden,
+  });
 
   final BalanceProjection? projection;
+  final List<double> history;
+  final double currentBalance;
   final bool hidden;
 
   @override
@@ -253,7 +259,14 @@ class BalanceForecastCard extends StatelessWidget {
                 color: p.projected < 0 ? MgColors.down : MgColors.ink,
               ),
             ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 8),
+            // La línea no muestra cifras, así que también se ve con el modo privado.
+            BalanceLineChart(
+              history: history,
+              projected: projectedSeries(currentBalance, p),
+              color: positive ? MgColors.up : MgColors.down,
+            ),
+            const SizedBox(height: 6),
             Text(
               hidden
                   ? 'Según tu ritmo de los últimos 30 días'
