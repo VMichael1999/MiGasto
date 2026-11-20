@@ -481,8 +481,8 @@ class _AiScreenState extends ConsumerState<AiScreen> with WidgetsBindingObserver
   /// Espacio bajo la caja de texto: el de la barra de navegación, o poco si el teclado está abierto.
   double _bottomGap(BuildContext context) =>
       // Esta pantalla ya respeta la zona segura inferior (unos 34 px en iPhone), así que a la barra
-      // de navegación (~68 px) solo le falta lo que sobra: 58 deja un margen pequeño sobre ella.
-      _keyboardOpen(context) ? 12 : context.tabBarClearance(58, landscape: 70);
+      // de navegación (~68 px) solo le falta lo que sobra: 70 deja un respiro cómodo sobre ella.
+      _keyboardOpen(context) ? 12 : context.tabBarClearance(70, landscape: 70);
 
   /// ¿Está abierto el teclado? Se lee de la vista y no de MediaQuery: el Scaffold de la barra de
   /// navegación ya "consumió" ese espacio y desde aquí MediaQuery diría siempre que no.
