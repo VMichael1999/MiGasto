@@ -56,3 +56,34 @@ BalanceProjection? projectBalance({
     horizonDays: horizonDays,
   );
 }
+
+/// Saldo al cierre de cada uno de los últimos [days] días; el último valor es
+/// el de hoy ([currentBalance]). Se reconstruye hacia atrás restando lo que
+/// entró y salió cada día, así que la curva termina exactamente en el saldo
+/// actual.
+List<double> balanceHistory({
+  required List<Movimiento> movements,
+  required double currentBalance,
+  required DateTime now,
+  int days = 30,
+}) {
+  final today = DateTime(now.year, now.month, now.day);
+  final netByDay = <DateTime, double>{};
+  for (final m in movements) {
+    if (!m.isConfirmed || m.date.isAfter(now)) continue;
+    final day = DateTime(m.date.year, m.date.month, m.date.day);
+    final net = m.esIngreso ? m.amount : (m.esGasto ? -m.amount : 0.0);
+    netByDay[day] = (netByDay[day] ?? 0) + net;
+  }
+  final out = List<double>.filled(days, currentBalance);
+  for (var i = days - 2; i >= 0; i--) {
+    final dayAfter = today.subtract(Duration(days: days - 2 - i));
+    out[i] = out[i + 1] - (netByDay[dayAfter] ?? 0);
+  }
+  return out;
+}
+
+/// Puntos de la línea estimada: parte del saldo de hoy y suma el ritmo diario.
+List<double> projectedSeries(double currentBalance, BalanceProjection p) => [
+      for (var i = 0; i <= p.horizonDays; i++) currentBalance + p.dailyNet * i,
+    ];

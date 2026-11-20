@@ -70,4 +70,31 @@ void main() {
     final r = projectBalance(movements: movs, currentBalance: 0, now: now)!;
     expect(r.dailyNet, closeTo(680 / 7, 0.001));
   });
+
+  group('balanceHistory', () {
+    test('termina en el saldo de hoy y reconstruye hacia atrás', () {
+      // Hoy: saldo 500. Ayer entraron +1000 (saldo de anteayer: 500 - 1000 + ...).
+      final movs = [
+        _m('i', 1000, DateTime(2026, 11, 19, 10), ingreso: true),
+        _m('g', 200, DateTime(2026, 11, 20, 9)),
+      ];
+      final h = balanceHistory(movements: movs, currentBalance: 500, now: now, days: 5);
+      expect(h.length, 5);
+      expect(h.last, 500); // hoy
+      expect(h[3], 700); // cierre de ayer = hoy + gasto de hoy
+      expect(h[2], -300); // cierre de anteayer = ayer - ingreso de ayer
+      expect(h[0], -300); // sin más movimientos, se mantiene
+    });
+
+    test('sin movimientos la línea es plana', () {
+      final h = balanceHistory(movements: const [], currentBalance: 42, now: now);
+      expect(h.length, 30);
+      expect(h.every((v) => v == 42), isTrue);
+    });
+  });
+
+  test('projectedSeries parte de hoy y suma el ritmo diario', () {
+    const p = BalanceProjection(projected: 130, dailyNet: 10, horizonDays: 3);
+    expect(projectedSeries(100, p), [100, 110, 120, 130]);
+  });
 }
