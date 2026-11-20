@@ -16,6 +16,7 @@ import '../../shared/labels.dart';
 import '../../shared/widgets/custom_icons.dart';
 import '../providers.dart';
 import 'alias_dialog.dart';
+import 'movement_comparison_sheet.dart';
 import 'new_category_sheet.dart';
 import '../../shared/dispose_later.dart';
 
@@ -478,12 +479,7 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
                             color: Colors.transparent,
                             borderRadius: BorderRadius.circular(16),
                             child: InkWell(
-                              onTap: () {
-                                MgToast.show(
-                                  context,
-                                  message: 'Comparando con meses anteriores.',
-                                );
-                              },
+                              onTap: () => showMovementComparison(context, m),
                               borderRadius: BorderRadius.circular(16),
                               child: Container(
                                 height: 52,

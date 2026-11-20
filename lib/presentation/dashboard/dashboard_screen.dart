@@ -1,3 +1,4 @@
+import '../expenses/movement_comparison_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -1216,16 +1217,10 @@ class _MovementsGroupedList extends ConsumerWidget {
                   switch (action) {
                     case MgMenuAction.edit:
                       context.push('/movement/${m.id}');
-                    case MgMenuAction.addToCommon:
-                      MgToast.show(
-                        context,
-                        message: 'Agregado a registros comunes',
-                      );
+                      break;
                     case MgMenuAction.compare:
-                      MgToast.show(
-                        context,
-                        message: 'Comparando con periodos anteriores',
-                      );
+                      showMovementComparison(context, m);
+                      break;
                     case MgMenuAction.delete:
                       final ok = await ConfirmSheet.show(
                         context,

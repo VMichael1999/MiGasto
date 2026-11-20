@@ -1,3 +1,4 @@
+import '../expenses/movement_comparison_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -442,17 +443,8 @@ class CategoryDetailScreen extends ConsumerWidget {
                     case MgMenuAction.edit:
                       context.push('/movement/${m.id}');
                       break;
-                    case MgMenuAction.addToCommon:
-                      MgToast.show(
-                        context,
-                        message: '${m.merchant} agregado a registros comunes',
-                      );
-                      break;
                     case MgMenuAction.compare:
-                      MgToast.show(
-                        context,
-                        message: 'Comparando gastos con ${m.merchant}',
-                      );
+                      showMovementComparison(context, m);
                       break;
                     case MgMenuAction.delete:
                       final ok = await ConfirmSheet.show(

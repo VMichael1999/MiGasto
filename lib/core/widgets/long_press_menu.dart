@@ -4,13 +4,12 @@ import '../theme/mg_colors.dart';
 
 enum MgMenuAction {
   edit,
-  addToCommon,
   compare,
   delete,
 }
 
 /// Menú contextual activado por toque prolongado anclado a la posición del dedo:
-/// Editar · Agregar a registros comunes · Comparar · Eliminar.
+/// Editar · Comparar · Eliminar.
 /// Emite `HapticFeedback.selectionClick()` al activarse.
 class LongPressMenu extends StatelessWidget {
   const LongPressMenu({
@@ -48,11 +47,6 @@ class LongPressMenu extends StatelessWidget {
           action: MgMenuAction.edit,
           label: 'Editar',
           icon: Icons.edit_outlined,
-        ),
-        _buildItem(
-          action: MgMenuAction.addToCommon,
-          label: 'Registros comunes',
-          icon: Icons.bookmark_border,
         ),
         _buildItem(
           action: MgMenuAction.compare,
