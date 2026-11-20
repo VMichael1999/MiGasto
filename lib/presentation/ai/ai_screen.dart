@@ -9,6 +9,7 @@ import '../plan/plan_providers.dart';
 import '../../shared/widgets/profile_avatar_button.dart';
 import 'widgets/migasto_avatar.dart';
 import '../../core/layout/adaptive.dart';
+import '../../core/layout/landscape_pane.dart';
 
 class ChatMessage {
   final String text;
@@ -204,8 +205,24 @@ class _AiScreenState extends ConsumerState<AiScreen> {
     }
   }
 
+  Widget _buildMessages() {
+    return ListView.builder(
+      controller: _scrollController,
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+      itemCount: _messages.length + (_isTyping ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index == _messages.length && _isTyping) {
+          return _buildTypingIndicator();
+        }
+        return _buildMessageBubble(_messages[index]);
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final landscape = context.isLandscapePhone;
     return Scaffold(
       backgroundColor: MgColors.bg,
       body: SafeArea(
@@ -213,26 +230,32 @@ class _AiScreenState extends ConsumerState<AiScreen> {
           children: [
             // 1. Cabecera (.nav)
             _buildNav(context),
-
-            // 2. Chat messages
-            Expanded(
-              child: ListView.builder(
-                controller: _scrollController,
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
-                itemCount: _messages.length + (_isTyping ? 1 : 0),
-                itemBuilder: (context, index) {
-                  if (index == _messages.length && _isTyping) {
-                    return _buildTypingIndicator();
-                  }
-                  final msg = _messages[index];
-                  return _buildMessageBubble(msg);
-                },
-              ),
-            ),
-
-            // 3. Dock inferior de sugerencias y campo de entrada (arriba del tab bar)
-            _buildDock(context),
+            if (landscape)
+              // Horizontal: preguntas sugeridas a la izquierda; chat y entrada a la derecha.
+              Expanded(
+                child: Row(
+                  children: [
+                    SizedBox(width: 270, child: BleedClip(child: _buildSuggestionsColumn())),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          Expanded(child: BleedClip(child: _buildMessages())),
+                          Padding(
+                            padding: EdgeInsets.fromLTRB(
+                                12, 0, 18, context.tabBarClearance(92, landscape: 70)),
+                            child: _buildInput(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else ...[
+              Expanded(child: _buildMessages()),
+              // 3. Dock inferior de sugerencias y campo de entrada (arriba del tab bar)
+              _buildDock(context),
+            ],
           ],
         ),
       ),
@@ -463,121 +486,172 @@ class _AiScreenState extends ConsumerState<AiScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Sugerencias horizontales (.sug)
-          SizedBox(
-            height: 34,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              itemCount: _suggestions.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 7),
-              itemBuilder: (context, index) {
-                final s = _suggestions[index];
-                return Material(
-                  color: MgColors.bg,
-                  borderRadius: BorderRadius.circular(11),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(11),
-                    onTap: () => _sendMessage(s),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(11),
-                        border: Border.all(color: MgColors.line),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        s,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: MgColors.ink2,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
+          _buildSuggestionsRow(),
           const SizedBox(height: 10),
-
-          // Campo de texto con botón enviar (.ai-in)
-          Container(
-            height: 50,
-            padding: const EdgeInsets.fromLTRB(14, 0, 6, 0),
-            decoration: BoxDecoration(
-              color: MgColors.soft,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: MgColors.line),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.auto_awesome_rounded,
-                  size: 17,
-                  color: MgColors.acc2,
-                ),
-                const SizedBox(width: 9),
-                Expanded(
-                  child: TextField(
-                    controller: _inputController,
-                    cursorColor: MgColors.acc,
-                    style: const TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w500,
-                      color: MgColors.ink,
-                    ),
-                    textInputAction: TextInputAction.send,
-                    onSubmitted: _sendMessage,
-                    decoration: const InputDecoration(
-                      hintText: 'Pregúntale a MiGastoIA',
-                      hintStyle: TextStyle(
-                        fontSize: 13.5,
-                        color: MgColors.ink3,
-                      ),
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      filled: false,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                ),
-                // Botón circular de enviar (.rnd.on)
-                Material(
-                  color: _isTyping ? MgColors.line : MgColors.acc,
-                  shape: const CircleBorder(),
-                  child: InkWell(
-                    customBorder: const CircleBorder(),
-                    onTap: _isTyping ? null : () => _sendMessage(_inputController.text),
-                    child: SizedBox(
-                      width: 38,
-                      height: 38,
-                      child: Center(
-                        child: _isTyping
-                            ? const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Icon(
-                                Icons.arrow_upward_rounded,
-                                size: 18,
-                                color: Colors.white,
-                              ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          _buildInput(),
         ],
       ),
     );
+  }
+
+  // Sugerencias horizontales (.sug)
+  Widget _buildSuggestionsRow() {
+    return SizedBox(
+    height: 34,
+    child: ListView.separated(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      itemCount: _suggestions.length,
+      separatorBuilder: (_, _) => const SizedBox(width: 7),
+      itemBuilder: (context, index) {
+        final s = _suggestions[index];
+        return Material(
+          color: MgColors.bg,
+          borderRadius: BorderRadius.circular(11),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(11),
+            onTap: () => _sendMessage(s),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(11),
+                border: Border.all(color: MgColors.line),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                s,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: MgColors.ink2,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    ),
+  );
+  }
+
+  // Sugerencias en lista vertical (panel izquierdo en horizontal)
+  Widget _buildSuggestionsColumn() {
+    return ListView.separated(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(18, 4, 12, 70),
+      itemCount: _suggestions.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      itemBuilder: (context, index) {
+        final s = _suggestions[index];
+        return Material(
+          color: MgColors.card,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: _isTyping ? null : () => _sendMessage(s),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: MgColors.line),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.auto_awesome_rounded, size: 14, color: MgColors.acc2),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      s,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                        color: MgColors.ink2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Campo de texto con botón enviar (.ai-in)
+  Widget _buildInput() {
+    return Container(
+    height: 50,
+    padding: const EdgeInsets.fromLTRB(14, 0, 6, 0),
+    decoration: BoxDecoration(
+      color: MgColors.soft,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: MgColors.line),
+    ),
+    child: Row(
+      children: [
+        const Icon(
+          Icons.auto_awesome_rounded,
+          size: 17,
+          color: MgColors.acc2,
+        ),
+        const SizedBox(width: 9),
+        Expanded(
+          child: TextField(
+            controller: _inputController,
+            cursorColor: MgColors.acc,
+            style: const TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w500,
+              color: MgColors.ink,
+            ),
+            textInputAction: TextInputAction.send,
+            onSubmitted: _sendMessage,
+            decoration: const InputDecoration(
+              hintText: 'Pregúntale a MiGastoIA',
+              hintStyle: TextStyle(
+                fontSize: 13.5,
+                color: MgColors.ink3,
+              ),
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              filled: false,
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+        ),
+        // Botón circular de enviar (.rnd.on)
+        Material(
+          color: _isTyping ? MgColors.line : MgColors.acc,
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: _isTyping ? null : () => _sendMessage(_inputController.text),
+            child: SizedBox(
+              width: 38,
+              height: 38,
+              child: Center(
+                child: _isTyping
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.arrow_upward_rounded,
+                        size: 18,
+                        color: Colors.white,
+                      ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
   }
 }

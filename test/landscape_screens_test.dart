@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:mi_gasto/core/theme/theme.dart';
+import 'package:mi_gasto/presentation/ai/ai_screen.dart';
 import 'package:mi_gasto/presentation/expenses/expenses_screen.dart';
 import 'package:mi_gasto/presentation/expenses/manual_entry_screen.dart';
 import 'package:mi_gasto/presentation/plan/plan_providers.dart';
@@ -91,5 +92,27 @@ void main() {
     final form = tester.getTopLeft(find.text('Nuevo gasto')).dx;
     final keypad = tester.getTopLeft(find.text('5').last).dx;
     expect(keypad, greaterThan(form + 200));
+  });
+
+  testWidgets('MiGastoIA en horizontal: sugerencias a la izquierda y chat con entrada a la derecha', (tester) async {
+    await show(tester, const AiScreen());
+    final hint = find.text('Pregúntale a MiGastoIA');
+    expect(hint, findsOneWidget);
+    // La entrada queda a la derecha de las sugerencias, que van en columna.
+    expect(tester.getTopLeft(hint).dx, greaterThan(270));
+    expect(tester.getTopLeft(find.byIcon(Icons.auto_awesome_rounded).first).dx, lessThan(270));
+    expect(tester.takeException(), isNull);
+    // El avatar programa un parpadeo: se desmonta y se deja correr el reloj.
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 6));
+  });
+
+  testWidgets('MiGastoIA en vertical: sugerencias sobre la entrada', (tester) async {
+    await show(tester, const AiScreen(), size: const Size(390, 844));
+    expect(find.text('Pregúntale a MiGastoIA'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    // El avatar programa un parpadeo: se desmonta y se deja correr el reloj.
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 6));
   });
 }
