@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../layout/adaptive.dart';
+import 'adaptive_sheet.dart';
 import '../theme/mg_colors.dart';
 
 /// Hoja modal inferior base con tirador superior (`grab`), fondo `card`,
@@ -21,16 +23,19 @@ class MgSheet extends StatelessWidget {
     required Widget child,
     bool isScrollControlled = true,
     double? maxHeight,
+    SheetKind kind = SheetKind.panel,
   }) {
-    return showModalBottomSheet<T>(
+    return showAdaptiveSheet<T>(
       context: context,
-      useRootNavigator: true,
-      backgroundColor: Colors.transparent,
+      kind: kind,
       isScrollControlled: isScrollControlled,
-      builder: (_) => MgSheet(
-        maxHeight: maxHeight,
-        child: child,
-      ),
+      // En horizontal el panel ya trae su propio contenedor.
+      builder: (ctx) => ctx.isLandscapePhone
+          ? Padding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 16), child: child)
+          : MgSheet(
+              maxHeight: maxHeight,
+              child: child,
+            ),
     );
   }
 

@@ -14,6 +14,7 @@ export 'mg_segmented.dart';
 export 'charts.dart';
 export 'mg_tab_bar.dart';
 export 'mg_fab.dart';
+export 'adaptive_sheet.dart';
 export 'mg_sheet.dart';
 export 'mg_toast.dart';
 export 'empty_state.dart';
