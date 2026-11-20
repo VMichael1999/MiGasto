@@ -476,11 +476,6 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                     context: context,
                     onSelectExpense: () => context.push('/new'),
                     onSelectIncome: () => context.push('/new?type=ingreso'),
-                    onSelectTransfer: () => context.push('/where'),
-                    onSmartRegister: () => MgToast.show(
-                      context,
-                      message: 'Dictas «almorcé 25 soles» y lo registra solo.',
-                    ),
                   );
                 },
               ),

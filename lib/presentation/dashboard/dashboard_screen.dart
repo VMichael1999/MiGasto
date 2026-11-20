@@ -36,21 +36,7 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
-  String _currentSpace = 'personal';
   bool _safeOpen = true;
-
-  String _getSpaceName(String id) {
-    switch (id) {
-      case 'personal':
-        return 'Personal';
-      case 'trabajo':
-        return 'Trabajo';
-      case 'compartido':
-        return 'Compartido';
-      default:
-        return 'Personal';
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -126,18 +112,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 children: [
                   // 1. Cabecera común (.top)
                   _HomeHeader(
-                    spaceName: _getSpaceName(_currentSpace),
                     now: now,
                     hidden: hidden,
-                    onSpaceTap: () async {
-                      final selected = await SpaceSheet.show(
-                        context,
-                        selectedId: _currentSpace,
-                      );
-                      if (selected != null && mounted) {
-                        setState(() => _currentSpace = selected);
-                      }
-                    },
                     onEyeTap: () =>
                         ref.read(balanceHiddenProvider.notifier).toggle(),
                     onAvatarTap: () => context.go('/settings'),
@@ -293,19 +269,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 // =============================================================================
 class _HomeHeader extends StatelessWidget {
   const _HomeHeader({
-    required this.spaceName,
     required this.now,
     required this.hidden,
-    required this.onSpaceTap,
     required this.onEyeTap,
     required this.onAvatarTap,
     required this.initials,
   });
 
-  final String spaceName;
   final DateTime now;
   final bool hidden;
-  final VoidCallback onSpaceTap;
   final VoidCallback onEyeTap;
   final VoidCallback onAvatarTap;
   final String initials;
@@ -337,36 +309,22 @@ class _HomeHeader extends StatelessWidget {
           ),
           const SizedBox(width: 11),
 
-          // Selector de espacio (.who)
+          // Espacio (por ahora solo existe «Personal»)
           Expanded(
-            child: InkWell(
-              onTap: onSpaceTap,
-              borderRadius: BorderRadius.circular(8),
-              child: Padding(
+            child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 2),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          spaceName,
-                          style: const TextStyle(
-                            fontFamily: AppText.fontFamily,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: -0.02 * 16,
-                            color: MgColors.ink,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(
-                          Icons.keyboard_arrow_down_rounded,
-                          size: 16,
-                          color: MgColors.ink2,
-                        ),
-                      ],
+                    const Text(
+                      'Personal',
+                      style: TextStyle(
+                        fontFamily: AppText.fontFamily,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.02 * 16,
+                        color: MgColors.ink,
+                      ),
                     ),
                     const SizedBox(height: 1),
                     Text(
@@ -381,7 +339,6 @@ class _HomeHeader extends StatelessWidget {
                 ),
               ),
             ),
-          ),
 
           // Botón del ojo (.rnd)
           Material(
@@ -1056,7 +1013,6 @@ class _MovementsGroupedList extends ConsumerWidget {
               context: context,
               onSelectExpense: () => context.push('/new'),
               onSelectIncome: () => context.push('/new'),
-              onSelectTransfer: () => context.push('/where'),
             );
           },
         ),

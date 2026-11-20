@@ -2,41 +2,30 @@ import 'package:flutter/material.dart';
 import '../theme/mg_colors.dart';
 import '../theme/app_tokens.dart';
 import 'mg_sheet.dart';
-import 'mg_toast.dart';
 
 /// Hoja modal inferior «Registrar» (Sección 4.5 del prompt y prototipo HTML):
 /// - Gasto (Compras, servicios, etc.)
 /// - Ingreso (Sueldo, ventas, etc.)
-/// - Transferir entre espacios (De Principal a Ahorros)
-/// - Botón degradado «Registro inteligente» (dictar «almorcé 25 soles»)
 class RegisterSheet extends StatelessWidget {
   const RegisterSheet({
     super.key,
     required this.onSelectExpense,
     required this.onSelectIncome,
-    required this.onSelectTransfer,
-    this.onSmartRegister,
   });
 
   final VoidCallback onSelectExpense;
   final VoidCallback onSelectIncome;
-  final VoidCallback onSelectTransfer;
-  final VoidCallback? onSmartRegister;
 
   static Future<void> show({
     required BuildContext context,
     required VoidCallback onSelectExpense,
     required VoidCallback onSelectIncome,
-    required VoidCallback onSelectTransfer,
-    VoidCallback? onSmartRegister,
   }) {
     return MgSheet.show(
       context: context,
       child: RegisterSheet(
         onSelectExpense: onSelectExpense,
         onSelectIncome: onSelectIncome,
-        onSelectTransfer: onSelectTransfer,
-        onSmartRegister: onSmartRegister,
       ),
     );
   }
@@ -69,76 +58,6 @@ class RegisterSheet extends StatelessWidget {
             Navigator.of(context).pop();
             onSelectIncome();
           },
-        ),
-        const SizedBox(height: 4),
-        _RegisterOption(
-          icon: Icons.swap_horiz_rounded,
-          iconColor: MgColors.acc2,
-          iconBg: MgColors.accSoft,
-          title: 'Transferir entre espacios',
-          subtitle: 'De Principal a Ahorros',
-          onTap: () {
-            Navigator.of(context).pop();
-            onSelectTransfer();
-          },
-        ),
-        const SizedBox(height: 12),
-        // Botón degradado «Registro inteligente»
-        Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: () {
-              Navigator.of(context).pop();
-              if (onSmartRegister != null) {
-                onSmartRegister!();
-              } else {
-                MgToast.show(
-                  context,
-                  message: 'Dictas «almorcé 25 soles» y lo registra solo.',
-                );
-              }
-            },
-            child: Ink(
-              height: 52,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [MgColors.acc2, MgColors.acc],
-                ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: MgColors.acc.withValues(alpha: 0.4),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.auto_awesome_rounded,
-                    size: 18,
-                    color: Colors.white,
-                  ),
-                  SizedBox(width: 8),
-                  Text(
-                    'Registro inteligente',
-                    style: TextStyle(
-                      fontFamily: AppText.fontFamily,
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
         ),
       ],
     );

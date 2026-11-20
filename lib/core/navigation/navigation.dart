@@ -23,7 +23,6 @@ import '../../domain/entities/movimiento.dart';
 import '../theme/mg_colors.dart';
 import '../widgets/mg_tab_bar.dart';
 import '../widgets/register_sheet.dart';
-import '../widgets/mg_toast.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
@@ -238,11 +237,6 @@ class MainScaffoldWrapper extends ConsumerWidget {
                   context: context,
                   onSelectExpense: () => context.push('/new'),
                   onSelectIncome: () => context.push('/new?type=ingreso'),
-                  onSelectTransfer: () => context.push('/where'),
-                  onSmartRegister: () => MgToast.show(
-                    context,
-                    message: 'Dictas «almorcé 25 soles» y lo registra solo.',
-                  ),
                 );
               },
             ),
