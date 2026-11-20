@@ -26,7 +26,6 @@ import '../lock/lock_gate.dart';
 import '../providers.dart';
 import '../../shared/dispose_later.dart';
 import 'widgets/connected_accounts_sheet.dart';
-import 'widgets/recurring_expenses_sheet.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -42,7 +41,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   bool _batteryOn = false;
   bool _alertsOn = false;
   bool _overlayOn = false;
-  String _currentSpace = 'Personal';
   final _simController = TextEditingController();
 
   bool get _isAndroid => defaultTargetPlatform == TargetPlatform.android;
@@ -88,13 +86,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   Widget build(BuildContext context) {
     final lockOn = ref.watch(passcodeEnabledProvider);
     final budget = ref.watch(budgetProvider);
-    final expenses = ref.watch(expensesStateProvider);
     final permissions = ref.read(permissionsCheckerProvider);
 
     final catCount = Categoria.gastos.length + ref.watch(customCategoriesProvider).length;
-    final recurringCount = expenses.where((m) => m.canal == CanalMovimiento.notificacion).length > 2
-        ? 2
-        : 1;
 
     return Scaffold(
       backgroundColor: MgColors.bg,
@@ -110,11 +104,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
               // 2. Tarjeta de usuario (.pf-card)
               _buildUserCard(context),
 
-              // 3. Grupo: Tus espacios (.grp)
-              _buildSpacesGroup(context),
-
               // 4. Grupo: Cuenta (.grp)
-              _buildAccountGroup(context, catCount, recurringCount),
+              _buildAccountGroup(context, catCount),
 
               // 5. Grupo: Datos y seguridad (.grp)
               _buildDataSecurityGroup(context, budget, lockOn),
@@ -305,76 +296,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     );
   }
 
-  /// Grupo: Tus espacios (.grp)
-  Widget _buildSpacesGroup(BuildContext context) {
-    return _buildGroup(
-      title: 'TUS ESPACIOS',
-      children: [
-        _buildRow(
-          icon: Icons.account_balance_wallet_outlined,
-          title: 'Personal',
-          tag: _currentSpace == 'Personal' ? 'En uso' : null,
-          onTap: () {
-            setState(() => _currentSpace = 'Personal');
-            MgToast.show(context, message: 'Espacio "Personal" activado');
-          },
-        ),
-        _buildDivider(),
-        _buildRow(
-          icon: Icons.business_center_outlined,
-          title: 'Trabajo',
-          tag: _currentSpace == 'Trabajo' ? 'En uso' : null,
-          onTap: () {
-            setState(() => _currentSpace = 'Trabajo');
-            MgToast.show(context, message: 'Espacio "Trabajo" activado');
-          },
-        ),
-        _buildDivider(),
-        _buildRow(
-          icon: Icons.savings_outlined,
-          title: 'Compartido',
-          tag: _currentSpace == 'Compartido' ? 'En uso' : null,
-          onTap: () {
-            setState(() => _currentSpace = 'Compartido');
-            MgToast.show(context, message: 'Espacio "Compartido" activado');
-          },
-        ),
-      ],
-    );
-  }
-
   /// Grupo: Cuenta (.grp)
-  Widget _buildAccountGroup(BuildContext context, int catCount, int recurringCount) {
+  Widget _buildAccountGroup(BuildContext context, int catCount) {
+    final providers = ref.watch(providersEnabledProvider);
+    final activeCount = providers.values.where((on) => on).length;
     return _buildGroup(
       title: 'CUENTA',
       children: [
-        _buildRow(
-          icon: Icons.account_balance_outlined,
-          title: 'Cuentas conectadas',
-          tag: 'BCP, Interbank',
-          onTap: () => ConnectedAccountsSheet.show(context),
-        ),
-        _buildDivider(),
+        // Yape, Plin y Google Wallet: solo se detectan en Android (lectura de notificaciones).
+        if (_isAndroid) ...[
+          _buildRow(
+            icon: Icons.account_balance_outlined,
+            title: 'Pagos detectados',
+            tag: '$activeCount de ${providers.length}',
+            onTap: () => ConnectedAccountsSheet.show(context),
+          ),
+          _buildDivider(),
+        ],
         _buildRow(
           icon: Icons.sell_outlined,
           title: 'Categorías',
           tag: '$catCount',
           onTap: () => _showCustomCategories(context),
-        ),
-        _buildDivider(),
-        _buildRow(
-          icon: Icons.repeat_rounded,
-          title: 'Movimientos recurrentes',
-          tag: '5 activos',
-          onTap: () => RecurringExpensesSheet.show(context),
-        ),
-        _buildDivider(),
-        _buildRow(
-          icon: Icons.notifications_none_rounded,
-          title: 'Recordatorios',
-          onTap: () {
-            MgToast.show(context, message: 'Recordatorios diarios activos.');
-          },
         ),
       ],
     );
@@ -386,6 +329,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     return _buildGroup(
       title: 'DATOS Y SEGURIDAD',
       children: [
+        _buildRow(
+          icon: Icons.map_outlined,
+          title: 'Dónde gasto',
+          onTap: () => context.push('/where'),
+        ),
+        _buildDivider(),
         _buildRow(
           icon: Icons.pie_chart_outline_rounded,
           title: 'Presupuesto mensual',
