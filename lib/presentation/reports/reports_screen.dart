@@ -6,8 +6,6 @@ import '../../core/theme/mg_colors.dart';
 import '../../core/widgets/category_icon.dart';
 import '../../core/widgets/charts.dart';
 import '../../core/widgets/mg_card.dart';
-import '../../core/widgets/mg_toast.dart';
-import '../../core/widgets/space_sheet.dart';
 import '../../domain/entities/movimiento.dart';
 import '../../shared/labels.dart';
 import '../../shared/profile.dart';
@@ -23,7 +21,7 @@ class ReportsScreen extends ConsumerStatefulWidget {
 
 class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   DateTime _currentMonth = DateTime.now();
-  String _selectedSpace = 'Personal';
+  final String _selectedSpace = 'Personal';
   int _chartTypeIndex = 1; // 0: Anillos concéntricos (Syncfusion), 1: Dona (DonutChart)
 
   void _prevMonth() {
@@ -172,22 +170,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () async {
-              final space = await SpaceSheet.show(
-                context,
-                selectedId: _selectedSpace.toLowerCase(),
-              );
-              if (space != null && context.mounted) {
-                setState(() => _selectedSpace = space == 'personal'
-                    ? 'Personal'
-                    : space == 'trabajo'
-                        ? 'Trabajo'
-                        : 'Compartido');
-                MgToast.show(context, message: 'Espacio "$_selectedSpace" activado');
-              }
-            },
-            child: Container(
+          Container(
               height: 34,
               padding: const EdgeInsets.symmetric(horizontal: 10),
               decoration: BoxDecoration(
@@ -225,16 +208,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       color: MgColors.ink,
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  const Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    size: 16,
-                    color: MgColors.ink2,
-                  ),
                 ],
               ),
             ),
-          ),
           const Spacer(),
           // Botón ocultar/mostrar saldos
           InkWell(
@@ -251,27 +227,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               ),
               child: Icon(
                 isHide ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                size: 18,
-                color: MgColors.ink2,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Botón notificaciones
-          InkWell(
-            borderRadius: BorderRadius.circular(17),
-            onTap: () {
-              MgToast.show(context, message: 'No tienes notificaciones pendientes.');
-            },
-            child: Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.04),
-              ),
-              child: const Icon(
-                Icons.notifications_none_rounded,
                 size: 18,
                 color: MgColors.ink2,
               ),

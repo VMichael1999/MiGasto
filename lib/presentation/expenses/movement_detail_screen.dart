@@ -47,13 +47,6 @@ class MovementDetailScreen extends ConsumerStatefulWidget {
 class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
   bool _locating = false;
 
-  bool _isRecurring(Movimiento m) {
-    final note = m.notes.toLowerCase();
-    return note.contains('recurrente') ||
-        note.contains('subs') ||
-        m.category == Categoria.entretenimiento;
-  }
-
   @override
   Widget build(BuildContext context) {
     final m = ref.watch(expensesStateProvider).where((e) => e.id == widget.id).firstOrNull;
@@ -92,7 +85,6 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
     final isPending = m.estado == EstadoMovimiento.pendiente;
     final catColor = CategoryIcon.colorForCategory(m.category);
     final catLabel = categoryLabel(m.category);
-    final isRecurring = _isRecurring(m);
 
     // Cálculos de categoría para límite
     final all = ref.watch(expensesStateProvider);
@@ -317,16 +309,6 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
                             icon: Icons.calendar_today_outlined,
                             label: 'Fecha',
                             value: _formatDetailDate(m.date),
-                          ),
-                          _buildKvRow(
-                            icon: Icons.account_balance_wallet_outlined,
-                            label: 'Espacio',
-                            value: 'Personal',
-                          ),
-                          _buildKvRow(
-                            icon: Icons.repeat_rounded,
-                            label: 'Recurrente',
-                            value: isRecurring ? 'Sí, periódico' : 'No',
                           ),
                           _buildKvRow(
                             icon: Icons.credit_card_outlined,

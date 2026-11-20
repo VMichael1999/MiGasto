@@ -10,7 +10,6 @@ export 'amount_keypad.dart';
 export 'progress_bar.dart';
 export 'category_icon.dart';
 export 'category_sheet.dart';
-export 'space_sheet.dart';
 export 'mg_segmented.dart';
 export 'charts.dart';
 export 'mg_tab_bar.dart';

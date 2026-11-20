@@ -106,36 +106,20 @@ class PlanScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                GestureDetector(
-                  onTap: () => SpaceSheet.show(
-                    context,
-                    selectedId: 'personal',
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Personal',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: MgColors.ink,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                      SizedBox(width: 4),
-                      Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        size: 16,
-                        color: MgColors.ink2,
-                      ),
-                    ],
+                const Text(
+                  'Personal',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: MgColors.ink,
+                    letterSpacing: -0.2,
                   ),
                 ),
                 const SizedBox(height: 1),
-                const Text(
-                  'Noviembre de 2026',
-                  style: TextStyle(
+                Text(
+                  toBeginningOfSentenceCase(
+                      DateFormat("MMMM 'de' yyyy", 'es').format(DateTime.now()))!,
+                  style: const TextStyle(
                     fontSize: 11.5,
                     color: MgColors.ink2,
                   ),
@@ -529,12 +513,6 @@ class PlanScreen extends ConsumerWidget {
                                   fontWeight: FontWeight.w600,
                                   color: MgColors.ink,
                                 ),
-                              ),
-                              const SizedBox(width: 4),
-                              const Icon(
-                                Icons.repeat_rounded,
-                                size: 12,
-                                color: MgColors.ink3,
                               ),
                             ],
                           ),

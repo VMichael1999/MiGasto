@@ -13,7 +13,7 @@ import '../providers.dart';
 import '../plan/plan_providers.dart';
 
 /// Pantalla 4: Nuevo gasto / ingreso (#s-nuevo / R.nuevo en migasto-prototipo.html)
-/// - Cabecera (.nav): Botón atrás circular, título «Nuevo gasto» / «Nuevo ingreso», chip selector de espacio.
+/// - Cabecera (.nav): Botón atrás circular, título «Nuevo gasto» / «Nuevo ingreso».
 /// - Monto (.amt-wrap): Selector de moneda «S/ v» y monto grande con micro-rebote al teclear.
 /// - Chip de fecha (.datechip): Calendario y fecha seleccionada.
 /// - Campo descripción (.field): Concepto / comercio opcional.
@@ -21,7 +21,7 @@ import '../plan/plan_providers.dart';
 /// - Línea del límite (.limbar): El corazón de la pantalla. Muestra ProgressBar dinámico y texto
 ///   «Te quedarán S/ XX,XX después de este gasto» o en rojo «Te pasas S/ XX,XX del límite de [categoría]».
 /// - Etiquetas (.tags): Chips interactivos (#cafe, #quincena, #casa, etc.) y botón para agregar etiqueta.
-/// - Opciones auxiliares: Estado / Medio de pago, Agregar nota, Hacer recurrente.
+/// - Opciones auxiliares: Estado / Medio de pago y Agregar nota.
 /// - Dock inferior (.nv-dock): Switch «Guardar y agregar otro» (MgToggle), teclado numérico (AmountKeypad) y botón primario «Guardar».
 class ManualEntryScreen extends ConsumerStatefulWidget {
   const ManualEntryScreen({super.key, this.initialType = TipoMovimiento.gasto});
@@ -41,9 +41,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
   String? _propia;
 
   DateTime _selectedDate = DateTime.now();
-  String _selectedSpace = 'personal';
   final List<String> _tags = [];
-  bool _isRecurring = false;
   bool _guardarYOtro = false;
   String? _note;
 
@@ -135,7 +133,6 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
         _concept.clear();
         _tags.clear();
         _note = null;
-        _isRecurring = false;
       });
       MgToast.show(context, message: toastMsg);
     } else {
@@ -182,16 +179,6 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
         _category = picked;
         _propia = null;
       });
-    }
-  }
-
-  Future<void> _pickSpace() async {
-    final picked = await SpaceSheet.show(
-      context,
-      selectedId: _selectedSpace,
-    );
-    if (picked != null && mounted) {
-      setState(() => _selectedSpace = picked);
     }
   }
 
@@ -428,52 +415,9 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
               ),
             ),
           ),
-          // Selector de espacio (.chipesp)
-          Material(
-            color: MgColors.soft,
-            borderRadius: BorderRadius.circular(10),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(10),
-              onTap: _pickSpace,
-              child: Container(
-                height: 30,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _spaceLabel(_selectedSpace),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: MgColors.ink2,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      size: 15,
-                      color: MgColors.ink2,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
-  }
-
-  String _spaceLabel(String space) {
-    switch (space) {
-      case 'trabajo':
-        return 'Trabajo';
-      case 'compartido':
-        return 'Compartido';
-      default:
-        return 'Personal';
-    }
   }
 
   // 2. Monto grande (.amt-wrap)
@@ -485,7 +429,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
         children: [
           // Botón selector de moneda (.cur)
           GestureDetector(
-            onTap: () => MgToast.show(context, message: 'Solo soles en este prototipo.'),
+            onTap: () => MgToast.show(context, message: 'Por ahora MiGasto trabaja solo en soles (S/).'),
             behavior: HitTestBehavior.opaque,
             child: const Padding(
               padding: EdgeInsets.only(top: 6),
@@ -1026,44 +970,6 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
                         fontSize: 12.5,
                         fontWeight: FontWeight.w500,
                         color: _note != null ? MgColors.acc2 : MgColors.ink2,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          // Hacer recurrente
-          Material(
-            color: _isRecurring ? MgColors.accSoft : Colors.transparent,
-            borderRadius: BorderRadius.circular(11),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(11),
-              onTap: () => setState(() => _isRecurring = !_isRecurring),
-              child: Container(
-                height: 32,
-                padding: const EdgeInsets.symmetric(horizontal: 11),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(11),
-                  border: Border.all(
-                    color: _isRecurring ? MgColors.acc : MgColors.line,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.repeat_rounded,
-                      size: 14,
-                      color: _isRecurring ? MgColors.acc2 : MgColors.ink2,
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      _isRecurring ? 'Recurrente' : 'Hacer recurrente',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w500,
-                        color: _isRecurring ? MgColors.acc2 : MgColors.ink2,
                       ),
                     ),
                   ],
