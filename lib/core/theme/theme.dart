@@ -202,9 +202,11 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppRadius.field),
           borderSide: BorderSide(color: line, width: 1),
         ),
+        // Al enfocar el campo no se pinta ningún marco de color: queda el mismo
+        // borde tenue de siempre.
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.field),
-          borderSide: const BorderSide(color: MgColors.acc, width: 1.6),
+          borderSide: BorderSide(color: line, width: 1),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.field),
