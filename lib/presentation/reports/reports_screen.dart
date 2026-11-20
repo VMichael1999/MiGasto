@@ -13,6 +13,9 @@ import '../../shared/profile.dart';
 import '../providers.dart';
 import 'fullscreen_chart_screen.dart';
 import '../../core/layout/landscape_pane.dart';
+import '../../domain/balance_projection.dart';
+import '../../domain/balance_summary.dart';
+import '../dashboard/dashboard_side_cards.dart';
 import '../../core/layout/adaptive.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
@@ -142,6 +145,26 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     final categoryCard =
         _buildCategoryCard(context, segments, catList, totalPorCategorias, isHide);
     final incomeVsExpense = _buildIncomeVsExpenseCard(allMovs);
+    // Saldo a 30 días: el mismo que en Inicio (saldo real, ritmo de los últimos 30 días).
+    final nowDate = DateTime.now();
+    final currentBalance = computeBalanceSummary(allMovs, nowDate).balance;
+    final forecast = Padding(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+      child: BalanceForecastCard(
+        projection: projectBalance(
+          movements: allMovs,
+          currentBalance: currentBalance,
+          now: nowDate,
+        ),
+        history: balanceHistory(
+          movements: allMovs,
+          currentBalance: currentBalance,
+          now: nowDate,
+        ),
+        currentBalance: currentBalance,
+        hidden: isHide,
+      ),
+    );
 
     // Teléfono girado: gastos por categoría a la izquierda y el resto a la
     // derecha, cada lado con su propio scroll.
@@ -158,7 +181,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               side([topBar, monthNav, categoryCard]),
-              side([miniCards, incomeVsExpense]),
+              side([miniCards, forecast, incomeVsExpense]),
             ],
           ),
         ),
@@ -185,7 +208,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               // Tarjeta 1: Gastos por categoría
               categoryCard,
 
-              // Tarjeta 2: Ingresos vs gastos (6 meses)
+              // Tarjeta 2: Saldo a 30 días
+              forecast,
+
+              // Tarjeta 3: Ingresos vs gastos (6 meses)
               incomeVsExpense,
 
               SizedBox(height: context.tabBarClearance(160)),
