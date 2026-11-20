@@ -13,6 +13,14 @@ class KeyboardDismisser extends StatelessWidget {
 
   static void hide() => FocusManager.instance.primaryFocus?.unfocus();
 
+  static final ValueNotifier<int> _suppressed = ValueNotifier<int>(0);
+
+  /// Una pantalla que ya trae su propio botón de ocultar apaga el flotante mientras está abierta.
+  static void suppressFloatingButton(bool on) {
+    final next = _suppressed.value + (on ? 1 : -1);
+    _suppressed.value = next < 0 ? 0 : next;
+  }
+
   @override
   Widget build(BuildContext context) {
     final inset = MediaQuery.viewInsetsOf(context).bottom;
@@ -28,7 +36,11 @@ class KeyboardDismisser extends StatelessWidget {
             child: child,
           ),
         ),
-        Positioned(
+        ValueListenableBuilder<int>(
+          valueListenable: _suppressed,
+          builder: (context, suppressed, _) => suppressed > 0
+              ? const SizedBox.shrink()
+              : Positioned(
           right: 14,
           bottom: inset + 10,
           child: IgnorePointer(
@@ -57,6 +69,7 @@ class KeyboardDismisser extends StatelessWidget {
               ),
             ),
           ),
+        ),
         ),
       ],
     );

@@ -11,6 +11,7 @@ import 'ai_chat_provider.dart';
 import 'widgets/migasto_avatar.dart';
 import '../../core/layout/adaptive.dart';
 import '../../core/layout/landscape_pane.dart';
+import '../../core/widgets/keyboard_dismisser.dart';
 
 /// Pantalla 6: MiGastoIA (#s-ai / R.ai en migasto-prototipo.html)
 /// - Cabecera (.nav): Squircle con destello, título «MiGastoIA» y botón papelera (.rnd) con ConfirmSheet.
@@ -52,6 +53,8 @@ class _AiScreenState extends ConsumerState<AiScreen> with WidgetsBindingObserver
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Aquí el botón de ocultar va dentro de la caja de texto: se apaga el flotante.
+    WidgetsBinding.instance.addPostFrameCallback((_) => KeyboardDismisser.suppressFloatingButton(true));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final prefs = ref.read(sharedPreferencesProvider);
@@ -68,6 +71,8 @@ class _AiScreenState extends ConsumerState<AiScreen> with WidgetsBindingObserver
   @override
   void didChangeMetrics() {
     final inset = View.of(context).viewInsets.bottom;
+    // Se vuelve a construir para ajustar el espacio bajo la caja de texto al abrir o cerrar el teclado.
+    if ((inset > 80) != (_lastInset > 80) && mounted) setState(() {});
     if (inset > _lastInset) {
       _scrollToBottom(animated: false);
       Future.delayed(const Duration(milliseconds: 320), () {
@@ -80,6 +85,7 @@ class _AiScreenState extends ConsumerState<AiScreen> with WidgetsBindingObserver
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    Future.microtask(() => KeyboardDismisser.suppressFloatingButton(false));
     _inputController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -474,7 +480,11 @@ class _AiScreenState extends ConsumerState<AiScreen> with WidgetsBindingObserver
 
   /// Espacio bajo la caja de texto: el de la barra de navegación, o poco si el teclado está abierto.
   double _bottomGap(BuildContext context) =>
-      MediaQuery.viewInsetsOf(context).bottom > 80 ? 12 : context.tabBarClearance(92, landscape: 70);
+      _keyboardOpen(context) ? 12 : context.tabBarClearance(92, landscape: 70);
+
+  /// ¿Está abierto el teclado? Se lee de la vista y no de MediaQuery: el Scaffold de la barra de
+  /// navegación ya "consumió" ese espacio y desde aquí MediaQuery diría siempre que no.
+  bool _keyboardOpen(BuildContext context) => View.of(context).viewInsets.bottom > 80;
 
   // 3. Dock inferior de sugerencias y campo (.ai-dock)
   Widget _buildDock(BuildContext context) {
@@ -620,6 +630,14 @@ class _AiScreenState extends ConsumerState<AiScreen> with WidgetsBindingObserver
             ),
           ),
         ),
+        // Con el teclado abierto: botón para ocultarlo, dentro de la caja de texto.
+        if (_keyboardOpen(context))
+          IconButton(
+            onPressed: KeyboardDismisser.hide,
+            tooltip: 'Ocultar teclado',
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.keyboard_hide_outlined, size: 20, color: MgColors.ink2),
+          ),
         // Botón circular de enviar (.rnd.on)
         Material(
           color: _isTyping ? MgColors.line : MgColors.acc,

@@ -48,4 +48,39 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 6));
   });
+
+  testWidgets('con el teclado abierto la caja de texto queda pegada al teclado y trae su botón de ocultar',
+      (tester) async {
+    tester.view.physicalSize = const Size(420, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    addTearDown(tester.view.resetViewInsets);
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(overrides: [sharedPreferencesProvider.overrideWithValue(prefs)]);
+    addTearDown(container.dispose);
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      // Igual que en la app: la pantalla vive dentro del Scaffold de la barra de navegación,
+      // que ya "consume" el espacio del teclado en MediaQuery.
+      child: MaterialApp(
+        theme: AppTheme.darkTheme,
+        home: const Scaffold(body: AiScreen()),
+      ),
+    ));
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.byTooltip('Ocultar teclado'), findsNothing);
+
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    await tester.pump(const Duration(milliseconds: 700));
+
+    final keyboardTop = 800.0 - 300.0;
+    final fieldBottom = tester.getBottomLeft(find.byType(TextField)).dy;
+    // Antes quedaban más de 90 px de aire entre la caja y el teclado.
+    expect(keyboardTop - fieldBottom, lessThan(40));
+    expect(find.byTooltip('Ocultar teclado'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 6));
+  });
 }
