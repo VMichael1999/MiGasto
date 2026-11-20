@@ -11,7 +11,6 @@ import '../../presentation/onboarding/splash_screen.dart';
 import '../../presentation/onboarding/login_screen.dart';
 import '../../presentation/providers.dart';
 import '../../presentation/reports/reports_screen.dart';
-import '../widgets/charts.dart';
 import '../../presentation/settings/settings_screen.dart';
 import '../../presentation/plan/plan_screen.dart';
 import '../../presentation/plan/new_limit_screen.dart';
