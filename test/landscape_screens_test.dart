@@ -123,6 +123,7 @@ void main() {
     expect(tester.getTopLeft(find.text('Hola de nuevo')).dx, lessThan(422));
     expect(tester.getTopLeft(find.text('Ingresar')).dx, greaterThan(422));
     expect(find.text('Crea tu cuenta'), findsOneWidget);
+    expect(find.text('Continuar como invitado'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

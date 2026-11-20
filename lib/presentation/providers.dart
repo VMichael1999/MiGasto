@@ -932,3 +932,11 @@ final setupIssuesProvider = Provider<List<SetupIssue>>((ref) {
     batteryDismissedAt: ref.watch(batteryBannerDismissedProvider),
   );
 });
+
+/// Cómo entró el usuario: `guest` (sin cuenta, datos solo en el teléfono) o `account`.
+const authModeKey = 'auth_mode';
+
+final isGuestProvider = Provider<bool>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return (prefs.getString(authModeKey) ?? 'guest') == 'guest';
+});

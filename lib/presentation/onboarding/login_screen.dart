@@ -36,6 +36,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  /// Entra sin cuenta: todo queda guardado solo en este teléfono.
+  Future<void> _continueAsGuest() async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    await prefs.setString(authModeKey, 'guest');
+    await prefs.setBool('is_logged_in', true);
+    if (mounted) context.go('/dashboard');
+  }
+
   Future<void> _loginOAuth(String provider) async {
     await ref.read(sharedPreferencesProvider).setBool('is_logged_in', true);
     if (mounted) {
@@ -276,7 +284,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 36),
+              const SizedBox(height: 14),
+
+              // Entrar sin cuenta (datos solo en este teléfono)
+              SizedBox(
+                height: 46,
+                child: TextButton(
+                  onPressed: _continueAsGuest,
+                  style: TextButton.styleFrom(
+                    foregroundColor: MgColors.ink2,
+                    textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+                    ),
+                  ),
+                  child: const Text('Continuar como invitado'),
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Sin cuenta: tus datos se quedan solo en este teléfono. Puedes vincular una cuenta después desde tu perfil.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 11.5, color: MgColors.ink3, height: 1.4),
+              ),
+              const SizedBox(height: 26),
 
               // Pie de página: "¿Primera vez? Crea tu cuenta"
               Row(
