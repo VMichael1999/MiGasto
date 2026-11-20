@@ -9,7 +9,7 @@ import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/brand_mark.dart';
 import '../providers.dart';
 
-/// Guía para crear la automatización "Transacción" de Wallet en Atajos.
+/// Guía para crear la automatización de Wallet (en inglés "Transaction") en Atajos.
 ///
 /// La app no puede crearla sola: la pantalla guía los pasos y marca los que ya
 /// se cumplen. Cuando llega el primer pago registrado por Wallet, la
@@ -104,8 +104,8 @@ class _ApplePaySetupScreenState extends ConsumerState<ApplePaySetupScreen> {
                     _step(context, 1, 'MiGasto ya agregó la acción a Atajos',
                         'Se llama "Registrar movimiento"', true),
                     const SizedBox(height: 14),
-                    _step(context, 2, 'Crea la automatización "Transacción"',
-                        'En Atajos, Automatización, Transacción: elige tus tarjetas de Wallet y la acción de MiGasto, y pásale el monto, el comercio y la tarjeta',
+                    _step(context, 2, 'Crea la automatización de Wallet',
+                        'En Atajos, Automatización, +, elige "Wallet" (al realizar un pago sin contacto; en inglés, "Transaction"): escoge tus tarjetas y la acción de MiGasto, y pásale el monto, el comercio y la tarjeta',
                         verified),
                     const SizedBox(height: 14),
                     _step(context, 3, 'Actívala sin confirmación',
