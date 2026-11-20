@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../theme/mg_colors.dart';
 import '../theme/app_tokens.dart';
+import '../layout/adaptive.dart';
+import 'adaptive_sheet.dart';
 import 'mg_sheet.dart';
 
 /// Hoja modal inferior «Registrar» (Sección 4.5 del prompt y prototipo HTML):
@@ -23,6 +25,7 @@ class RegisterSheet extends StatelessWidget {
   }) {
     return MgSheet.show(
       context: context,
+      kind: SheetKind.menu,
       child: RegisterSheet(
         onSelectExpense: onSelectExpense,
         onSelectIncome: onSelectIncome,
@@ -32,33 +35,50 @@ class RegisterSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final expense = _RegisterOption(
+      icon: Icons.arrow_downward_rounded,
+      iconColor: MgColors.down,
+      iconBg: MgColors.down.withValues(alpha: 0.15),
+      title: 'Gasto',
+      subtitle: 'Compras, servicios, etc.',
+      onTap: () {
+        Navigator.of(context).pop();
+        onSelectExpense();
+      },
+    );
+    final income = _RegisterOption(
+      icon: Icons.arrow_upward_rounded,
+      iconColor: MgColors.up,
+      iconBg: MgColors.up.withValues(alpha: 0.15),
+      title: 'Ingreso',
+      subtitle: 'Sueldo, ventas, etc.',
+      onTap: () {
+        Navigator.of(context).pop();
+        onSelectIncome();
+      },
+    );
+
+    // En horizontal es un menú compacto: las dos opciones lado a lado.
+    if (context.isLandscapePhone) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+        child: Row(
+          children: [
+            Expanded(child: expense),
+            const SizedBox(width: 6),
+            Expanded(child: income),
+          ],
+        ),
+      );
+    }
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _RegisterOption(
-          icon: Icons.arrow_downward_rounded,
-          iconColor: MgColors.down,
-          iconBg: MgColors.down.withValues(alpha: 0.15),
-          title: 'Gasto',
-          subtitle: 'Compras, servicios, etc.',
-          onTap: () {
-            Navigator.of(context).pop();
-            onSelectExpense();
-          },
-        ),
+        expense,
         const SizedBox(height: 4),
-        _RegisterOption(
-          icon: Icons.arrow_upward_rounded,
-          iconColor: MgColors.up,
-          iconBg: MgColors.up.withValues(alpha: 0.15),
-          title: 'Ingreso',
-          subtitle: 'Sueldo, ventas, etc.',
-          onTap: () {
-            Navigator.of(context).pop();
-            onSelectIncome();
-          },
-        ),
+        income,
       ],
     );
   }
@@ -107,6 +127,8 @@ class _RegisterOption extends StatelessWidget {
               const SizedBox(width: 13),
               Expanded(
                 child: Column(
+                  // Que mida lo justo también cuando la altura disponible es limitada.
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(

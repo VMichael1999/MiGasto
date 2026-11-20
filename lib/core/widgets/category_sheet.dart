@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'adaptive_sheet.dart';
 import '../theme/mg_colors.dart';
 import '../theme/app_tokens.dart';
 import '../../domain/entities/movimiento.dart';
@@ -23,11 +24,8 @@ class CategorySheet extends StatelessWidget {
     Categoria? selected,
     TipoMovimiento tipo = TipoMovimiento.gasto,
   }) {
-    return showModalBottomSheet<Categoria>(
+    return showAdaptiveSheet<Categoria>(
       context: context,
-      useRootNavigator: true,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
       builder: (_) => CategorySheet(
         selected: selected,
         tipo: tipo,

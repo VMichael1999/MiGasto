@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'adaptive_sheet.dart';
 import '../theme/mg_colors.dart';
 import '../theme/app_tokens.dart';
 
@@ -32,11 +33,9 @@ class ConfirmSheet extends StatelessWidget {
     bool isDestructive = true,
     IconData? icon,
   }) async {
-    final result = await showModalBottomSheet<bool>(
+    final result = await showAdaptiveSheet<bool>(
       context: context,
-      useRootNavigator: true,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
+      kind: SheetKind.dialog,
       builder: (_) => ConfirmSheet(
         title: title,
         message: message,
