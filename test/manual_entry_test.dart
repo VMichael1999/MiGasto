@@ -6,6 +6,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:mi_gasto/domain/entities/movimiento.dart';
 import 'package:mi_gasto/presentation/expenses/manual_entry_screen.dart';
 import 'package:mi_gasto/presentation/providers.dart';
+import 'package:mi_gasto/shared/labels.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -29,7 +30,10 @@ void main() {
           ),
         ),
       ),
-      GoRoute(path: '/new', builder: (_, _) => const ManualEntryScreen()),
+      GoRoute(
+        path: '/new',
+        builder: (_, _) => const ManualEntryScreen(initialType: TipoMovimiento.ingreso),
+      ),
     ]);
 
     await tester.binding.setSurfaceSize(const Size(420, 1000));
@@ -41,11 +45,10 @@ void main() {
     await tester.tap(find.text('abrir'));
     await tester.pumpAndSettle();
 
-    // Sin monto ni detalle no se puede guardar.
-    expect(find.text('Guardar gasto'), findsOneWidget);
+    // Sin monto no se puede guardar: el botón no muestra importe.
+    expect(find.text('Guardar'), findsWidgets);
+    expect(find.textContaining('Guardar ·'), findsNothing);
 
-    await tester.tap(find.text('Ingreso'));
-    await tester.pump();
     for (final k in ['1', '8', '0']) {
       await tester.tap(find.text(k).last);
       await tester.pump();
@@ -54,11 +57,13 @@ void main() {
 
     await tester.enterText(find.byType(TextField), 'Venta de bicicleta');
     await tester.pump();
-    await tester.tap(find.text('Venta'));
-    await tester.pump();
-    expect(find.text('Guardar ingreso · S/ 180.00'), findsOneWidget);
+    await tester.tap(find.text(categoryLabel(Categoria.otrosIngresos)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(categoryLabel(Categoria.venta)).last);
+    await tester.pumpAndSettle();
+    expect(find.text('Guardar · S/ 180.00'), findsOneWidget);
 
-    await tester.tap(find.text('Guardar ingreso · S/ 180.00'));
+    await tester.tap(find.text('Guardar · S/ 180.00'));
     await tester.pumpAndSettle();
 
     final saved = container.read(expensesStateProvider).single;
@@ -68,6 +73,6 @@ void main() {
     expect(saved.category, Categoria.venta);
     expect(saved.estado, EstadoMovimiento.confirmado);
     expect(saved.canal, CanalMovimiento.manual);
-    expect(find.text('Ingreso guardado'), findsOneWidget);
+    expect(find.textContaining('Ingreso de S/ 180.00 guardado'), findsOneWidget);
   });
 }

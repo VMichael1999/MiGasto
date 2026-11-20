@@ -414,13 +414,18 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
             ),
           ),
           // Título central
-          Text(
-            _isIncome ? 'Nuevo ingreso' : 'Nuevo gasto',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.3,
-              color: MgColors.ink,
+          Expanded(
+            child: Text(
+              _isIncome ? 'Nuevo ingreso' : 'Nuevo gasto',
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+                color: MgColors.ink,
+              ),
             ),
           ),
           // Selector de espacio (.chipesp)
