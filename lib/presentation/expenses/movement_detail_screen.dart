@@ -415,7 +415,7 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
                               .read(expensesStateProvider.notifier)
                               .removeLocation(m.id),
                           child: Text(
-                            'Quitar ubicación de este $kind',
+                            'Quitar ubicación de este ${kind.toLowerCase()}',
                             style: const TextStyle(
                               fontSize: 12,
                               color: MgColors.down,

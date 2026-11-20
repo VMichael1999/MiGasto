@@ -116,7 +116,7 @@ void main() {
   testWidgets('quita la ubicación de un solo gasto', (tester) async {
     final c = await open(tester, movimiento: _gasto(located: true));
 
-    await tester.tap(find.text('Quitar la ubicación de este gasto'));
+    await tester.tap(find.text('Quitar ubicación de este gasto'));
     await tester.pumpAndSettle();
 
     final saved = c.read(expensesStateProvider).single;
@@ -127,16 +127,16 @@ void main() {
 
   testWidgets('muestra cómo se registró, la tarjeta y el texto original', (tester) async {
     await open(tester, movimiento: _gasto());
-    expect(find.text('Automático, desde Wallet'), findsOneWidget);
+    expect(find.text('Automático (Apple Wallet)'), findsOneWidget);
     expect(find.text('Tarjeta · Visa BBVA ···4821'), findsOneWidget);
-    expect(find.text('Texto original'), findsOneWidget);
+    expect(find.text('Texto original detectado'), findsOneWidget);
   });
 
   testWidgets('un movimiento pendiente se confirma desde el detalle', (tester) async {
     final c = await open(tester, movimiento: _gasto(estado: EstadoMovimiento.pendiente));
-    expect(find.text('Por confirmar'), findsOneWidget);
+    expect(find.text('Este movimiento está pendiente de confirmación.'), findsOneWidget);
 
-    await tester.tap(find.text('Guardar gasto'));
+    await tester.tap(find.text('Confirmar'));
     await tester.pumpAndSettle();
     expect(c.read(expensesStateProvider).single.isConfirmed, isTrue);
   });
