@@ -23,7 +23,11 @@ class MgTabBar extends StatelessWidget {
     required this.selectedIndex,
     required this.onTap,
     this.onAddTap,
+    this.compact = false,
   });
+
+  /// Versión baja para el teléfono en horizontal, donde sobra ancho y falta alto.
+  final bool compact;
 
   final int selectedIndex;
   final ValueChanged<int> onTap;
@@ -75,21 +79,21 @@ class MgTabBar extends StatelessWidget {
         ),
         iconColor: Colors.white,
         label: 'Nuevo movimiento',
-        size: 58,
+        size: compact ? 46 : 58,
         onTap: () {
           HapticFeedback.mediumImpact();
           onAddTap?.call();
         },
       ),
-      spacing: 10,
-      horizontalPadding: 16,
-      verticalPadding: 16,
-      barHeight: 62,
+      spacing: compact ? 8 : 10,
+      horizontalPadding: compact ? 12 : 16,
+      verticalPadding: compact ? 8 : 16,
+      barHeight: compact ? 46 : 62,
       barBorderRadius: 24,
       // tabWidth: null hace que las pestañas se distribuyan en todo el espacio disponible
       tabWidth: null,
-      iconLabelSpacing: 3,
-      labelFontSize: 9.5,
+      iconLabelSpacing: compact ? 1 : 3,
+      labelFontSize: compact ? 9 : 9.5,
       selectedIconColor: MgColors.acc2,
       unselectedIconColor: MgColors.ink3,
       selectedLabelColor: MgColors.acc2,

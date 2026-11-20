@@ -23,6 +23,7 @@ import '../../domain/entities/movimiento.dart';
 import '../theme/mg_colors.dart';
 import '../widgets/mg_tab_bar.dart';
 import '../widgets/register_sheet.dart';
+import '../layout/adaptive.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
@@ -208,6 +209,8 @@ class MainScaffoldWrapper extends ConsumerWidget {
       selectedIndex = 4;
     }
 
+    final landscape = context.isLandscapePhone;
+
     return Scaffold(
       backgroundColor: MgColors.bg,
       body: Stack(
@@ -219,28 +222,46 @@ class MainScaffoldWrapper extends ConsumerWidget {
             left: 0,
             right: 0,
             bottom: 0,
-            child: MgTabBar(
-              selectedIndex: selectedIndex,
-              onTap: (index) {
-                if (index == 0) {
-                  context.go('/dashboard');
-                } else if (index == 1) {
-                  context.go('/plan');
-                } else if (index == 2) {
-                  context.go('/ai');
-                } else if (index == 3) {
-                  context.go('/reports');
-                } else if (index == 4) {
-                  context.go('/expenses');
-                }
-              },
-              onAddTap: () {
-                RegisterSheet.show(
-                  context: context,
-                  onSelectExpense: () => context.push('/new'),
-                  onSelectIncome: () => context.push('/new?type=ingreso'),
-                );
-              },
+            // En horizontal la barra es baja, centrada y respeta los bordes del
+            // teléfono (notch, Dynamic Island y barra inferior).
+            child: SafeArea(
+              top: false,
+              // En vertical la barra conserva su posición de siempre.
+              bottom: landscape,
+              left: landscape,
+              right: landscape,
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: landscape ? landscapeTabBarMaxWidth : double.infinity,
+                  ),
+                  child: MgTabBar(
+                    compact: landscape,
+                    selectedIndex: selectedIndex,
+                    onTap: (index) {
+                      if (index == 0) {
+                        context.go('/dashboard');
+                      } else if (index == 1) {
+                        context.go('/plan');
+                      } else if (index == 2) {
+                        context.go('/ai');
+                      } else if (index == 3) {
+                        context.go('/reports');
+                      } else if (index == 4) {
+                        context.go('/expenses');
+                      }
+                    },
+                    onAddTap: () {
+                      RegisterSheet.show(
+                        context: context,
+                        onSelectExpense: () => context.push('/new'),
+                        onSelectIncome: () => context.push('/new?type=ingreso'),
+                      );
+                    },
+                  ),
+                ),
+              ),
             ),
           ),
         ],
