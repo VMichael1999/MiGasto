@@ -237,6 +237,8 @@ class MainScaffoldWrapper extends ConsumerWidget {
     }
 
     final landscape = context.isLandscapePhone;
+    // Con el teclado abierto (escribiendo) la barra de navegación se oculta; vuelve al cerrarlo.
+    final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 80;
 
     return Scaffold(
       backgroundColor: MgColors.bg,
@@ -251,7 +253,16 @@ class MainScaffoldWrapper extends ConsumerWidget {
             bottom: 0,
             // En horizontal la barra es baja, centrada y respeta los bordes del
             // teléfono (notch, Dynamic Island y barra inferior).
-            child: SafeArea(
+            child: IgnorePointer(
+              ignoring: keyboardOpen,
+              child: AnimatedSlide(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              offset: keyboardOpen ? const Offset(0, 1.4) : Offset.zero,
+              child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 160),
+              opacity: keyboardOpen ? 0 : 1,
+              child: SafeArea(
               top: false,
               // En vertical la barra conserva su posición de siempre.
               bottom: landscape,
@@ -289,6 +300,9 @@ class MainScaffoldWrapper extends ConsumerWidget {
                   ),
                 ),
               ),
+            ),
+            ),
+            ),
             ),
           ),
         ],

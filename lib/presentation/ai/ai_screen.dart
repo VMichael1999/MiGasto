@@ -24,7 +24,7 @@ class AiScreen extends ConsumerStatefulWidget {
   ConsumerState<AiScreen> createState() => _AiScreenState();
 }
 
-class _AiScreenState extends ConsumerState<AiScreen> {
+class _AiScreenState extends ConsumerState<AiScreen> with WidgetsBindingObserver {
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   int _remainingQueries = GeminiAiService.dailyLimit;
@@ -51,6 +51,7 @@ class _AiScreenState extends ConsumerState<AiScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final prefs = ref.read(sharedPreferencesProvider);
@@ -61,8 +62,24 @@ class _AiScreenState extends ConsumerState<AiScreen> {
     });
   }
 
+  double _lastInset = 0;
+
+  /// Al abrirse el teclado, la conversación baja hasta el último mensaje para que no quede cortado.
+  @override
+  void didChangeMetrics() {
+    final inset = View.of(context).viewInsets.bottom;
+    if (inset > _lastInset) {
+      _scrollToBottom(animated: false);
+      Future.delayed(const Duration(milliseconds: 320), () {
+        if (mounted) _scrollToBottom();
+      });
+    }
+    _lastInset = inset;
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _inputController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -180,8 +197,9 @@ class _AiScreenState extends ConsumerState<AiScreen> {
     return ListView.builder(
       controller: _scrollController,
       physics: const BouncingScrollPhysics(),
-      // Al arrastrar la conversación el teclado se baja.
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      // Se puede desplazar la conversación con el teclado abierto: el teclado se baja
+      // tocando un espacio vacío o con el botón de ocultar.
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
       padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
       itemCount: _messages.length + (_isTyping ? 1 : 0),
       itemBuilder: (context, index) {
@@ -217,7 +235,7 @@ class _AiScreenState extends ConsumerState<AiScreen> {
                           Expanded(child: BleedClip(child: _buildMessages())),
                           Padding(
                             padding: EdgeInsets.fromLTRB(
-                                12, 0, 18, context.tabBarClearance(92, landscape: 70)),
+                                12, 0, 18, _bottomGap(context)),
                             child: _buildInput(),
                           ),
                         ],
@@ -454,10 +472,14 @@ class _AiScreenState extends ConsumerState<AiScreen> {
     );
   }
 
+  /// Espacio bajo la caja de texto: el de la barra de navegación, o poco si el teclado está abierto.
+  double _bottomGap(BuildContext context) =>
+      MediaQuery.viewInsetsOf(context).bottom > 80 ? 12 : context.tabBarClearance(92, landscape: 70);
+
   // 3. Dock inferior de sugerencias y campo (.ai-dock)
   Widget _buildDock(BuildContext context) {
     return Container(
-      padding: EdgeInsets.fromLTRB(18, 0, 18, context.tabBarClearance(92, landscape: 70)), // Espacio para MgTabBar
+      padding: EdgeInsets.fromLTRB(18, 0, 18, _bottomGap(context)), // Espacio para MgTabBar (oculta con el teclado)
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
