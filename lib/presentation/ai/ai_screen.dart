@@ -6,6 +6,7 @@ import '../../core/widgets/widgets.dart';
 import '../../data/services/gemini_ai_service.dart';
 import '../providers.dart';
 import '../plan/plan_providers.dart';
+import '../../shared/widgets/profile_avatar_button.dart';
 import 'widgets/migasto_avatar.dart';
 
 class ChatMessage {
@@ -315,6 +316,8 @@ class _AiScreenState extends ConsumerState<AiScreen> {
               ),
             ),
           ),
+          const SizedBox(width: 8),
+          const ProfileAvatarButton(size: 34),
         ],
       ),
     );

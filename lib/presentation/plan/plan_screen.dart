@@ -10,7 +10,7 @@ import '../../domain/entities/movimiento.dart';
 import '../../shared/format.dart';
 import '../../shared/dispose_later.dart';
 import '../../shared/labels.dart';
-import '../../shared/profile.dart';
+import '../../shared/widgets/profile_avatar_button.dart';
 import '../providers.dart';
 import 'plan_providers.dart';
 
@@ -79,7 +79,6 @@ class PlanScreen extends ConsumerWidget {
 
   // 1. Cabecera (.top)
   Widget _buildHeader(BuildContext context, WidgetRef ref, bool hidden) {
-    final initials = initialsOf(ref.watch(profileNameProvider));
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
       child: Row(
@@ -150,36 +149,8 @@ class PlanScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(width: 10),
-          // Avatar con las iniciales del usuario
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(18),
-              onTap: () => context.go('/settings'),
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: MgColors.soft,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: MgColors.line),
-                ),
-                child: Center(
-                  child: initials.isEmpty
-                      ? const Icon(Icons.person_outline_rounded,
-                          size: 17, color: MgColors.ink)
-                      : Text(
-                          initials,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: MgColors.ink,
-                          ),
-                        ),
-                ),
-              ),
-            ),
-          ),
+          // Perfil (avatar con iniciales)
+          const ProfileAvatarButton(size: 36),
         ],
       ),
     );

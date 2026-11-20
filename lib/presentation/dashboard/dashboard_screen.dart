@@ -11,7 +11,7 @@ import '../../domain/entities/movimiento.dart';
 import '../../domain/setup_issues.dart';
 import '../../shared/format.dart';
 import '../../shared/labels.dart';
-import '../../shared/profile.dart';
+import '../../shared/widgets/profile_avatar_button.dart';
 import '../expenses/expense_detail_dialog.dart';
 import '../providers.dart';
 
@@ -116,8 +116,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     hidden: hidden,
                     onEyeTap: () =>
                         ref.read(balanceHiddenProvider.notifier).toggle(),
-                    onAvatarTap: () => context.go('/settings'),
-                    initials: initialsOf(ref.watch(profileNameProvider)),
                   ),
 
                   // 2. Tarjeta de balance (.bal)
@@ -147,7 +145,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   // 3. Seguro para gastar (.card)
                   _SafeToSpendCard(
                     hasBudget: hasBudget,
-                    onDefineBudget: () => context.go('/settings'),
+                    onDefineBudget: () => context.push('/settings'),
                     safeToSpend: safeToSpend,
                     safePerDay: safePerDay,
                     remainingDays: remainingDays,
@@ -175,7 +173,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   // 4. Encabezado de movimientos (.sec)
                   _MovementsSectionHeader(
                     count: confirmedMonth.length,
-                    onSearchTap: () => context.go('/expenses'),
+                    onSearchTap: () => context.go('/expenses?focus=1'),
                   ),
 
                   // 5. Lista de movimientos agrupada por día
@@ -272,15 +270,11 @@ class _HomeHeader extends StatelessWidget {
     required this.now,
     required this.hidden,
     required this.onEyeTap,
-    required this.onAvatarTap,
-    required this.initials,
   });
 
   final DateTime now;
   final bool hidden;
   final VoidCallback onEyeTap;
-  final VoidCallback onAvatarTap;
-  final String initials;
 
   @override
   Widget build(BuildContext context) {
@@ -365,37 +359,8 @@ class _HomeHeader extends StatelessWidget {
           ),
           const SizedBox(width: 8),
 
-          // Avatar (.av)
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onAvatarTap,
-              borderRadius: BorderRadius.circular(19),
-              child: Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: MgColors.accSoft,
-                  border: Border.all(color: MgColors.accLine, width: 1),
-                ),
-                child: Center(
-                  child: initials.isEmpty
-                      ? const Icon(Icons.person_outline_rounded,
-                          size: 19, color: MgColors.acc2)
-                      : Text(
-                          initials,
-                          style: const TextStyle(
-                            fontFamily: AppText.fontFamily,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: MgColors.acc2,
-                          ),
-                        ),
-                ),
-              ),
-            ),
-          ),
+          // Perfil (avatar con iniciales)
+          const ProfileAvatarButton(size: 38),
         ],
       ),
     );

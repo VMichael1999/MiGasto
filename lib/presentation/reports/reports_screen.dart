@@ -8,6 +8,7 @@ import '../../core/widgets/charts.dart';
 import '../../core/widgets/mg_card.dart';
 import '../../domain/entities/movimiento.dart';
 import '../../shared/labels.dart';
+import '../../shared/widgets/profile_avatar_button.dart';
 import '../../shared/profile.dart';
 import '../providers.dart';
 import 'fullscreen_chart_screen.dart';
@@ -232,6 +233,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               ),
             ),
           ),
+          const SizedBox(width: 8),
+          const ProfileAvatarButton(size: 34),
         ],
       ),
     );
