@@ -18,6 +18,7 @@ import '../providers.dart';
 import 'expense_detail_dialog.dart';
 import '../../core/layout/adaptive.dart';
 import '../../core/layout/landscape_pane.dart';
+import '../../shared/widgets/merchant_icon.dart';
 
 enum _MovementFilter { todo, gastos, ingresos, pendientes }
 
@@ -940,7 +941,8 @@ class _MovementItemRow extends StatelessWidget {
           child: Row(
             children: [
               // Cuadrito redondeado de categoría (.ic)
-              CategoryIcon(
+              MerchantIcon(
+                merchant: movement.merchant,
                 category: movement.category,
                 size: 38,
                 radius: 12,

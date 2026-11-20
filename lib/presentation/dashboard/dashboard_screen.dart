@@ -23,6 +23,7 @@ import 'movement_detail_panel.dart';
 import '../providers.dart';
 import '../../core/layout/landscape_pane.dart';
 import '../../core/layout/adaptive.dart';
+import '../../shared/widgets/merchant_icon.dart';
 
 /// Pantalla 1: Inicio (s-home en prototipo HTML y Sección 4.4 del prompt).
 /// - Cabecera: mark de 34, selector de espacio ("Personal ›") con mes debajo,
@@ -1297,7 +1298,8 @@ class _MovementItemRow extends StatelessWidget {
           child: Row(
             children: [
               // Cuadrito redondeado de categoría (.ic)
-              CategoryIcon(
+              MerchantIcon(
+                merchant: movement.merchant,
                 category: movement.category,
                 size: 38,
                 radius: 12,

@@ -410,6 +410,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
         ),
         _buildDivider(),
         _buildRow(
+          icon: Icons.image_outlined,
+          title: 'Logos de comercios',
+          subtitle: 'Busca el logo por internet. Solo se envía el sitio web del comercio (por ejemplo, spotify.com), nunca montos ni datos tuyos.',
+          trailing: Switch(
+            value: ref.watch(merchantLogosProvider),
+            onChanged: (v) => ref.read(merchantLogosProvider.notifier).set(v),
+          ),
+        ),
+        _buildDivider(),
+        _buildRow(
           icon: Icons.fingerprint_rounded,
           title: 'Bloqueo con huella o PIN',
           trailing: Switch(
@@ -574,6 +584,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   Widget _buildRow({
     required IconData icon,
     required String title,
+    String? subtitle,
     String? tag,
     Widget? trailing,
     bool isDestructive = false,
@@ -607,13 +618,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
             const SizedBox(width: 12),
             // Título
             Expanded(
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: isDestructive ? MgColors.down : MgColors.ink,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: isDestructive ? MgColors.down : MgColors.ink,
+                    ),
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(fontSize: 11.5, height: 1.35, color: MgColors.ink3),
+                    ),
+                  ],
+                ],
               ),
             ),
             // Etiqueta tag (.tag)

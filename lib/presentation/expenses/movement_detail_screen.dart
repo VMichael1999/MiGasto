@@ -19,6 +19,7 @@ import 'alias_dialog.dart';
 import 'movement_comparison_sheet.dart';
 import 'new_category_sheet.dart';
 import '../../shared/dispose_later.dart';
+import '../../shared/widgets/merchant_icon.dart';
 
 /// Abre el detalle de un movimiento.
 void showExpenseDetailSheet(BuildContext context, WidgetRef ref, Movimiento movimiento) {
@@ -179,20 +180,12 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
                       child: Column(
                         children: [
                           // Ícono grande (56×56, radio 19)
-                          Container(
-                            width: 56,
-                            height: 56,
-                            decoration: BoxDecoration(
-                              color: catColor.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(19),
-                            ),
-                            child: Center(
-                              child: Icon(
-                                CategoryIcon.iconForCategory(m.category),
-                                size: 26,
-                                color: catColor,
-                              ),
-                            ),
+                          MerchantIcon(
+                            merchant: m.merchant,
+                            category: m.category,
+                            size: 56,
+                            radius: 19,
+                            iconSize: 26,
                           ),
                           const SizedBox(height: 14),
 

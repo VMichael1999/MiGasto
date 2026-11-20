@@ -239,7 +239,7 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen>
             line('No lee: ', 'tus mensajes, fotos, contactos ni otras apps.'),
           ],
           line('Dónde se guarda: ',
-              'solo en tu ${_isAndroid ? 'teléfono' : 'iPhone'}. No se envía a ningún servidor.'),
+              'tus movimientos se quedan solo en tu ${_isAndroid ? 'teléfono' : 'iPhone'}. Si creas una cuenta, sirve solo para identificarte. Para mostrar el logo de cada comercio se consulta su sitio web (sin montos ni datos tuyos); lo apagas en Perfil.'),
         ],
       ),
     );

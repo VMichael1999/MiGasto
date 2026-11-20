@@ -16,6 +16,7 @@ import '../../shared/labels.dart';
 import '../expenses/movement_comparison_sheet.dart';
 import '../providers.dart';
 import 'plan_providers.dart';
+import '../../shared/widgets/merchant_icon.dart';
 
 /// Detalle de una categoría: cuánto se gastó en un período (quincena, mes,
 /// trimestre o semestre), qué parte es de todo lo gastado, su evolución y los
@@ -615,7 +616,7 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                       child: Row(
                         children: [
-                          CategoryIcon(category: m.category, size: 38, radius: 12),
+                          MerchantIcon(merchant: m.merchant, category: m.category, size: 38, radius: 12),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(

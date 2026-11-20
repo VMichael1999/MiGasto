@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/services.dart';
@@ -955,3 +956,30 @@ final authModeProvider = StateNotifierProvider<AuthModeNotifier, String>(
 );
 
 final isGuestProvider = Provider<bool>((ref) => ref.watch(authModeProvider) == 'guest');
+
+/// Mostrar el logo de cada comercio (se busca por internet con solo su sitio web).
+/// En las pruebas viene apagado para que no salgan a la red.
+const merchantLogosKey = 'migasto_merchant_logos';
+
+class MerchantLogosNotifier extends StateNotifier<bool> {
+  MerchantLogosNotifier(this._prefs)
+      : super(_prefs.getBool(merchantLogosKey) ?? !_underTest());
+  final SharedPreferences _prefs;
+
+  static bool _underTest() {
+    try {
+      return Platform.environment.containsKey('FLUTTER_TEST');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> set(bool value) async {
+    await _prefs.setBool(merchantLogosKey, value);
+    state = value;
+  }
+}
+
+final merchantLogosProvider = StateNotifierProvider<MerchantLogosNotifier, bool>(
+  (ref) => MerchantLogosNotifier(ref.read(sharedPreferencesProvider)),
+);
