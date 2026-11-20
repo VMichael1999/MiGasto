@@ -53,10 +53,18 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.example.miGasto</string>
+			<string>com.migasto.co</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>migasto</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>google-sign-in</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.000000000000-c9u4vs72al3n4ofn4mvlda1o1io1lp3t</string>
 			</array>
 		</dict>
 	</array>
