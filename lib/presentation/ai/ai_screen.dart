@@ -7,21 +7,10 @@ import '../../data/services/gemini_ai_service.dart';
 import '../providers.dart';
 import '../plan/plan_providers.dart';
 import '../../shared/widgets/profile_avatar_button.dart';
+import 'ai_chat_provider.dart';
 import 'widgets/migasto_avatar.dart';
 import '../../core/layout/adaptive.dart';
 import '../../core/layout/landscape_pane.dart';
-
-class ChatMessage {
-  final String text;
-  final bool isUser;
-  final DateTime timestamp;
-
-  ChatMessage({
-    required this.text,
-    required this.isUser,
-    DateTime? timestamp,
-  }) : timestamp = timestamp ?? DateTime.now();
-}
 
 /// Pantalla 6: MiGastoIA (#s-ai / R.ai en migasto-prototipo.html)
 /// - Cabecera (.nav): Squircle con destello, título «MiGastoIA» y botón papelera (.rnd) con ConfirmSheet.
@@ -38,15 +27,14 @@ class AiScreen extends ConsumerStatefulWidget {
 class _AiScreenState extends ConsumerState<AiScreen> {
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  bool _isTyping = false;
   int _remainingQueries = GeminiAiService.dailyLimit;
 
-  late final List<ChatMessage> _messages = [
-    ChatMessage(
-      text: _greeting(),
-      isUser: false,
-    ),
-  ];
+  bool get _isTyping => ref.read(aiChatProvider).typing;
+
+  /// El saludo no se guarda: se muestra siempre al comienzo de la conversación.
+  late final ChatMessage _greetingMessage = ChatMessage(text: _greeting(), isUser: false);
+
+  List<ChatMessage> get _messages => [_greetingMessage, ...ref.read(aiChatProvider).messages];
 
   String _greeting() {
     final name = ref.read(profileNameProvider).trim().split(' ').first;
@@ -69,6 +57,7 @@ class _AiScreenState extends ConsumerState<AiScreen> {
       setState(() {
         _remainingQueries = GeminiAiService.getRemainingQueries(prefs);
       });
+      _scrollToBottom(animated: false);
     });
   }
 
@@ -100,26 +89,25 @@ class _AiScreenState extends ConsumerState<AiScreen> {
     if (clean.isEmpty || _isTyping) return;
 
     final prefs = ref.read(sharedPreferencesProvider);
+    // La conversación vive en el provider: si el usuario cambia de pestaña mientras
+    // la IA responde, la respuesta se sigue guardando.
+    final chat = ref.read(aiChatProvider.notifier);
     final remaining = GeminiAiService.getRemainingQueries(prefs);
 
     if (remaining <= 0) {
-      setState(() {
-        _messages.add(ChatMessage(text: clean, isUser: true));
-        _inputController.clear();
-        _messages.add(ChatMessage(
-          text: 'Has alcanzado tu límite diario de 10 consultas financieras con MiGastoIA. Tu cuota se renovará automáticamente mañana a medianoche.',
-          isUser: false,
-        ));
-      });
+      chat.add(ChatMessage(text: clean, isUser: true));
+      _inputController.clear();
+      chat.add(ChatMessage(
+        text: 'Has alcanzado tu límite diario de 10 consultas financieras con MiGastoIA. Tu cuota se renovará automáticamente mañana a medianoche.',
+        isUser: false,
+      ));
       _scrollToBottom();
       return;
     }
 
-    setState(() {
-      _messages.add(ChatMessage(text: clean, isUser: true));
-      _inputController.clear();
-      _isTyping = true;
-    });
+    chat.add(ChatMessage(text: clean, isUser: true));
+    _inputController.clear();
+    chat.setTyping(true);
     _scrollToBottom();
 
     try {
@@ -144,47 +132,32 @@ class _AiScreenState extends ConsumerState<AiScreen> {
           financialContext: financialContext,
           prefs: prefs,
         )) {
-          if (!mounted) return;
-          setState(() {
-            if (index == -1) {
-              _isTyping = false;
-              _messages.add(ChatMessage(text: text, isUser: false));
-              index = _messages.length - 1;
-            } else {
-              _messages[index] = ChatMessage(text: text, isUser: false);
-            }
-          });
-          _scrollToBottom(animated: false);
+          if (index == -1) {
+            chat.setTyping(false);
+            index = chat.add(ChatMessage(text: text, isUser: false));
+          } else {
+            chat.replaceAt(index, ChatMessage(text: text, isUser: false));
+          }
+          if (mounted) _scrollToBottom(animated: false);
         }
       } on GeminiException catch (e) {
-        if (!mounted) return;
-        setState(() {
-          _isTyping = false;
-          // Si ya se mostró parte de la respuesta, se conserva.
-          if (index == -1) {
-            _messages.add(ChatMessage(text: e.message, isUser: false));
-          }
-        });
+        chat.setTyping(false);
+        // Si ya se mostró parte de la respuesta, se conserva.
+        if (index == -1) chat.add(ChatMessage(text: e.message, isUser: false));
       }
 
+      chat.setTyping(false);
       if (mounted) {
-        setState(() {
-          _isTyping = false;
-          _remainingQueries = GeminiAiService.getRemainingQueries(prefs);
-        });
+        setState(() => _remainingQueries = GeminiAiService.getRemainingQueries(prefs));
         _scrollToBottom();
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isTyping = false;
-          _messages.add(ChatMessage(
-            text: 'Ocurrió un inconveniente al consultar a MiGastoIA. Por favor intenta nuevamente.',
-            isUser: false,
-          ));
-        });
-        _scrollToBottom();
-      }
+      chat.setTyping(false);
+      chat.add(ChatMessage(
+        text: 'Ocurrió un inconveniente al consultar a MiGastoIA. Por favor intenta nuevamente.',
+        isUser: false,
+      ));
+      if (mounted) _scrollToBottom();
     }
   }
 
@@ -198,9 +171,7 @@ class _AiScreenState extends ConsumerState<AiScreen> {
       icon: Icons.delete_outline,
     );
     if (ok && mounted) {
-      setState(() {
-        _messages.clear();
-      });
+      ref.read(aiChatProvider.notifier).clear();
       MgToast.show(context, message: 'Conversación borrada.');
     }
   }
@@ -222,6 +193,8 @@ class _AiScreenState extends ConsumerState<AiScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Se reconstruye cada vez que cambia la conversación o el estado «escribiendo».
+    ref.watch(aiChatProvider);
     final landscape = context.isLandscapePhone;
     return Scaffold(
       backgroundColor: MgColors.bg,
