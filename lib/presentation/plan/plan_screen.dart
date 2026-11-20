@@ -8,6 +8,7 @@ import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/widgets.dart';
 import '../../domain/entities/movimiento.dart';
 import '../../shared/format.dart';
+import '../../shared/dispose_later.dart';
 import '../../shared/labels.dart';
 import '../../shared/profile.dart';
 import '../providers.dart';
@@ -382,65 +383,65 @@ class PlanScreen extends ConsumerWidget {
     final target = TextEditingController(text: fmt(goal?.target ?? 0));
     final current = TextEditingController(text: fmt(goal?.current ?? 0));
 
-    final saved = await showModalBottomSheet<bool>(
+    // Misma hoja que el resto de la app (MgSheet), por encima de la barra de pestañas.
+    final saved = await MgSheet.show<bool>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: MgColors.card,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        InputDecoration deco(String label) => InputDecoration(labelText: label);
-        return Padding(
-          padding: EdgeInsets.fromLTRB(
-            20, 20, 20, 20 + MediaQuery.of(ctx).viewInsets.bottom,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                'Meta de ahorro',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  color: MgColors.ink,
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(controller: title, decoration: deco('Nombre (ej. Viaje)')),
-              TextField(
-                controller: target,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: deco('Monto objetivo (S/)'),
-              ),
-              TextField(
-                controller: current,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: deco('Ahorrado hasta hoy (S/)'),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  if (goal != null)
-                    TextButton(
-                      onPressed: () {
-                        ref.read(savingsGoalProvider.notifier).clear();
-                        Navigator.pop(ctx, false);
-                      },
-                      child: const Text('Quitar meta'),
-                    ),
-                  const Spacer(),
-                  FilledButton(
-                    onPressed: () => Navigator.pop(ctx, true),
-                    child: const Text('Guardar'),
+      child: Builder(
+        builder: (ctx) {
+          InputDecoration deco(String label) => InputDecoration(labelText: label);
+          return Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 14),
+                const Text(
+                  'Meta de ahorro',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: MgColors.ink,
                   ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
+                ),
+                const SizedBox(height: 12),
+                TextField(controller: title, decoration: deco('Nombre (ej. Viaje)')),
+                TextField(
+                  controller: target,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: deco('Monto objetivo (S/)'),
+                ),
+                TextField(
+                  controller: current,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: deco('Ahorrado hasta hoy (S/)'),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    if (goal != null)
+                      TextButton(
+                        onPressed: () {
+                          ref.read(savingsGoalProvider.notifier).clear();
+                          Navigator.pop(ctx, false);
+                        },
+                        child: const Text('Quitar meta'),
+                      ),
+                    const Spacer(),
+                    FilledButton(
+                      // El tema pide ancho infinito; dentro de una fila hay que acotarlo.
+                      style: FilledButton.styleFrom(minimumSize: const Size(120, 48)),
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('Guardar'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+              ],
+            ),
+          );
+        },
+      ),
     );
 
     if (saved == true) {
@@ -454,9 +455,8 @@ class PlanScreen extends ConsumerWidget {
             ));
       }
     }
-    title.dispose();
-    target.dispose();
-    current.dispose();
+    // La hoja sigue animando su cierre: los controladores se liberan después.
+    disposeControllersLater([title, target, current]);
   }
 
   // 3. Tarjeta de límite por categoría (.card .lim)
