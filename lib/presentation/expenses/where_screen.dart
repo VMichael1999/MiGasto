@@ -101,7 +101,10 @@ class _WhereScreenState extends ConsumerState<WhereScreen> {
         children: [
           Expanded(
             flex: 5,
+            // El Stack ocupa todo el espacio: sin esto medía solo lo que el botón de volver
+            // (72 px) y el mapa quedaba como una franja angosta.
             child: Stack(
+              fit: StackFit.expand,
               children: [
                 Positioned.fill(
                   child: Env.hasMapsKey
@@ -126,18 +129,26 @@ class _WhereScreenState extends ConsumerState<WhereScreen> {
                           mapToolbarEnabled: false,
                           myLocationButtonEnabled: false,
                         )
-                      : Container(
+                      : ColoredBox(
                           color: scheme.surface,
-                          alignment: Alignment.center,
-                          padding: const EdgeInsets.all(32),
-                          child: Text(
-                            'El mapa necesita la clave de Google Maps en el archivo .env.',
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.bodySmall,
+                          child: SizedBox.expand(
+                            child: Center(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+                                child: Text(
+                                  'El mapa no está disponible en esta versión.',
+                                  textAlign: TextAlign.center,
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                 ),
-                SafeArea(
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  child: SafeArea(
                   child: Padding(
                     padding: const EdgeInsets.all(14),
                     child: Tooltip(
@@ -158,6 +169,7 @@ class _WhereScreenState extends ConsumerState<WhereScreen> {
                     ),
                   ),
                 ),
+                ),
               ],
             ),
           ),
@@ -173,26 +185,25 @@ class _WhereScreenState extends ConsumerState<WhereScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Dónde pagaste', style: theme.textTheme.headlineSmall),
-                      SegmentedButton<_Period>(
-                        showSelectedIcon: false,
-                        style: const ButtonStyle(visualDensity: VisualDensity.compact),
-                        segments: const [
-                          ButtonSegment(value: _Period.week, label: Text('Semana')),
-                          ButtonSegment(value: _Period.month, label: Text('Mes')),
-                          ButtonSegment(value: _Period.all, label: Text('Todo')),
-                        ],
-                        selected: {_period},
-                        onSelectionChanged: (s) {
-                          setState(() => _period = s.first);
-                          WidgetsBinding.instance.addPostFrameCallback(
-                              (_) => _fit(_zones(ref.read(expensesStateProvider))));
-                        },
-                      ),
+                  Text('Dónde pagaste', style: theme.textTheme.headlineSmall),
+                  const SizedBox(height: 10),
+                  // El selector va debajo del título y ocupa todo el ancho: junto al título
+                  // se apretaban en pantallas angostas.
+                  SegmentedButton<_Period>(
+                    showSelectedIcon: false,
+                    expandedInsets: EdgeInsets.zero,
+                    style: const ButtonStyle(visualDensity: VisualDensity.compact),
+                    segments: const [
+                      ButtonSegment(value: _Period.week, label: Text('Semana')),
+                      ButtonSegment(value: _Period.month, label: Text('Mes')),
+                      ButtonSegment(value: _Period.all, label: Text('Todo')),
                     ],
+                    selected: {_period},
+                    onSelectionChanged: (s) {
+                      setState(() => _period = s.first);
+                      WidgetsBinding.instance.addPostFrameCallback(
+                          (_) => _fit(_zones(ref.read(expensesStateProvider))));
+                    },
                   ),
                   const SizedBox(height: 8),
                   Expanded(

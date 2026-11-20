@@ -9,7 +9,12 @@ import 'package:flutter/services.dart' show rootBundle;
 class Env {
   const Env._();
 
-  static const String googleMapsApiKey = String.fromEnvironment('GOOGLE_MAPS_API_KEY');
+  static const String _mapsKeyDefine = String.fromEnvironment('GOOGLE_MAPS_API_KEY');
+
+  /// Clave de Google Maps: la de `--dart-define-from-file=.env` si se compiló así y, si no,
+  /// la del `.env` empaquetado (así también funciona en las compilaciones release normales).
+  static String get googleMapsApiKey =>
+      _mapsKeyDefine.isNotEmpty ? _mapsKeyDefine : value('GOOGLE_MAPS_API_KEY');
 
   static bool get hasMapsKey => googleMapsApiKey.isNotEmpty;
 

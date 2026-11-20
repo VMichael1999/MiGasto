@@ -45,4 +45,12 @@ SIN_VALOR
     expect(ios?.appId, 'app-i');
     expect(ios?.iosClientId, 'cli-i');
   });
+
+  test('la clave de Google Maps sale del .env empaquetado cuando no hay dart-define', () {
+    Env.setForTest(const {});
+    expect(Env.hasMapsKey, isFalse);
+    Env.setForTest(const {'GOOGLE_MAPS_API_KEY': 'clave-de-prueba'});
+    expect(Env.hasMapsKey, isTrue);
+    expect(Env.googleMapsApiKey, 'clave-de-prueba');
+  });
 }
