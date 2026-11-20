@@ -67,20 +67,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (c != null) await _auth((a) => a.signInWithEmail(c.$1, c.$2));
   }
 
-  Future<void> _forgotPassword() async {
-    final email = _emailController.text.trim();
-    if (!email.contains('@')) {
-      MgToast.show(context, message: 'Escribe tu correo para enviarte el enlace.');
-      return;
-    }
-    try {
-      await ref.read(authServiceProvider).sendPasswordReset(email);
-      if (mounted) MgToast.show(context, message: 'Te enviamos un correo para cambiar tu contraseña.');
-    } on AuthException catch (e) {
-      if (mounted) MgToast.show(context, message: e.message);
-    }
-  }
-
   /// Entra sin cuenta: todo queda guardado solo en este teléfono.
   Future<void> _continueAsGuest() async {
     final prefs = ref.read(sharedPreferencesProvider);
@@ -225,7 +211,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   padding: const EdgeInsets.only(top: 6),
                   child: GestureDetector(
                     onTap: () {
-                      _forgotPassword();
+                      context.push('/forgot', extra: _emailController.text.trim());
                     },
                     child: const Text(
                       '¿Olvidaste tu contraseña?',

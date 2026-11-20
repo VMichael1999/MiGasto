@@ -9,6 +9,7 @@ import '../../presentation/setup/apple_pay_setup_screen.dart';
 import '../../presentation/onboarding/onboarding_screen.dart';
 import '../../presentation/onboarding/permissions_screen.dart';
 import '../../presentation/onboarding/splash_screen.dart';
+import '../../presentation/onboarding/forgot_password_screen.dart';
 import '../../presentation/onboarding/login_screen.dart';
 import '../../presentation/onboarding/register_screen.dart';
 import '../../presentation/providers.dart';
@@ -60,12 +61,17 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // 2. Si completó bienvenida pero no ha iniciado sesión, forzar pantalla de login
       if (!isLoggedIn) {
-        return (location == '/login' || location == '/register') ? null : '/login';
+        return (location == '/login' || location == '/register' || location == '/forgot')
+            ? null
+            : '/login';
       }
 
       // 3. Si ya tiene sesión activa y se intenta acceder a login u onboarding, enviar al dashboard
       if (isLoggedIn &&
-          (location == '/login' || location == '/register' || location == '/onboarding')) {
+          (location == '/login' ||
+              location == '/register' ||
+              location == '/forgot' ||
+              location == '/onboarding')) {
         return '/dashboard';
       }
 
@@ -92,6 +98,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/forgot',
+        builder: (context, state) =>
+            ForgotPasswordScreen(initialEmail: state.extra is String ? state.extra as String : ''),
       ),
       GoRoute(
         path: '/register',
