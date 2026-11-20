@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/entities/movimiento.dart';
+import '../domain/scheduled_payment.dart';
 
 /// Clave en preferencias para encender o apagar los datos de ejemplo (solo debug).
 const keyDebugMockData = 'migasto_debug_mock_data';
@@ -164,4 +165,30 @@ List<Movimiento> buildDebugMockMovements(DateTime now) {
     }
   }
   return out;
+}
+
+/// Pagos y cobros programados de ejemplo (solo debug, en memoria): uno vencido,
+/// varios cercanos y el sueldo del mes que viene.
+List<ScheduledPayment> debugMockScheduledPayments(DateTime now) {
+  final today = dateOnly(now);
+  ScheduledPayment p(String name, double amount, Categoria cat, int inDays,
+          {bool ingreso = false}) =>
+      ScheduledPayment(
+        id: '${debugMockIdPrefix}sp-$name',
+        name: name,
+        amount: amount,
+        tipo: ingreso ? TipoMovimiento.ingreso : TipoMovimiento.gasto,
+        category: cat,
+        dueDate: today.add(Duration(days: inDays)),
+        monthly: true,
+      );
+  return [
+    p('iCloud', 12.90, Categoria.servicios, -6),
+    p('Netflix', 44.90, Categoria.entretenimiento, 3),
+    p('ChatGPT Plus', 78.00, Categoria.servicios, 6),
+    p('Claude Pro', 78.00, Categoria.servicios, 8),
+    p('Sueldo', 15000.00, Categoria.sueldo, 10, ingreso: true),
+    p('Alquiler departamento', 2200.00, Categoria.servicios, 12),
+    p('Luz del Sur', 168.40, Categoria.servicios, 17),
+  ];
 }
