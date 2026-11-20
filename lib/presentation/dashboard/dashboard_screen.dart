@@ -14,6 +14,7 @@ import '../../shared/labels.dart';
 import '../../shared/widgets/profile_avatar_button.dart';
 import '../expenses/expense_detail_dialog.dart';
 import '../providers.dart';
+import '../../core/layout/adaptive.dart';
 
 /// Pantalla 1: Inicio (s-home en prototipo HTML y Sección 4.4 del prompt).
 /// - Cabecera: mark de 34, selector de espacio ("Personal ›") con mes debajo,
@@ -106,7 +107,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               physics: const AlwaysScrollableScrollPhysics(
                 parent: BouncingScrollPhysics(),
               ),
-              padding: const EdgeInsets.only(bottom: 130),
+              padding: EdgeInsets.only(bottom: context.tabBarClearance(130)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [

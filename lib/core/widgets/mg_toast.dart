@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme/mg_colors.dart';
+import '../layout/adaptive.dart';
 
 /// Notificación flotante inferior de MiGasto:
 /// Fondo translúcido desenfocado, borde tenue de 1px, texto y botón de acción (ej. "Deshacer").
@@ -21,7 +22,7 @@ class MgToast {
         backgroundColor: Colors.transparent,
         duration: duration,
         behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.fromLTRB(18, 0, 18, 94),
+        margin: EdgeInsets.fromLTRB(18, 0, 18, context.tabBarClearance(94, landscape: 64)),
         padding: EdgeInsets.zero,
         content: ClipRRect(
           borderRadius: BorderRadius.circular(14),

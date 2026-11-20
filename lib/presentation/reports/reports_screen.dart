@@ -12,6 +12,7 @@ import '../../shared/widgets/profile_avatar_button.dart';
 import '../../shared/profile.dart';
 import '../providers.dart';
 import 'fullscreen_chart_screen.dart';
+import '../../core/layout/adaptive.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
@@ -157,7 +158,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               // Tarjeta 2: Ingresos vs gastos (6 meses)
               _buildIncomeVsExpenseCard(allMovs),
 
-              const SizedBox(height: 160),
+              SizedBox(height: context.tabBarClearance(160)),
             ],
           ),
         ),

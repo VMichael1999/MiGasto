@@ -8,6 +8,7 @@ import '../providers.dart';
 import '../plan/plan_providers.dart';
 import '../../shared/widgets/profile_avatar_button.dart';
 import 'widgets/migasto_avatar.dart';
+import '../../core/layout/adaptive.dart';
 
 class ChatMessage {
   final String text;
@@ -458,7 +459,7 @@ class _AiScreenState extends ConsumerState<AiScreen> {
   // 3. Dock inferior de sugerencias y campo (.ai-dock)
   Widget _buildDock(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 0, 18, 92), // Espacio para MgTabBar
+      padding: EdgeInsets.fromLTRB(18, 0, 18, context.tabBarClearance(92, landscape: 70)), // Espacio para MgTabBar
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

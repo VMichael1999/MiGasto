@@ -15,6 +15,7 @@ import '../../shared/format.dart';
 import '../../shared/labels.dart';
 import '../providers.dart';
 import 'expense_detail_dialog.dart';
+import '../../core/layout/adaptive.dart';
 
 enum _MovementFilter { todo, gastos, ingresos, pendientes }
 
@@ -335,7 +336,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                           physics: const AlwaysScrollableScrollPhysics(
                             parent: BouncingScrollPhysics(),
                           ),
-                          padding: const EdgeInsets.only(bottom: 120),
+                          padding: EdgeInsets.only(bottom: context.tabBarClearance(120)),
                           itemCount: sortedKeys.length,
                           itemBuilder: (context, index) {
                             final key = sortedKeys[index];
