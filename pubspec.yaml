@@ -64,6 +64,7 @@ dependencies:
   sign_in_with_apple: ^8.2.0
   crypto: ^3.0.8
   cached_network_image: ^3.4.1
+  video_player: ^2.14.1
 
 dev_dependencies:
   flutter_test:
@@ -104,6 +105,7 @@ flutter:
     - assets/brand/logo_3d.png
     - assets/icons/
     - assets/avatars/
+    - assets/tutorial/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -100,6 +100,18 @@ class _ApplePaySetupScreenState extends ConsumerState<ApplePaySetupScreen> {
                       style: theme.textTheme.bodyMedium!
                           .copyWith(fontSize: 14.5, color: scheme.onSurfaceVariant),
                     ),
+                    const SizedBox(height: 16),
+                    // Video de 42 s dentro de la app: explica la automatización paso a paso.
+                    OutlinedButton.icon(
+                      onPressed: () => context.push('/setup/apple-pay/tutorial'),
+                      icon: const Icon(Icons.play_circle_outline_rounded, size: 22),
+                      label: const Text('Ver tutorial en video'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.field)),
+                      ),
+                    ),
                     const SizedBox(height: 20),
                     _step(context, 1, 'MiGasto ya agregó la acción a Atajos',
                         'Se llama "Registrar pago de Wallet"', true),

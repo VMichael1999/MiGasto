@@ -11,6 +11,7 @@ import '../../presentation/onboarding/permissions_screen.dart';
 import '../../presentation/onboarding/splash_screen.dart';
 import '../../presentation/onboarding/forgot_password_screen.dart';
 import '../../presentation/onboarding/login_screen.dart';
+import '../../presentation/setup/tutorial_video_screen.dart';
 import '../../presentation/onboarding/register_screen.dart';
 import '../../presentation/providers.dart';
 import '../../presentation/reports/reports_screen.dart';
@@ -55,7 +56,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       // 1. Si no ha completado la bienvenida, debe ver el onboarding
       if (!onboardingComplete) {
         // La bienvenida incluye el paso de permisos (y, en iPhone, la guía de Apple Pay).
-        const welcomeFlow = {'/onboarding', '/permisos', '/setup/apple-pay'};
+        const welcomeFlow = {
+          '/onboarding',
+          '/permisos',
+          '/setup/apple-pay',
+          '/setup/apple-pay/tutorial',
+        };
         return welcomeFlow.contains(location) ? null : '/onboarding';
       }
 
@@ -116,6 +122,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/setup/apple-pay',
         builder: (context, state) =>
             ApplePaySetupScreen(fromOnboarding: state.uri.queryParameters['onboarding'] == '1'),
+      ),
+      GoRoute(
+        path: '/setup/apple-pay/tutorial',
+        builder: (context, state) => const TutorialVideoScreen(),
       ),
       GoRoute(
         path: '/where',

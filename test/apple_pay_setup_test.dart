@@ -42,6 +42,10 @@ void main() {
     final router = GoRouter(routes: [
       GoRoute(path: '/', builder: (_, _) => const ApplePaySetupScreen(fromOnboarding: true)),
       GoRoute(path: '/login', builder: (_, _) => const Scaffold(body: Text('pantalla de login'))),
+      GoRoute(
+        path: '/setup/apple-pay/tutorial',
+        builder: (_, _) => const Scaffold(body: Text('pantalla del tutorial')),
+      ),
     ]);
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
@@ -69,5 +73,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(prefs.getBool('onboarding_complete'), isTrue);
     expect(find.text('pantalla de login'), findsOneWidget);
+  });
+
+  testWidgets('la guía ofrece el tutorial en video y lo abre', (tester) async {
+    await open(tester, paid: false);
+    expect(find.text('Ver tutorial en video'), findsOneWidget);
+    await tester.tap(find.text('Ver tutorial en video'));
+    await tester.pumpAndSettle();
+    expect(find.text('pantalla del tutorial'), findsOneWidget);
   });
 }
