@@ -50,3 +50,25 @@ app.*.map.json
 .env
 .env.*
 !.env.example
+
+# Firebase y Google: configuración y credenciales (nunca se suben).
+google-services.json
+GoogleService-Info.plist
+firebase_app_id_file.json
+.firebase/
+firebase-debug.log*
+serviceAccount*.json
+*-firebase-adminsdk-*.json
+
+# Firmas y certificados
+*.jks
+*.keystore
+key.properties
+*.p8
+*.p12
+*.pem
+*.mobileprovision
+*.cer
+
+# Local de cada máquina
+local.properties
