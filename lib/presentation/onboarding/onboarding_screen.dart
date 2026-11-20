@@ -1,17 +1,11 @@
-import 'package:flutter/foundation.dart';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
-import '../../core/theme/app_tokens.dart';
-import '../../shared/widgets/app_icons.dart';
-import '../../shared/widgets/brand_mark.dart';
+import '../../core/theme/mg_colors.dart';
+import '../../core/widgets/charts.dart';
 import '../providers.dart';
 
-/// Primera pantalla: aviso de privacidad y permisos.
-///
-/// En Android explica, antes de pedir nada, qué lee la app y qué no (el aviso
-/// destacado que exige Google Play) y deja usar la app solo con registro manual.
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -19,252 +13,471 @@ class OnboardingScreen extends ConsumerStatefulWidget {
   ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
-    with WidgetsBindingObserver {
-  bool _accessibilityOn = false;
-  bool _overlayOn = false;
-  bool _batteryOn = false;
-  bool _alertsOn = false;
+class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
+  final PageController _pageController = PageController();
+  int _currentIndex = 0;
 
-  bool get _isAndroid => defaultTargetPlatform == TargetPlatform.android;
+  final _slides = const [
+    _OnbData(
+      titleLine1: 'Mira a dónde',
+      titleAccent: 'se va tu plata',
+      subtitle: 'Cada gasto en su categoría y el mes entero en una sola pantalla.',
+      artType: 'dona',
+    ),
+    _OnbData(
+      titleLine1: 'Ponle un límite',
+      titleAccent: 'a cada cosa',
+      subtitle: 'Te avisamos cuánto te queda antes de que registres el gasto, no después.',
+      artType: 'barras',
+    ),
+    _OnbData(
+      titleLine1: 'Pregúntale',
+      titleAccent: 'a MiGastoIA',
+      subtitle: '«¿En qué gasto de más?» y te responde con tus propios números.',
+      artType: 'chat',
+    ),
+  ];
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _refresh();
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  // Al volver de los ajustes del sistema se actualizan los pasos.
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _refresh();
-  }
-
-  Future<void> _refresh() async {
-    if (!_isAndroid) return;
-    final permissions = ref.read(permissionsCheckerProvider);
-    final accessibility = await permissions.isNotificationListenerEnabled();
-    final overlay = await permissions.isOverlayGranted();
-    final battery = await permissions.isBatteryUnrestricted();
-    final alerts = await permissions.isPostNotificationsGranted();
-    if (!mounted) return;
-    setState(() {
-      _alertsOn = alerts;
-      _batteryOn = battery;
-      _accessibilityOn = accessibility;
-      _overlayOn = overlay;
-    });
-  }
-
-  Future<void> _finish() async {
-    await ref.read(sharedPreferencesProvider).setBool('onboarding_complete', true);
-    if (mounted) context.go('/dashboard');
-  }
-
-  Future<void> _primary() async {
-    final permissions = ref.read(permissionsCheckerProvider);
-    if (!_isAndroid) {
-      // iPhone: la guía de Apple Pay es el siguiente paso.
-      if (mounted) context.go('/setup/apple-pay?onboarding=1');
-      return;
-    }
-    if (!_accessibilityOn) {
-      await permissions.openNotificationListenerSettings();
-    } else if (!_overlayOn) {
-      await permissions.requestOverlayPermission();
-    } else if (!_alertsOn) {
-      await permissions.requestPostNotifications();
-    } else if (!_batteryOn) {
-      await permissions.openBatterySettings();
+  void _onNext() async {
+    if (_currentIndex < _slides.length - 1) {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 380),
+        curve: Curves.easeInOutCubic,
+      );
     } else {
       await _finish();
     }
   }
 
-  String get _primaryLabel {
-    if (!_isAndroid) return 'Continuar';
-    if (!_accessibilityOn) return 'Aceptar y activar la lectura';
-    if (!_overlayOn) return 'Permitir la ventana flotante';
-    if (!_alertsOn) return 'Permitir los avisos';
-    if (!_batteryOn) return 'Quitar la restricción de batería';
-    return 'Empezar';
+  Future<void> _finish() async {
+    await ref.read(sharedPreferencesProvider).setBool('onboarding_complete', true);
+    if (mounted) {
+      context.go('/login');
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const BrandMark(),
-                    const SizedBox(height: 16),
-                    Text(
-                      _isAndroid
-                          ? 'Registra tus pagos sin escribirlos.'
-                          : 'Registra lo que gastas y lo que recibes.',
-                      style: theme.textTheme.headlineMedium!.copyWith(
-                        fontSize: 26,
-                        height: 1.1,
+      backgroundColor: const Color(0xFF08070C),
+      body: Stack(
+        children: [
+          // Auroras difusas de fondo
+          ImageFiltered(
+            imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
+            child: Stack(
+              children: [
+                Positioned(
+                  left: -80,
+                  top: 70,
+                  child: Container(
+                    width: 380,
+                    height: 380,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          Color(0xD87C5CFF),
+                          Color(0x007C5CFF),
+                        ],
+                        stops: [0.0, 0.68],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _isAndroid
-                          ? 'MiGasto anota los pagos de Yape, Plin y Google Wallet por ti y te deja confirmar cada uno.'
-                          : 'Anota tus gastos e ingresos en segundos y mira cuánto te queda del mes.',
-                      style: theme.textTheme.bodyMedium!.copyWith(
-                        fontSize: 14.5,
-                        color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                Positioned(
+                  right: -100,
+                  bottom: 150,
+                  child: Container(
+                    width: 400,
+                    height: 400,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          Color(0x5522D3EE),
+                          Color(0x0022D3EE),
+                        ],
+                        stops: [0.0, 0.68],
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    _privacyBox(context),
-                    if (_isAndroid) ...[
-                      const SizedBox(height: 20),
-                      _step(context, 1, 'Activa la lectura de pagos',
-                          'En Acceso a notificaciones, activa MiGasto', _accessibilityOn),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Botón Saltar en la parte superior derecha
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 8, right: 18),
+                child: TextButton(
+                  onPressed: _finish,
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.white.withValues(alpha: 0.5),
+                    textStyle: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  child: const Text('Saltar'),
+                ),
+              ),
+            ),
+          ),
+
+          // PageView con el arte y los textos
+          PageView.builder(
+            controller: _pageController,
+            onPageChanged: (index) => setState(() => _currentIndex = index),
+            itemCount: _slides.length,
+            itemBuilder: (context, index) {
+              final slide = _slides[index];
+              return SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 28),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 50),
+                      // Arte central (300px)
+                      SizedBox(
+                        height: 300,
+                        child: Center(
+                          child: _buildArt(slide.artType),
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+
+                      // Título con acento violeta
+                      RichText(
+                        textAlign: TextAlign.center,
+                        text: TextSpan(
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            letterSpacing: -0.9,
+                            height: 1.2,
+                          ),
+                          children: [
+                            TextSpan(text: '${slide.titleLine1}\n'),
+                            TextSpan(
+                              text: slide.titleAccent,
+                              style: const TextStyle(
+                                color: MgColors.acc2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       const SizedBox(height: 14),
-                      _step(context, 2, 'Permite la ventana flotante',
-                          'Para confirmar cada pago al instante. Es opcional.', _overlayOn),
-                      const SizedBox(height: 14),
-                      _step(context, 3, 'Recibe un aviso de cada pago',
-                          'Una notificación cuando detecta un pago con la pantalla bloqueada.', _alertsOn),
-                      const SizedBox(height: 14),
-                      _step(context, 4, 'Evita que el teléfono la duerma',
-                          'En Batería, elige «No restringido». Así no se pierden pagos.', _batteryOn),
+
+                      // Párrafo descriptivo
+                      Text(
+                        slide.subtitle,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14.5,
+                          height: 1.5,
+                          color: Colors.white.withValues(alpha: 0.55),
+                        ),
+                      ),
                     ],
+                  ),
+                ),
+              );
+            },
+          ),
+
+          // Pie de página fijo: Indicadores de puntos y Botón Siguiente / Comenzar
+          SafeArea(
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Indicadores (.dots)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(_slides.length, (i) {
+                        final isActive = i == _currentIndex;
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 260),
+                          margin: const EdgeInsets.symmetric(horizontal: 3.5),
+                          width: isActive ? 22 : 7,
+                          height: 7,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(4),
+                            color: isActive
+                                ? MgColors.acc2
+                                : Colors.white.withValues(alpha: 0.22),
+                          ),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 18),
+
+                    // Botón Siguiente / Comenzar
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _onNext,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: MgColors.acc,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        child: Text(
+                          _currentIndex == _slides.length - 1
+                              ? 'Comenzar'
+                              : 'Siguiente',
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  FilledButton(onPressed: _primary, child: Text(_primaryLabel)),
-                  if (_isAndroid) ...[
-                    const SizedBox(height: 4),
-                    TextButton(
-                      onPressed: _finish,
-                      child: Text(
-                        _accessibilityOn ? 'Terminar después' : 'Usar solo registro manual',
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _privacyBox(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
-    Widget line(String bold, String rest) => Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Text.rich(
-            TextSpan(
-              style: theme.textTheme.bodyMedium!.copyWith(fontSize: 13),
-              children: [
-                TextSpan(text: bold, style: const TextStyle(fontWeight: FontWeight.w600)),
-                TextSpan(text: rest),
-              ],
-            ),
-          ),
-        );
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              AppIcon(AppIcons.info, size: AppIconSize.small, color: scheme.onSurfaceVariant),
-              const SizedBox(width: 8),
+  /// Construye el widget de arte correspondiente al slide
+  Widget _buildArt(String type) {
+    switch (type) {
+      case 'dona':
+        // Slide 1: DonutChart de 230×230 con total al centro
+        return DonutChart(
+          size: 230,
+          strokeWidth: 22,
+          segments: const [
+            DonutSegment(label: 'Mercado', value: 1600, color: Color(0xFFFF5C8A)),
+            DonutSegment(label: 'Comida', value: 900, color: Color(0xFFF5A524)),
+            DonutSegment(label: 'Transporte', value: 400, color: Color(0xFF22D3EE)),
+            DonutSegment(label: 'Servicios', value: 368.8, color: Color(0xFF7C5CFF)),
+            DonutSegment(label: 'Suscripciones', value: 149.7, color: Color(0xFFFF8A3D)),
+          ],
+          centerWidget: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
               Text(
-                _isAndroid ? 'Qué lee la app y qué no' : 'Tus datos',
-                style: theme.textTheme.titleSmall,
+                'S/ 3.418,50',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  letterSpacing: -0.6,
+                ),
+              ),
+              SizedBox(height: 2),
+              Text(
+                'este mes',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: MgColors.ink2,
+                ),
               ),
             ],
           ),
-          if (_isAndroid) ...[
-            line('Lee: ',
-                'las notificaciones y la pantalla de Yape, Plin y Google Wallet, solo para detectar el monto, el comercio y si el dinero entra o sale.'),
-            line('No lee: ', 'tus mensajes, fotos, contactos ni otras apps.'),
-          ],
-          line('Dónde se guarda: ',
-              'solo en tu ${_isAndroid ? 'teléfono' : 'iPhone'}. No se envía a ningún servidor.'),
-        ],
-      ),
-    );
-  }
+        );
 
-  Widget _step(BuildContext context, int n, String title, String hint, bool done) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    return Semantics(
-      label: 'Paso $n: $title. ${done ? 'Listo' : hint}',
-      excludeSemantics: true,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: done ? scheme.primary : Colors.transparent,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: done ? scheme.primary : scheme.outline,
-                width: 1.5,
-              ),
-            ),
-            alignment: Alignment.center,
-            child: done
-                ? AppIcon(AppIcons.check, size: AppIconSize.small, color: scheme.onPrimary)
-                : Text('$n',
-                    style: theme.textTheme.bodyMedium!
-                        .copyWith(fontSize: 13, fontWeight: FontWeight.w600)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: theme.textTheme.titleSmall!.copyWith(fontSize: 14)),
-                Text(done ? 'Listo' : hint,
-                    style: theme.textTheme.bodySmall!.copyWith(fontSize: 12.5)),
+      case 'barras':
+        // Slide 2: 4 barras de límites de categorías
+        final limits = [
+          ('Mercado', Icons.shopping_cart_outlined, const Color(0xFFFF5C8A), 0.75, 'S/ 400,00'),
+          ('Restaurantes', Icons.restaurant_outlined, const Color(0xFFF5A524), 0.60, 'S/ 360,00'),
+          ('Transporte', Icons.directions_bus_outlined, const Color(0xFF22D3EE), 0.40, 'S/ 240,00'),
+          ('Gasto hormiga', Icons.bug_report_outlined, const Color(0xFF60A5FA), 0.85, 'S/ 45,00'),
+        ];
+        return SizedBox(
+          width: 270,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final item in limits) ...[
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 26,
+                            height: 26,
+                            decoration: BoxDecoration(
+                              color: item.$3.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(9),
+                            ),
+                            alignment: Alignment.center,
+                            child: Icon(item.$2, size: 14, color: item.$3),
+                          ),
+                          const SizedBox(width: 9),
+                          Expanded(
+                            child: Text(
+                              item.$1,
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            item.$5,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: Colors.white.withValues(alpha: 0.5),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 7),
+                      Container(
+                        height: 5,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(4),
+                          color: Colors.white.withValues(alpha: 0.1),
+                        ),
+                        alignment: Alignment.centerLeft,
+                        child: FractionallySizedBox(
+                          widthFactor: item.$4,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                              color: item.$3,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
-            ),
+            ],
           ),
-        ],
-      ),
-    );
+        );
+
+      case 'chat':
+        // Slide 3: Simulación de MiGastoIA
+        return SizedBox(
+          width: 280,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Align(
+                alignment: Alignment.centerRight,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: MgColors.acc,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Text(
+                    '¿En qué gasto de más?',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                  decoration: BoxDecoration(
+                    color: MgColors.card,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                  ),
+                  child: RichText(
+                    text: const TextSpan(
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: MgColors.ink,
+                        height: 1.4,
+                      ),
+                      children: [
+                        TextSpan(text: 'Tus '),
+                        TextSpan(
+                          text: 'suscripciones',
+                          style: TextStyle(
+                            color: MgColors.acc2,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        TextSpan(
+                          text: ' suman S/ 149,70 al mes y subieron 38 % desde agosto.',
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                  decoration: BoxDecoration(
+                    color: MgColors.card,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                  ),
+                  child: const Text(
+                    'Netflix y Claude Pro son las dos más caras.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: MgColors.ink,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+
+      default:
+        return const SizedBox.shrink();
+    }
   }
+}
+
+class _OnbData {
+  const _OnbData({
+    required this.titleLine1,
+    required this.titleAccent,
+    required this.subtitle,
+    required this.artType,
+  });
+
+  final String titleLine1;
+  final String titleAccent;
+  final String subtitle;
+  final String artType;
 }
