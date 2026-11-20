@@ -3,19 +3,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/mg_colors.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../core/widgets/widgets.dart';
 import '../../domain/entities/movimiento.dart';
 import '../../shared/format.dart';
 import '../../shared/labels.dart';
-import '../../shared/widgets/app_icons.dart';
-import '../../shared/widgets/category_icon.dart';
-import 'new_category_sheet.dart';
-import '../../shared/widgets/custom_icons.dart';
 import '../providers.dart';
+import '../plan/plan_providers.dart';
 
-/// Registro manual de un gasto o un ingreso: para el efectivo y para lo que la
-/// app no detecta solo.
+/// Pantalla 4: Nuevo gasto / ingreso (#s-nuevo / R.nuevo en migasto-prototipo.html)
+/// - Cabecera (.nav): Botón atrás circular, título «Nuevo gasto» / «Nuevo ingreso», chip selector de espacio.
+/// - Monto (.amt-wrap): Selector de moneda «S/ v» y monto grande con micro-rebote al teclear.
+/// - Chip de fecha (.datechip): Calendario y fecha seleccionada.
+/// - Campo descripción (.field): Concepto / comercio opcional.
+/// - Fila de categoría (.catrow): Ícono squircle, nombre de categoría y chevron que abre CategorySheet.
+/// - Línea del límite (.limbar): El corazón de la pantalla. Muestra ProgressBar dinámico y texto
+///   «Te quedarán S/ XX,XX después de este gasto» o en rojo «Te pasas S/ XX,XX del límite de [categoría]».
+/// - Etiquetas (.tags): Chips interactivos (#cafe, #quincena, #casa, etc.) y botón para agregar etiqueta.
+/// - Opciones auxiliares: Estado / Medio de pago, Agregar nota, Hacer recurrente.
+/// - Dock inferior (.nv-dock): Switch «Guardar y agregar otro» (MgToggle), teclado numérico (AmountKeypad) y botón primario «Guardar».
 class ManualEntryScreen extends ConsumerStatefulWidget {
   const ManualEntryScreen({super.key, this.initialType = TipoMovimiento.gasto});
 
@@ -26,14 +33,21 @@ class ManualEntryScreen extends ConsumerStatefulWidget {
 }
 
 class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
-  late TipoMovimiento _tipo = widget.initialType;
+  late final TipoMovimiento _tipo = widget.initialType;
   String _raw = '';
   final _concept = TextEditingController();
   PaymentSource _source = PaymentSource.efectivo;
   late Categoria _category = _defaultCategory(widget.initialType);
-
-  /// Categoría propia elegida (si hay una, [_category] es la de siempre para los totales).
   String? _propia;
+
+  DateTime _selectedDate = DateTime.now();
+  String _selectedSpace = 'personal';
+  final List<String> _tags = [];
+  bool _isRecurring = false;
+  bool _guardarYOtro = false;
+  String? _note;
+
+  static const List<String> _suggestedTags = ['cafe', 'quincena', 'casa', 'almuerzo'];
 
   static const _sources = [
     PaymentSource.efectivo,
@@ -44,13 +58,17 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
   ];
 
   static Categoria _defaultCategory(TipoMovimiento tipo) =>
-      tipo == TipoMovimiento.ingreso ? Categoria.otrosIngresos : Categoria.otros;
+      tipo == TipoMovimiento.ingreso ? Categoria.otrosIngresos : Categoria.compras;
 
   bool get _isIncome => _tipo == TipoMovimiento.ingreso;
 
-  double get _amount => double.tryParse(_raw.endsWith('.') ? '${_raw}0' : _raw) ?? 0;
+  double get _amount {
+    if (_raw.isEmpty) return 0.0;
+    final normalized = _raw.replaceAll(',', '.');
+    return double.tryParse(normalized.endsWith('.') ? '${normalized}0' : normalized) ?? 0.0;
+  }
 
-  bool get _canSave => _amount > 0 && _concept.text.trim().isNotEmpty;
+  bool get _canSave => _amount > 0;
 
   @override
   void dispose() {
@@ -63,17 +81,23 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
   void _press(String key) {
     setState(() {
       if (key == '<') {
-        if (_raw.isNotEmpty) _raw = _raw.substring(0, _raw.length - 1);
+        if (_raw.isNotEmpty) {
+          _raw = _raw.substring(0, _raw.length - 1);
+        }
         return;
       }
-      if (key == '.') {
-        if (_raw.contains('.')) return;
-        _raw = _raw.isEmpty ? '0.' : '$_raw.';
+      if (key == ',' || key == '.') {
+        if (_raw.contains(',') || _raw.contains('.')) return;
+        _raw = _raw.isEmpty ? '0,' : '$_raw,';
         return;
       }
-      final parts = _raw.split('.');
-      if (parts.length == 2 && parts[1].length >= 2) return; // 2 decimales
-      if (parts.length == 1 && parts[0].length >= 7) return; // hasta millones
+      final separator = _raw.contains(',') ? ',' : (_raw.contains('.') ? '.' : null);
+      if (separator != null) {
+        final parts = _raw.split(separator);
+        if (parts.length == 2 && parts[1].length >= 2) return; // máximo 2 decimales
+      } else {
+        if (_raw.replaceAll(RegExp(r'\D'), '').length >= 7) return; // hasta millones
+      }
       if (_raw == '0') {
         _raw = key;
       } else {
@@ -82,492 +106,1049 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
     });
   }
 
-  String get _display {
-    if (_raw.isEmpty) return '0.00';
-    if (_raw.contains('.')) return _raw;
-    return formatAmount(double.parse(_raw));
-  }
+  // ---------------------------------------------------------------- guardado
 
   Future<void> _save() async {
     if (!_canSave) return;
-    final messenger = ScaffoldMessenger.of(context);
+    final merchant = _concept.text.trim().isNotEmpty
+        ? _concept.text.trim()
+        : categoryLabel(_category);
+    final amountToSave = _amount;
     final isIncome = _isIncome;
+
     await ref.read(expensesStateProvider.notifier).addManualMovimiento(
           tipo: _tipo,
-          amount: _amount,
-          merchant: _concept.text.trim(),
+          amount: amountToSave,
+          merchant: merchant,
           category: _category,
           categoriaPropia: _propia,
           source: _source,
         );
+
     if (!mounted) return;
-    context.pop();
-    messenger.showSnackBar(
-      SnackBar(content: Text(isIncome ? 'Ingreso guardado' : 'Gasto guardado')),
+
+    final toastMsg = '${isIncome ? "Ingreso" : "Gasto"} de ${formatSoles(amountToSave)} guardado.';
+
+    if (_guardarYOtro) {
+      setState(() {
+        _raw = '';
+        _concept.clear();
+        _tags.clear();
+        _note = null;
+        _isRecurring = false;
+      });
+      MgToast.show(context, message: toastMsg);
+    } else {
+      context.pop();
+      MgToast.show(context, message: toastMsg);
+    }
+  }
+
+  // ---------------------------------------------------------------- hojas y selectores
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: MgColors.acc,
+              onPrimary: Colors.white,
+              surface: MgColors.card,
+              onSurface: MgColors.ink,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
+    if (picked != null && mounted) {
+      setState(() => _selectedDate = picked);
+    }
+  }
+
+  Future<void> _pickCategory() async {
+    final picked = await CategorySheet.show(
+      context,
+      selected: _category,
+      tipo: _tipo,
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        _category = picked;
+        _propia = null;
+      });
+    }
+  }
+
+  Future<void> _pickSpace() async {
+    final picked = await SpaceSheet.show(
+      context,
+      selectedId: _selectedSpace,
+    );
+    if (picked != null && mounted) {
+      setState(() => _selectedSpace = picked);
+    }
   }
 
   Future<void> _pickSource() async {
     final picked = await showModalBottomSheet<PaymentSource>(
       context: context,
+      useRootNavigator: true,
+      backgroundColor: MgColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
+      ),
       builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 12),
-            Text(
-              _isIncome ? 'Recibido por' : 'Pagado con',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            for (final s in _sources)
-              ListTile(
-                minTileHeight: AppSizes.minTouch,
-                leading: Container(
-                  width: 10,
-                  height: 10,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 38,
+                  height: 4,
                   decoration: BoxDecoration(
-                    color: context.appColors.sourceColor(s.name),
-                    shape: BoxShape.circle,
+                    color: MgColors.line,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                title: Text(s == PaymentSource.otro ? 'Otro' : sourceLabel(s)),
-                selected: s == _source,
-                onTap: () => Navigator.pop(context, s),
               ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
-    if (picked != null) setState(() => _source = picked);
-  }
-
-  // ------------------------------------------------------------------- build
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final colors = context.appColors;
-    final accent = _isIncome ? colors.income : scheme.onSurface;
-    final now = DateFormat("'Hoy' HH:mm", 'es').format(DateTime.now());
-
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(AppSpacing.xl, 6, AppSpacing.xl, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _header(context),
-                    const SizedBox(height: 12),
-                    _typeSelector(context),
-                    const SizedBox(height: 12),
-                    Column(
-                      children: [
-                        Text.rich(
-                          TextSpan(children: [
-                            TextSpan(
-                              text: _isIncome ? '+ S/ ' : 'S/ ',
-                              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
-                            ),
-                            TextSpan(text: _display),
-                          ]),
-                          style: AppText.amount(theme.textTheme.displayLarge!.copyWith(
-                            fontSize: 50,
-                            letterSpacing: -1.5,
-                            color: accent,
-                          )),
-                          semanticsLabel: 'Monto: $_display soles',
-                        ),
-                        Text(now, style: theme.textTheme.bodySmall),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _conceptField(context),
-                    const SizedBox(height: 12),
-                    _sourceField(context),
-                    const SizedBox(height: 12),
-                    _categoryGrid(context),
-                  ],
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.xl, 0, AppSpacing.xl, 12),
-              child: Column(
-                children: [
-                  _keypad(context),
-                  const SizedBox(height: 8),
-                  _saveButton(context),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _header(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Tooltip(
-          message: 'Cerrar',
-          child: Material(
-            color: scheme.surface,
-            borderRadius: BorderRadius.circular(AppRadius.field),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(AppRadius.field),
-              onTap: () => context.pop(),
-              child: SizedBox(
-                width: AppSizes.iconButton,
-                height: AppSizes.iconButton,
-                child: Center(child: AppIcon(AppIcons.close, color: scheme.onSurface)),
-              ),
-            ),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            'Nuevo movimiento',
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-        ),
-        const SizedBox(width: AppSizes.iconButton),
-      ],
-    );
-  }
-
-  Widget _typeSelector(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final colors = context.appColors;
-
-    Widget segment(String label, TipoMovimiento tipo) {
-      final selected = _tipo == tipo;
-      final color = !selected
-          ? scheme.onSurfaceVariant
-          : (tipo == TipoMovimiento.ingreso ? colors.income : scheme.onSurface);
-      return Expanded(
-        child: Semantics(
-          button: true,
-          selected: selected,
-          label: label,
-          excludeSemantics: true,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => setState(() {
-              _tipo = tipo;
-              _category = _defaultCategory(tipo);
-              _propia = null;
-            }),
-            child: Container(
-              constraints: const BoxConstraints(minHeight: AppSizes.minTouch - 8),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: selected ? colors.raised : Colors.transparent,
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: Text(
-                label,
-                style: theme.textTheme.bodyMedium!.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor == scheme.surface
-            ? scheme.outline
-            : Theme.of(context).scaffoldBackgroundColor,
-        borderRadius: BorderRadius.circular(AppRadius.field - 1),
-        border: Border.all(color: scheme.outline),
-      ),
-      child: Row(
-        children: [
-          segment('Gasto', TipoMovimiento.gasto),
-          segment('Ingreso', TipoMovimiento.ingreso),
-        ],
-      ),
-    );
-  }
-
-  Widget _conceptField(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      height: AppSizes.field,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(AppRadius.field),
-      ),
-      child: Row(
-        children: [
-          AppIcon(AppIcons.tag, color: scheme.onSurfaceVariant),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              controller: _concept,
-              onChanged: (_) => setState(() {}),
-              textInputAction: TextInputAction.done,
-              decoration: InputDecoration(
-                hintText: _isIncome ? 'De quién o por qué' : 'Comercio o detalle',
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                filled: false,
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _sourceField(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final colors = context.appColors;
-    final label = _source == PaymentSource.otro ? 'Otro' : sourceLabel(_source);
-    final prefix = _isIncome ? 'Recibido por ' : 'Pagado con ';
-
-    return Semantics(
-      button: true,
-      label: '$prefix$label. Cambiar',
-      excludeSemantics: true,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadius.field),
-        onTap: _pickSource,
-        child: Container(
-          height: AppSizes.field,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: BoxDecoration(
-            color: scheme.surface,
-            borderRadius: BorderRadius.circular(AppRadius.field),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
-                  color: colors.sourceColor(_source.name),
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(child: Text('$prefix$label', style: theme.textTheme.bodyLarge)),
+              const SizedBox(height: 16),
               Text(
-                'Cambiar',
-                style: theme.textTheme.labelLarge!.copyWith(
-                  color: scheme.onSurfaceVariant,
-                  fontSize: 13,
+                _isIncome ? 'Recibido por' : 'Pagado con',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: MgColors.ink,
                 ),
               ),
-              AppIcon(AppIcons.chevron, size: AppIconSize.small, color: scheme.onSurfaceVariant),
+              const SizedBox(height: 12),
+              for (final s in _sources)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: s == PaymentSource.yape
+                          ? const Color(0xFF742284)
+                          : s == PaymentSource.plin
+                              ? const Color(0xFF00BFA5)
+                              : s == PaymentSource.tarjeta
+                                  ? MgColors.acc
+                                  : MgColors.up,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  title: Text(
+                    sourceLabel(s),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: MgColors.ink,
+                    ),
+                  ),
+                  trailing: s == _source
+                      ? const Icon(Icons.check_rounded, color: MgColors.acc, size: 20)
+                      : null,
+                  onTap: () => Navigator.pop(context, s),
+                ),
+              const SizedBox(height: 8),
             ],
           ),
         ),
       ),
     );
+    if (picked != null && mounted) {
+      setState(() => _source = picked);
+    }
   }
 
-  Widget _categoryGrid(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final colors = context.appColors;
-    final selectedColor = _isIncome ? colors.income : colors.brandInk;
-    final categories = Categoria.paraTipo(_tipo);
-    final propias =
-        ref.watch(customCategoriesProvider).where((c) => c.tipo == _tipo).toList();
+  void _addTagPrompt() {
+    final textController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: MgColors.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Nueva etiqueta', style: TextStyle(color: MgColors.ink, fontSize: 17, fontWeight: FontWeight.w700)),
+        content: TextField(
+          controller: textController,
+          autofocus: true,
+          style: const TextStyle(color: MgColors.ink),
+          cursorColor: MgColors.acc,
+          decoration: const InputDecoration(
+            hintText: 'ej. vacaciones, almuerzo',
+            hintStyle: TextStyle(color: MgColors.ink3),
+            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: MgColors.line)),
+            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: MgColors.acc)),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar', style: TextStyle(color: MgColors.ink2)),
+          ),
+          TextButton(
+            onPressed: () {
+              final tag = textController.text.trim().replaceAll('#', '');
+              if (tag.isNotEmpty && !_tags.contains(tag)) {
+                setState(() => _tags.add(tag));
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('Agregar', style: TextStyle(color: MgColors.acc, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
 
-    Widget tile({
-      required String label,
-      required String shortLabel,
-      required Widget Function(Color color) icon,
-      required bool selected,
-      required VoidCallback onTap,
-    }) {
-      return Semantics(
-        button: true,
-        selected: selected,
-        label: label,
-        excludeSemantics: true,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(AppRadius.card),
-          onTap: onTap,
-          child: Container(
-            decoration: BoxDecoration(
-              color: scheme.surface,
-              borderRadius: BorderRadius.circular(AppRadius.card),
-              border: Border.all(
-                color: selected ? selectedColor : Colors.transparent,
-                width: 1.5,
+  void _addNotePrompt() {
+    final textController = TextEditingController(text: _note ?? '');
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: MgColors.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Nota del movimiento', style: TextStyle(color: MgColors.ink, fontSize: 17, fontWeight: FontWeight.w700)),
+        content: TextField(
+          controller: textController,
+          maxLines: 3,
+          autofocus: true,
+          style: const TextStyle(color: MgColors.ink),
+          cursorColor: MgColors.acc,
+          decoration: const InputDecoration(
+            hintText: 'Escribe cualquier detalle adicional...',
+            hintStyle: TextStyle(color: MgColors.ink3),
+            border: OutlineInputBorder(borderSide: BorderSide(color: MgColors.line)),
+            focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: MgColors.acc)),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar', style: TextStyle(color: MgColors.ink2)),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() => _note = textController.text.trim().isEmpty ? null : textController.text.trim());
+              Navigator.pop(ctx);
+            },
+            child: const Text('Guardar', style: TextStyle(color: MgColors.acc, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------- build
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: MgColors.bg,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Área de scroll superior
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildNav(context),
+                    _buildAmountWrap(context),
+                    _buildDateChip(context),
+                    _buildDescriptionField(context),
+                    _buildCategoryRow(context),
+                    if (!_isIncome) _buildLimitBar(context),
+                    _buildTagsRow(context),
+                    _buildAuxiliaryRow(context),
+                  ],
+                ),
               ),
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                icon(selected ? selectedColor : scheme.onSurfaceVariant),
-                const SizedBox(height: 5),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      shortLabel,
-                      maxLines: 1,
-                      style: theme.textTheme.bodySmall!.copyWith(
-                        color: scheme.onSurface,
-                        fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+            // Dock inferior fijo con interruptor, teclado numérico y botón Guardar
+            _buildDock(context),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 1. Cabecera (.nav)
+  Widget _buildNav(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Botón atrás (.rnd)
+          Material(
+            color: MgColors.soft,
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: () => context.pop(),
+              child: const SizedBox(
+                width: 34,
+                height: 34,
+                child: Center(
+                  child: Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    size: 15,
+                    color: MgColors.ink,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Título central
+          Text(
+            _isIncome ? 'Nuevo ingreso' : 'Nuevo gasto',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.3,
+              color: MgColors.ink,
+            ),
+          ),
+          // Selector de espacio (.chipesp)
+          Material(
+            color: MgColors.soft,
+            borderRadius: BorderRadius.circular(10),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: _pickSpace,
+              child: Container(
+                height: 30,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _spaceLabel(_selectedSpace),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: MgColors.ink2,
                       ),
                     ),
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 15,
+                      color: MgColors.ink2,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _spaceLabel(String space) {
+    switch (space) {
+      case 'trabajo':
+        return 'Trabajo';
+      case 'compartido':
+        return 'Compartido';
+      default:
+        return 'Personal';
+    }
+  }
+
+  // 2. Monto grande (.amt-wrap)
+  Widget _buildAmountWrap(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Botón selector de moneda (.cur)
+          GestureDetector(
+            onTap: () => MgToast.show(context, message: 'Solo soles en este prototipo.'),
+            behavior: HitTestBehavior.opaque,
+            child: const Padding(
+              padding: EdgeInsets.only(top: 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'S/',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w600,
+                      color: MgColors.ink2,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 16,
+                    color: MgColors.ink2,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          // Monto con micro-rebote (.amt-big)
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: AmountDisplay(
+                rawAmount: _raw,
+                fontSize: 44,
+                color: _isIncome ? MgColors.up : MgColors.ink,
+                align: TextAlign.right,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 3. Chip de fecha (.datechip)
+  Widget _buildDateChip(BuildContext context) {
+    final now = DateTime.now();
+    final isToday = _selectedDate.year == now.year &&
+        _selectedDate.month == now.month &&
+        _selectedDate.day == now.day;
+    final dateText = isToday
+        ? 'Hoy, ${DateFormat('d MMM', 'es').format(_selectedDate)}'
+        : DateFormat("d 'de' MMMM", 'es').format(_selectedDate);
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
+        child: Material(
+          color: MgColors.soft,
+          borderRadius: BorderRadius.circular(11),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(11),
+            onTap: _pickDate,
+            child: Container(
+              height: 34,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.calendar_today_outlined,
+                    size: 14,
+                    color: MgColors.ink2,
+                  ),
+                  const SizedBox(width: 7),
+                  Text(
+                    dateText,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w500,
+                      color: MgColors.ink2,
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 14,
+                    color: MgColors.ink2,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 4. Campo de descripción (.field)
+  Widget _buildDescriptionField(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          RichText(
+            text: const TextSpan(
+              children: [
+                TextSpan(
+                  text: 'Descripción ',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                    color: MgColors.ink2,
+                  ),
+                ),
+                TextSpan(
+                  text: '(opcional)',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontStyle: FontStyle.italic,
+                    color: MgColors.ink3,
                   ),
                 ),
               ],
             ),
           ),
-        ),
-      );
-    }
-
-    return GridView.count(
-      crossAxisCount: 4,
-      mainAxisSpacing: 8,
-      crossAxisSpacing: 8,
-      childAspectRatio: 1.2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      children: [
-        for (final cat in categories)
-          tile(
-            label: categoryLabel(cat),
-            shortLabel: cat == Categoria.transferenciaRecibida
-                ? 'Transferencia'
-                : categoryLabel(cat),
-            icon: (color) => AppIcon(categoryIcon(cat), color: color),
-            selected: _propia == null && cat == _category,
-            onTap: () => setState(() {
-              _category = cat;
-              _propia = null;
-            }),
+          const SizedBox(height: 2),
+          TextField(
+            controller: _concept,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: MgColors.ink,
+            ),
+            cursorColor: MgColors.acc,
+            textInputAction: TextInputAction.done,
+            decoration: InputDecoration(
+              filled: false,
+              fillColor: Colors.transparent,
+              hintText: _isIncome ? 'De quién o por qué' : 'Para qué fue',
+              hintStyle: const TextStyle(
+                fontSize: 15,
+                color: MgColors.ink3,
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 8),
+              border: const UnderlineInputBorder(
+                borderSide: BorderSide(color: MgColors.line),
+              ),
+              enabledBorder: const UnderlineInputBorder(
+                borderSide: BorderSide(color: MgColors.line),
+              ),
+              focusedBorder: const UnderlineInputBorder(
+                borderSide: BorderSide(color: MgColors.acc, width: 1.5),
+              ),
+            ),
           ),
-        for (final p in propias)
-          tile(
-            label: p.nombre,
-            shortLabel: p.nombre,
-            icon: (color) => Icon(customIconFor(p.icono), size: 22, color: color),
-            selected: _propia == p.id,
-            onTap: () => setState(() {
-              _category = p.base;
-              _propia = p.id;
-            }),
-          ),
-        tile(
-          label: 'Crear una categoría nueva',
-          shortLabel: 'Nueva',
-          icon: (color) => AppIcon(AppIcons.plus, color: color),
-          selected: false,
-          onTap: _createCategory,
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Future<void> _createCategory() async {
-    final created = await showNewCategorySheet(context, ref, _tipo);
-    if (created == null || !mounted) return;
-    setState(() {
-      _category = created.base;
-      _propia = created.id;
-    });
-  }
+  // 5. Fila de categoría (.field .catrow)
+  Widget _buildCategoryRow(BuildContext context) {
+    final catColor = CategoryIcon.colorForCategory(_category);
+    final iconData = CategoryIcon.iconForCategory(_category);
 
-  Widget _keypad(BuildContext context) {
-    final theme = Theme.of(context);
-    const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', '<'];
-    return GridView.count(
-      crossAxisCount: 3,
-      mainAxisSpacing: 4,
-      crossAxisSpacing: 4,
-      childAspectRatio: 2.9,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      children: [
-        for (final k in keys)
-          Semantics(
-            button: true,
-            label: k == '<' ? 'Borrar' : (k == '.' ? 'Punto decimal' : k),
-            excludeSemantics: true,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Categoría',
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w500,
+              color: MgColors.ink2,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Material(
+            color: Colors.transparent,
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
-              onTap: () => _press(k),
-              child: Center(
-                child: k == '<'
-                    ? AppIcon(AppIcons.backspace,
-                        size: AppIconSize.large, color: theme.colorScheme.onSurface)
-                    : Text(
-                        k,
-                        style: AppText.amount(theme.textTheme.titleLarge!.copyWith(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w500,
-                        )),
+              onTap: _pickCategory,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    // Squircle 34×34 (.catrow .ic)
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: catColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(11),
                       ),
+                      child: Center(
+                        child: Icon(
+                          iconData,
+                          size: 17,
+                          color: catColor,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 11),
+                    Expanded(
+                      child: Text(
+                        categoryLabel(_category),
+                        style: const TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w500,
+                          color: MgColors.ink,
+                        ),
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      size: 18,
+                      color: MgColors.ink3,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _saveButton(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = context.appColors;
-    final fill = _isIncome ? colors.income : theme.colorScheme.primary;
-    final onFill = _isIncome ? theme.scaffoldBackgroundColor : theme.colorScheme.onPrimary;
-    final label = _isIncome ? 'Guardar ingreso' : 'Guardar gasto';
+  // 6. Línea del límite (.limbar) - El corazón de la pantalla
+  Widget _buildLimitBar(BuildContext context) {
+    final budget = ref.watch(budgetProvider);
+    final expenses = ref.watch(expensesStateProvider);
+    final now = DateTime.now();
 
-    return Semantics(
-      button: true,
-      enabled: _canSave,
-      label: _canSave ? '$label, ${formatSoles(_amount)}' : '$label, completa monto y detalle',
-      excludeSemantics: true,
-      child: Opacity(
-        opacity: _canSave ? 1 : 0.4,
-        child: Material(
-          color: fill,
-          borderRadius: BorderRadius.circular(AppRadius.button),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(AppRadius.button),
-            onTap: _canSave ? _save : null,
-            child: Container(
-              height: AppSizes.primaryButton,
-              alignment: Alignment.center,
-              child: Text(
-                _amount > 0 ? '$label · ${formatSoles(_amount)}' : label,
-                style: theme.textTheme.titleLarge!.copyWith(color: onFill),
+    final currentMonthExpenses = expenses
+        .where((m) =>
+            m.isConfirmed &&
+            m.date.year == now.year &&
+            m.date.month == now.month &&
+            m.esGasto)
+        .toList();
+
+    final spentInCat = currentMonthExpenses
+        .where((m) => m.category == _category)
+        .fold(0.0, (s, m) => s + m.amount);
+    final totalSpent =
+        currentMonthExpenses.fold(0.0, (s, m) => s + m.amount);
+    final safeToSpend = (budget - totalSpent).clamp(0.0, double.infinity);
+
+    // Límites de categoría desde el provider reactivo
+    final categoryLimits = ref.watch(categoryLimitsProvider);
+    final limitItem = categoryLimits.where((l) => l.category == _category).firstOrNull;
+    final hasLimit = limitItem != null;
+    final catLimit = limitItem?.limit;
+    final base = hasLimit ? catLimit! : (safeToSpend > 0 ? safeToSpend : 1.0);
+    final queda = hasLimit
+        ? (catLimit! - spentInCat - _amount)
+        : (safeToSpend - _amount);
+    final pct = base > 0 ? (1.0 - (queda / base)).clamp(0.0, 1.0) : 1.0;
+
+    final barColor = queda < 0
+        ? MgColors.down
+        : (pct > 0.8 ? MgColors.warn : MgColors.up);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Barra de progreso esbelta (4px)
+          ProgressBar(
+            percent: pct,
+            height: 4,
+            color: barColor,
+          ),
+          const SizedBox(height: 8),
+          // Texto descriptivo con aviso en rojo si se sobrepasa
+          if (queda < 0)
+            Text(
+              'Te pasas ${formatSoles(queda.abs())} del límite de ${categoryLabel(_category).toLowerCase()}.',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: MgColors.down,
+              ),
+            )
+          else
+            RichText(
+              text: TextSpan(
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: MgColors.ink2,
+                ),
+                children: [
+                  const TextSpan(text: 'Te quedarán '),
+                  TextSpan(
+                    text: formatSoles(queda),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: MgColors.ink,
+                    ),
+                  ),
+                  const TextSpan(text: ' después de este gasto.'),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // 7. Fila de etiquetas (.field .tags)
+  Widget _buildTagsRow(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          RichText(
+            text: const TextSpan(
+              children: [
+                TextSpan(
+                  text: 'Etiquetas ',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                    color: MgColors.ink2,
+                  ),
+                ),
+                TextSpan(
+                  text: '(opcional)',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontStyle: FontStyle.italic,
+                    color: MgColors.ink3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 7,
+            runSpacing: 7,
+            children: [
+              // Etiquetas seleccionadas (.tagc.on)
+              for (final t in _tags)
+                Material(
+                  color: MgColors.accSoft,
+                  borderRadius: BorderRadius.circular(11),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(11),
+                    onTap: () => setState(() => _tags.remove(t)),
+                    child: Container(
+                      height: 32,
+                      padding: const EdgeInsets.symmetric(horizontal: 11),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(11),
+                        border: Border.all(color: MgColors.acc),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '#$t',
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w500,
+                              color: MgColors.acc2,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          const Icon(
+                            Icons.close_rounded,
+                            size: 13,
+                            color: MgColors.acc2,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              // Botón agregar etiqueta (.tagc #+)
+              Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(11),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(11),
+                  onTap: _addTagPrompt,
+                  child: Container(
+                    height: 32,
+                    padding: const EdgeInsets.symmetric(horizontal: 11),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(11),
+                      border: Border.all(color: MgColors.line),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.add_rounded,
+                          size: 14,
+                          color: MgColors.ink2,
+                        ),
+                        Text(
+                          '#',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w500,
+                            color: MgColors.ink2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              // Sugerencias no seleccionadas
+              for (final t in _suggestedTags.where((t) => !_tags.contains(t)))
+                Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(11),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(11),
+                    onTap: () => setState(() => _tags.add(t)),
+                    child: Container(
+                      height: 32,
+                      padding: const EdgeInsets.symmetric(horizontal: 11),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(11),
+                        border: Border.all(color: MgColors.line),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '#$t',
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w500,
+                              color: MgColors.ink2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 8. Opciones auxiliares: Estado, Nota, Recurrente
+  Widget _buildAuxiliaryRow(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
+      child: Wrap(
+        spacing: 7,
+        runSpacing: 7,
+        children: [
+          // Estado / Medio de pago
+          Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(11),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(11),
+              onTap: _pickSource,
+              child: Container(
+                height: 32,
+                padding: const EdgeInsets.symmetric(horizontal: 11),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(11),
+                  border: Border.all(color: MgColors.line),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.check_rounded,
+                      size: 13,
+                      color: MgColors.ink2,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      sourceLabel(_source),
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                        color: MgColors.ink2,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
+          // Agregar nota
+          Material(
+            color: _note != null ? MgColors.accSoft : Colors.transparent,
+            borderRadius: BorderRadius.circular(11),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(11),
+              onTap: _addNotePrompt,
+              child: Container(
+                height: 32,
+                padding: const EdgeInsets.symmetric(horizontal: 11),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(11),
+                  border: Border.all(
+                    color: _note != null ? MgColors.acc : MgColors.line,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.description_outlined,
+                      size: 13,
+                      color: _note != null ? MgColors.acc2 : MgColors.ink2,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      _note != null ? 'Nota agregada' : 'Agregar nota',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                        color: _note != null ? MgColors.acc2 : MgColors.ink2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Hacer recurrente
+          Material(
+            color: _isRecurring ? MgColors.accSoft : Colors.transparent,
+            borderRadius: BorderRadius.circular(11),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(11),
+              onTap: () => setState(() => _isRecurring = !_isRecurring),
+              child: Container(
+                height: 32,
+                padding: const EdgeInsets.symmetric(horizontal: 11),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(11),
+                  border: Border.all(
+                    color: _isRecurring ? MgColors.acc : MgColors.line,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.repeat_rounded,
+                      size: 14,
+                      color: _isRecurring ? MgColors.acc2 : MgColors.ink2,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      _isRecurring ? 'Recurrente' : 'Hacer recurrente',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                        color: _isRecurring ? MgColors.acc2 : MgColors.ink2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 9. Dock inferior (.nv-dock)
+  Widget _buildDock(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: MgColors.bg,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.9),
+            blurRadius: 20,
+            offset: const Offset(0, -10),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.fromLTRB(18, 4, 18, 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Switch Guardar y agregar otro (.sw)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Guardar y agregar otro',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: MgColors.ink2,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                MgToggle(
+                  value: _guardarYOtro,
+                  onChanged: (val) => setState(() => _guardarYOtro = val),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          // Teclado numérico (.pad)
+          AmountKeypad(
+            onKeyPress: _press,
+            onDelete: () => _press('<'),
+          ),
+          const SizedBox(height: 10),
+          // Botón Guardar (.btn)
+          AnimatedOpacity(
+            duration: const Duration(milliseconds: 150),
+            opacity: _canSave ? 1.0 : 0.35,
+            child: Container(
+              height: 48,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: MgColors.acc,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: _canSave
+                    ? const [
+                        BoxShadow(
+                          color: Color(0x737C5CFF),
+                          blurRadius: 24,
+                          offset: Offset(0, 8),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: _canSave ? _save : null,
+                  child: Center(
+                    child: Text(
+                      _amount > 0 ? 'Guardar · ${formatSoles(_amount)}' : 'Guardar',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
