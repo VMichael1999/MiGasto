@@ -193,7 +193,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     hidden: hidden,
                   ),
                   CategoryDonutCard(monthExpenses: monthExpenses, hidden: hidden),
-                  BalanceForecastCard(projection: projection, hidden: hidden),
+                  BalanceForecastCard(
+                    projection: projection,
+                    history: balanceHistory(
+                      movements: expenses,
+                      currentBalance: balance,
+                      now: now,
+                    ),
+                    currentBalance: balance,
+                    hidden: hidden,
+                  ),
                 ],
                 padding: const EdgeInsets.fromLTRB(6, 14, 18, 0),
               ),
@@ -618,29 +627,41 @@ class _BalanceCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
 
-                  // Dos cápsulas de vidrio (.two)
-                  Row(
-                    children: [
-                      // Ingresos
-                      Expanded(
-                        child: _GlassCapsule(
-                          icon: Icons.arrow_upward_rounded,
-                          label: 'INGRESOS',
-                          amount: '+${formatSoles(income)}',
-                          hidden: hidden,
+                  // Dos cápsulas de vidrio (.two): mismo ancho, mismo alto y la
+                  // misma tipografía; en columnas estrechas las dos bajan juntas.
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final capsuleWidth = (constraints.maxWidth - 9) / 2;
+                      final amountSize = capsuleWidth < 125 ? 13.0 : 15.5;
+                      return IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Ingresos
+                            Expanded(
+                              child: _GlassCapsule(
+                                icon: Icons.arrow_upward_rounded,
+                                label: 'INGRESOS',
+                                amount: '+${formatSoles(income)}',
+                                amountSize: amountSize,
+                                hidden: hidden,
+                              ),
+                            ),
+                            const SizedBox(width: 9),
+                            // Gastos
+                            Expanded(
+                              child: _GlassCapsule(
+                                icon: Icons.arrow_downward_rounded,
+                                label: 'GASTOS',
+                                amount: '−${formatSoles(spent)}',
+                                amountSize: amountSize,
+                                hidden: hidden,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(width: 9),
-                      // Gastos
-                      Expanded(
-                        child: _GlassCapsule(
-                          icon: Icons.arrow_downward_rounded,
-                          label: 'GASTOS',
-                          amount: '−${formatSoles(spent)}',
-                          hidden: hidden,
-                        ),
-                      ),
-                    ],
+                      );
+                    },
                   ),
                 ],
               ),
@@ -659,8 +680,10 @@ class _GlassCapsule extends StatelessWidget {
     required this.label,
     required this.amount,
     required this.hidden,
+    this.amountSize = 15.5,
   });
 
+  final double amountSize;
   final IconData icon;
   final String label;
   final String amount;
@@ -707,11 +730,11 @@ class _GlassCapsule extends StatelessWidget {
             child: Text(
               hidden ? '•••••' : amount,
               maxLines: 1,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: AppText.fontFamily,
-                fontSize: 15.5,
+                fontSize: amountSize,
                 fontWeight: FontWeight.w700,
-                letterSpacing: -0.02 * 15.5,
+                letterSpacing: -0.02 * amountSize,
                 color: Colors.white,
               ),
             ),
