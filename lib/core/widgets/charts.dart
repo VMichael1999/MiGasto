@@ -111,7 +111,7 @@ class _DonutChartState extends State<DonutChart>
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'S/ ${NumberFormat('#,##0', 'es_PE').format(sum)}',
+                    'S/ ${NumberFormat('#,##0', 'en').format(sum)}',
                     style: const TextStyle(
                       fontSize: 19,
                       fontWeight: FontWeight.w800,
@@ -244,7 +244,7 @@ class RadialRingsChart extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'S/ ${NumberFormat('#,##0', 'es_PE').format(sum)}',
+                      'S/ ${NumberFormat('#,##0', 'en').format(sum)}',
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,

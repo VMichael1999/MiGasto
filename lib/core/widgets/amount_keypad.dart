@@ -4,14 +4,14 @@ import 'package:intl/intl.dart';
 import '../theme/mg_colors.dart';
 import '../theme/app_tokens.dart';
 
-/// Teclado numérico de 12 teclas ('1'-'9', ',', '0', '<') con respuesta háptica,
+/// Teclado numérico de 12 teclas ('1'-'9', '.', '0', '<') con respuesta háptica,
 /// fondo suave #1F1F27 por tecla, radio 13 y altura 48px (idéntico al prototipo HTML).
 class AmountKeypad extends StatelessWidget {
   const AmountKeypad({
     super.key,
     required this.onKeyPress,
     required this.onDelete,
-    this.decimalSeparator = ',',
+    this.decimalSeparator = '.',
   });
 
   final ValueChanged<String> onKeyPress;
@@ -135,11 +135,11 @@ class _AmountDisplayState extends State<AmountDisplay>
     final normalized = widget.rawAmount.replaceAll(',', '.');
     final parts = normalized.split('.');
     final intPart = int.tryParse(parts[0]) ?? 0;
-    final formattedInt = NumberFormat('#,##0', 'es_PE').format(intPart);
+    final formattedInt = NumberFormat('#,##0', 'en').format(intPart);
     if (parts.length > 1) {
-      return '$formattedInt,${parts[1]}';
+      return '$formattedInt.${parts[1]}';
     } else if (widget.rawAmount.contains(',') || widget.rawAmount.contains('.')) {
-      return '$formattedInt,';
+      return '$formattedInt.';
     }
     return formattedInt;
   }

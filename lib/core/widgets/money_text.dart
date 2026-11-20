@@ -60,11 +60,13 @@ class MoneyText extends StatelessWidget {
       );
     }
 
-    final sign = showSign
-        ? (isIncome ? '+ ' : (amount < 0 ? '− ' : (isExpense ? '− ' : '')))
-        : '';
+    // Un monto negativo (p. ej. un balance en rojo) nunca pierde su signo,
+    // aunque no se pidan los signos + / − de ingresos y gastos.
+    final sign = amount < 0
+        ? '− '
+        : (showSign ? (isIncome ? '+ ' : (isExpense ? '− ' : '')) : '');
     final absAmount = amount.abs();
-    final formatted = NumberFormat('#,##0.00', 'es_PE').format(absAmount);
+    final formatted = NumberFormat('#,##0.00', 'en').format(absAmount);
 
     return Text.rich(
       TextSpan(

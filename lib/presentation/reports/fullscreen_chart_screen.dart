@@ -237,7 +237,7 @@ class _FullscreenChartScreenState extends State<FullscreenChartScreen> {
   Widget _buildHeroChartCard() {
     final formattedTotal = widget.isHide
         ? '••••'
-        : 'S/ ${NumberFormat('#,##0.00', 'es_PE').format(widget.total)}';
+        : 'S/ ${NumberFormat('#,##0.00', 'en').format(widget.total)}';
 
     return MgCard(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 22),
@@ -381,7 +381,7 @@ class _FullscreenChartScreenState extends State<FullscreenChartScreen> {
                 Text(
                   widget.isHide
                       ? '••••'
-                      : 'S/ ${NumberFormat('#,##0.00', 'es_PE').format(widget.total / 30)}',
+                      : 'S/ ${NumberFormat('#,##0.00', 'en').format(widget.total / 30)}',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -426,7 +426,7 @@ class _FullscreenChartScreenState extends State<FullscreenChartScreen> {
     final percent = (ratio * 100).toStringAsFixed(1);
     final formattedVal = widget.isHide
         ? '••••'
-        : 'S/ ${NumberFormat('#,##0.00', 'es_PE').format(entry.value)}';
+        : 'S/ ${NumberFormat('#,##0.00', 'en').format(entry.value)}';
 
     return Column(
       children: [

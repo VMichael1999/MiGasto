@@ -94,10 +94,10 @@ class LimitHint extends StatelessWidget {
       text = 'Sin límite asignado';
       textColor = MgColors.ink2;
     } else if (isExceeded) {
-      text = 'Te pasas S/ ${NumberFormat('#,##0.00', 'es_PE').format(exceededAmount)} del límite de $categoryName.';
+      text = 'Te pasas S/ ${NumberFormat('#,##0.00', 'en').format(exceededAmount)} del límite de $categoryName.';
       textColor = MgColors.down;
     } else {
-      text = 'Te quedarán S/ ${NumberFormat('#,##0.00', 'es_PE').format(remainingAfterExpense)} después de este gasto.';
+      text = 'Te quedarán S/ ${NumberFormat('#,##0.00', 'en').format(remainingAfterExpense)} después de este gasto.';
       textColor = MgColors.ink2;
     }
 
