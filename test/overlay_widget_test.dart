@@ -83,7 +83,7 @@ void main() {
 
     expect(find.text('Ignorar'), findsOneWidget);
     expect(find.text('Guardar ingreso'), findsOneWidget);
-    expect(find.textContaining('No se guarda hasta que lo confirmes'), findsOneWidget);
+    expect(find.textContaining('No se guardará hasta que lo confirmes', findRichText: true), findsOneWidget);
     expect(find.textContaining('Se guarda en'), findsNothing);
 
     await tester.pump(const Duration(seconds: 10));

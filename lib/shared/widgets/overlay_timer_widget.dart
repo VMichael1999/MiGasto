@@ -317,13 +317,18 @@ class _OverlayTimerWidgetState extends ConsumerState<OverlayTimerWidget>
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            _paused ? 'Toca cualquier botón para continuar' : 'Toca para pausar',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: MgColors.ink3,
+                          Flexible(
+                            child: Text(
+                              _paused ? 'Toca cualquier botón para continuar' : 'Toca para pausar',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: MgColors.ink3,
+                              ),
                             ),
                           ),
+                          const SizedBox(width: 8),
                           const Text(
                             'MiGasto · Detección',
                             style: TextStyle(
