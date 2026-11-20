@@ -479,7 +479,11 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                         physics: const BouncingScrollPhysics(),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [searchPanel, summary],
+                          children: [
+                            searchPanel,
+                            summary,
+                            _ResultsInsights(results: results, hidden: hidden),
+                          ],
                         ),
                       ),
                     ),
@@ -1014,6 +1018,115 @@ class _MovementItemRow extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+
+/// Resumen de lo que muestra la lista (solo en horizontal, para llenar el lado
+/// izquierdo con algo útil): cuánto entró, cuánto salió y en qué categorías.
+class _ResultsInsights extends StatelessWidget {
+  const _ResultsInsights({required this.results, required this.hidden});
+
+  final List<Movimiento> results;
+  final bool hidden;
+
+  @override
+  Widget build(BuildContext context) {
+    if (results.isEmpty) return const SizedBox.shrink();
+    final income =
+        results.where((m) => m.esIngreso).fold(0.0, (s, m) => s + m.amount);
+    final expenses = results.where((m) => m.esGasto).toList();
+    final spent = expenses.fold(0.0, (s, m) => s + m.amount);
+    final byCategory = <Categoria, double>{};
+    for (final m in expenses) {
+      byCategory[m.category] = (byCategory[m.category] ?? 0) + m.amount;
+    }
+    final top = byCategory.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    Widget stat(String label, String value, Color color) => Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: MgColors.soft,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: const TextStyle(fontSize: 10.5, color: MgColors.ink2)),
+                const SizedBox(height: 3),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    hidden ? 'S/ ••••' : value,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 6, 18, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              stat('Ingresos', '+${formatSoles(income)}', MgColors.up),
+              const SizedBox(width: 8),
+              stat('Gastos', '−${formatSoles(spent)}', MgColors.ink),
+            ],
+          ),
+          if (top.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            const Text(
+              'Gastos por categoría',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: MgColors.ink2,
+              ),
+            ),
+            const SizedBox(height: 8),
+            for (final e in top.take(4)) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      categoryLabel(e.key),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12, color: MgColors.ink),
+                    ),
+                  ),
+                  Text(
+                    hidden ? '••••' : formatSoles(e.value),
+                    style: const TextStyle(fontSize: 11.5, color: MgColors.ink2),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              ProgressBar(
+                percent: spent > 0 ? e.value / spent : 0,
+                height: 4,
+                color: CategoryIcon.colorForCategory(e.key),
+              ),
+              const SizedBox(height: 9),
+            ],
+          ],
+        ],
       ),
     );
   }
