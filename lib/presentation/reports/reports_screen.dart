@@ -89,10 +89,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         .where((m) => m.tipo == TipoMovimiento.gasto)
         .fold<double>(0.0, (s, m) => s + m.amount);
 
-    final currentIngresos = monthMovs
-        .where((m) => m.tipo == TipoMovimiento.ingreso)
-        .fold<double>(0.0, (s, m) => s + m.amount);
-
     final prevGastos = prevMonthMovs
         .where((m) => m.tipo == TipoMovimiento.gasto)
         .fold<double>(0.0, (s, m) => s + m.amount);
@@ -102,23 +98,21 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     for (final m in monthMovs.where((m) => m.tipo == TipoMovimiento.gasto)) {
       daySpending[m.date.weekday] = (daySpending[m.date.weekday] ?? 0.0) + m.amount;
     }
-    String topDay = 'Martes';
+    String topDay = '—';
     if (daySpending.isNotEmpty) {
       final best = daySpending.entries.reduce((a, b) => a.value > b.value ? a : b);
       topDay = _weekdayName(best.key);
     }
 
     // vs periodo anterior
-    String vsPeriodoText = '+324%';
-    Color vsPeriodoColor = MgColors.down;
+    // Sin gastos el mes anterior no hay con qué comparar: no se muestra ningún porcentaje.
+    String vsPeriodoText = '—';
+    Color vsPeriodoColor = MgColors.ink2;
     if (prevGastos > 0) {
       final diff = ((currentGastos - prevGastos) / prevGastos) * 100;
       final sign = diff >= 0 ? '+' : '';
       vsPeriodoText = '$sign${diff.toStringAsFixed(0)}%';
       vsPeriodoColor = diff > 0 ? MgColors.down : MgColors.up;
-    } else {
-      vsPeriodoText = '+324%';
-      vsPeriodoColor = MgColors.down;
     }
 
     // Gastos por categoría
@@ -162,7 +156,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               _buildCategoryCard(context, segments, catList, totalPorCategorias, isHide),
 
               // Tarjeta 2: Ingresos vs gastos (6 meses)
-              _buildIncomeVsExpenseCard(currentIngresos, currentGastos),
+              _buildIncomeVsExpenseCard(allMovs),
 
               const SizedBox(height: 160),
             ],
@@ -581,7 +575,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              isHide ? '••••' : 'S/ ${NumberFormat('#,##0.00', 'es_PE').format(total)}',
+                              isHide ? '••••' : 'S/ ${NumberFormat('#,##0.00', 'en').format(total)}',
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w800,
@@ -610,7 +604,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              isHide ? '••••' : 'S/ ${NumberFormat('#,##0.00', 'es_PE').format(total)}',
+                              isHide ? '••••' : 'S/ ${NumberFormat('#,##0.00', 'en').format(total)}',
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w800,
@@ -665,7 +659,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       ),
                     ),
                     Text(
-                      isHide ? '••••' : 'S/ ${NumberFormat('#,##0.00', 'es_PE').format(top4[i].value)}',
+                      isHide ? '••••' : 'S/ ${NumberFormat('#,##0.00', 'en').format(top4[i].value)}',
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -750,20 +744,20 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 
   /// Tarjeta: Ingresos vs gastos (.card)
-  Widget _buildIncomeVsExpenseCard(double currentIncome, double currentExpense) {
-    // Datos históricos de los últimos 6 meses (terminando en el mes actual)
-    final history = [
-      const MonthBarItem(label: 'Jun', income: 5800, expense: 3900),
-      const MonthBarItem(label: 'Jul', income: 6100, expense: 4400),
-      const MonthBarItem(label: 'Ago', income: 5900, expense: 5100),
-      const MonthBarItem(label: 'Sep', income: 6400, expense: 4200),
-      const MonthBarItem(label: 'Oct', income: 6300, expense: 5180),
-      MonthBarItem(
-        label: DateFormat('MMM', 'es').format(_currentMonth),
-        income: currentIncome > 0 ? currentIncome : 5500,
-        expense: currentExpense > 0 ? currentExpense : 3418.50,
-      ),
-    ];
+  Widget _buildIncomeVsExpenseCard(List<Movimiento> allMovs) {
+    // Últimos 6 meses (terminando en el mes elegido), con los movimientos reales.
+    final history = <MonthBarItem>[];
+    for (var i = 5; i >= 0; i--) {
+      final month = DateTime(_currentMonth.year, _currentMonth.month - i);
+      final inMonth = allMovs.where((m) =>
+          m.isConfirmed && m.date.year == month.year && m.date.month == month.month);
+      history.add(MonthBarItem(
+        label: toBeginningOfSentenceCase(DateFormat('MMM', 'es').format(month))!,
+        income: inMonth.where((m) => m.esIngreso).fold(0.0, (s, m) => s + m.amount),
+        expense: inMonth.where((m) => m.esGasto).fold(0.0, (s, m) => s + m.amount),
+      ));
+    }
+    final hasData = history.any((h) => h.income > 0 || h.expense > 0);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
@@ -783,11 +777,22 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Barras animadas
-            IncomeExpenseBars(
-              data: history,
-              height: 140,
-            ),
+            // Barras animadas (o aviso si todavía no hay movimientos)
+            if (hasData)
+              IncomeExpenseBars(
+                data: history,
+                height: 140,
+              )
+            else
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 28),
+                child: Center(
+                  child: Text(
+                    'Aún no hay ingresos ni gastos registrados.',
+                    style: TextStyle(fontSize: 13, color: MgColors.ink2),
+                  ),
+                ),
+              ),
             const SizedBox(height: 12),
 
             // Leyenda (.leg2)
@@ -895,7 +900,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                     ),
                   ),
                   Text(
-                    isHide ? '••••' : 'S/ ${NumberFormat('#,##0.00', 'es_PE').format(total)}',
+                    isHide ? '••••' : 'S/ ${NumberFormat('#,##0.00', 'en').format(total)}',
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -960,7 +965,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                             ),
                           ),
                           Text(
-                            isHide ? '••••' : 'S/ ${NumberFormat('#,##0.00', 'es_PE').format(item.value)}',
+                            isHide ? '••••' : 'S/ ${NumberFormat('#,##0.00', 'en').format(item.value)}',
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
