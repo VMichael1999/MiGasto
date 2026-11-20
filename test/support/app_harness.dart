@@ -30,10 +30,15 @@ class MemoryDb implements LocalDatabase {
   /// Arranca la app ya con sesión iniciada, espera al Inicio y corre [body].
   /// Sin red, google_fonts no puede bajar las variantes de Inter y lanza errores
   /// asíncronos que no tienen que ver con la pantalla: se ignoran solo esos.
-  Future<void> withHome(WidgetTester tester, Future<void> Function() body) async {
+  Future<void> withHome(
+  WidgetTester tester,
+  Future<void> Function() body, {
+  Size size = const Size(420, 900),
+}) async {
     // Tamaño de un teléfono en vertical (el predeterminado de las pruebas es 800×600).
-    await tester.binding.setSurfaceSize(const Size(420, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+    tester.view.physicalSize = size;
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
     final done = Completer<void>();
     runZonedGuarded(() async {
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
