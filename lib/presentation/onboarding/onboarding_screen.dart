@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/mg_colors.dart';
+import '../../core/layout/adaptive.dart';
 import '../../core/widgets/charts.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
@@ -137,21 +138,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             itemCount: _slides.length,
             itemBuilder: (context, index) {
               final slide = _slides[index];
-              return SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 28),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 50),
-                      // Arte central (300px)
-                      SizedBox(
-                        height: 300,
-                        child: Center(
-                          child: _buildArt(slide.artType),
-                        ),
-                      ),
-                      const SizedBox(height: 30),
-
+              final texts = <Widget>[
                       // Título con acento violeta
                       RichText(
                         textAlign: TextAlign.center,
@@ -187,6 +174,56 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                           color: Colors.white.withValues(alpha: 0.55),
                         ),
                       ),
+              ];
+              if (context.isLandscapePhone) {
+                // Horizontal: el arte a la izquierda y los textos a la derecha.
+                return SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(28, 24, 28, 24),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: SizedBox(
+                              width: 320,
+                              height: 300,
+                              child: Center(child: _buildArt(slide.artType)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 24),
+                        Expanded(
+                          child: Padding(
+                            // Deja libre el pie con los puntos y el botón.
+                            padding: const EdgeInsets.only(bottom: 90),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: texts,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              return SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 28),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 50),
+                      // Arte central (300px)
+                      SizedBox(
+                        height: 300,
+                        child: Center(
+                          child: _buildArt(slide.artType),
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+
+                      ...texts,
                     ],
                   ),
                 ),
@@ -197,9 +234,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           // Pie de página fijo: Indicadores de puntos y Botón Siguiente / Comenzar
           SafeArea(
             child: Align(
-              alignment: Alignment.bottomCenter,
+              alignment: context.isLandscapePhone
+                  ? Alignment.bottomRight
+                  : Alignment.bottomCenter,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                padding: context.isLandscapePhone
+                    ? EdgeInsets.fromLTRB(MediaQuery.sizeOf(context).width * 0.5 + 12, 0, 28, 16)
+                    : const EdgeInsets.fromLTRB(20, 0, 20, 24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/layout/adaptive.dart';
 import '../../core/theme/mg_colors.dart';
 import '../../core/widgets/mg_toast.dart';
 import '../providers.dart';
@@ -45,15 +46,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: MgColors.bg,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(24, 40, 24, 30),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+    final header = <Widget>[
               const SizedBox(height: 10),
               // Mark Logo (54×54 con el icono 3D oficial de MiGasto)
               Align(
@@ -104,6 +97,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               const SizedBox(height: 28),
 
+    ];
+    final form = <Widget>[
               // Campo 1: Correo
               _buildInputBox(
                 label: 'Correo',
@@ -309,9 +304,45 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
+    ];
+    return Scaffold(
+      backgroundColor: MgColors.bg,
+      body: SafeArea(
+        child: context.isLandscapePhone
+            // Horizontal: bienvenida a la izquierda y formulario a la derecha.
+            ? Row(
+                children: [
+                  Expanded(
+                    child: Center(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(32, 16, 16, 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: header,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 20, 32, 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: form,
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(24, 40, 24, 30),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [...header, ...form],
+                ),
+              ),
       ),
     );
   }

@@ -8,6 +8,8 @@ import 'package:mi_gasto/core/theme/theme.dart';
 import 'package:mi_gasto/presentation/ai/ai_screen.dart';
 import 'package:mi_gasto/presentation/expenses/expenses_screen.dart';
 import 'package:mi_gasto/presentation/expenses/manual_entry_screen.dart';
+import 'package:mi_gasto/presentation/onboarding/login_screen.dart';
+import 'package:mi_gasto/presentation/onboarding/onboarding_screen.dart';
 import 'package:mi_gasto/presentation/plan/plan_providers.dart';
 import 'package:mi_gasto/presentation/plan/plan_screen.dart';
 import 'package:mi_gasto/presentation/providers.dart';
@@ -112,6 +114,23 @@ void main() {
     expect(find.text('Pregúntale a MiGastoIA'), findsOneWidget);
     expect(tester.takeException(), isNull);
     // El avatar programa un parpadeo: se desmonta y se deja correr el reloj.
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 6));
+  });
+
+  testWidgets('Login en horizontal: bienvenida a la izquierda y formulario a la derecha', (tester) async {
+    await show(tester, const LoginScreen());
+    expect(tester.getTopLeft(find.text('Hola de nuevo')).dx, lessThan(422));
+    expect(tester.getTopLeft(find.text('Ingresar')).dx, greaterThan(422));
+    expect(find.text('Crea tu cuenta'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Onboarding en horizontal: arte a la izquierda y texto con botón a la derecha', (tester) async {
+    await show(tester, const OnboardingScreen());
+    expect(tester.getTopLeft(find.text('Siguiente')).dx, greaterThan(422));
+    expect(find.text('Saltar'), findsOneWidget);
+    expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 6));
   });
