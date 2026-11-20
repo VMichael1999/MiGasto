@@ -61,10 +61,39 @@ class MgTabBar extends StatelessWidget {
     ),
   ];
 
+  /// Mismas pestañas con íconos más chicos para el horizontal.
+  static const List<GlassTab> compactTabs = [
+    GlassTab(
+      icon: Icon(Icons.home_rounded, size: 15),
+      label: 'Inicio',
+      glowColor: Color(0xFF7C5CFF),
+    ),
+    GlassTab(
+      icon: Icon(Icons.track_changes_rounded, size: 15),
+      label: 'Plan',
+      glowColor: Color(0xFF7C5CFF),
+    ),
+    GlassTab(
+      icon: Icon(Icons.auto_awesome_rounded, size: 15),
+      label: 'MiGastoIA',
+      glowColor: Color(0xFF7C5CFF),
+    ),
+    GlassTab(
+      icon: Icon(Icons.bar_chart_rounded, size: 15),
+      label: 'Stats',
+      glowColor: Color(0xFF7C5CFF),
+    ),
+    GlassTab(
+      icon: Icon(Icons.search_rounded, size: 15),
+      label: 'Buscar',
+      glowColor: Color(0xFF7C5CFF),
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return GlassTabBar.bottom(
-      tabs: defaultTabs,
+      tabs: compact ? compactTabs : defaultTabs,
       selectedIndex: selectedIndex,
       onTabSelected: (index) {
         HapticFeedback.selectionClick();
@@ -72,45 +101,47 @@ class MgTabBar extends StatelessWidget {
       },
       // Botón circular satélite con el '+' tipo gota de vidrio líquida (como la luna de la referencia)
       extraButton: GlassTabBarExtraButton(
-        icon: const Icon(
+        icon: Icon(
           Icons.add_rounded,
-          size: 26,
+          size: compact ? 20 : 26,
           color: Colors.white,
         ),
         iconColor: Colors.white,
         label: 'Nuevo movimiento',
-        size: compact ? 46 : 58,
+        size: compact ? 36 : 58,
         onTap: () {
           HapticFeedback.mediumImpact();
           onAddTap?.call();
         },
       ),
-      spacing: compact ? 8 : 10,
-      horizontalPadding: compact ? 12 : 16,
-      verticalPadding: compact ? 8 : 16,
-      barHeight: compact ? 46 : 62,
-      barBorderRadius: 24,
+      spacing: compact ? 6 : 10,
+      horizontalPadding: compact ? 10 : 16,
+      verticalPadding: compact ? 6 : 16,
+      barHeight: compact ? 36 : 62,
+      barBorderRadius: compact ? 18 : 24,
       // tabWidth: null hace que las pestañas se distribuyan en todo el espacio disponible
       tabWidth: null,
-      iconLabelSpacing: compact ? 1 : 3,
-      labelFontSize: compact ? 9 : 9.5,
+      iconLabelSpacing: compact ? 0 : 3,
+      labelFontSize: compact ? 8 : 9.5,
       selectedIconColor: MgColors.acc2,
       unselectedIconColor: MgColors.ink3,
       selectedLabelColor: MgColors.acc2,
       unselectedLabelColor: MgColors.ink3,
-      selectedLabelStyle: const TextStyle(
-        fontSize: 9.5,
+      selectedLabelStyle: TextStyle(
+        fontSize: compact ? 8 : 9.5,
         fontWeight: FontWeight.w600,
         fontFamily: 'Inter',
       ),
-      unselectedLabelStyle: const TextStyle(
-        fontSize: 9.5,
+      unselectedLabelStyle: TextStyle(
+        fontSize: compact ? 8 : 9.5,
         fontWeight: FontWeight.w500,
         fontFamily: 'Inter',
       ),
       indicatorColor: MgColors.accSoft,
-      indicatorBorderRadius: 18,
-      indicatorExpansion: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      indicatorBorderRadius: compact ? 14 : 18,
+      indicatorExpansion: compact
+          ? const EdgeInsets.symmetric(horizontal: 6, vertical: 3)
+          : const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       // Física de lente líquida y gota de agua
       indicatorPinchStrength: 1.0,
       pressScale: 1.08,

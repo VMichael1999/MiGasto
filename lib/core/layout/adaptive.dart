@@ -20,4 +20,4 @@ extension AdaptiveContext on BuildContext {
 
 /// Ancho máximo de la barra flotante en horizontal: centrada y sin estirarse
 /// a todo el ancho del teléfono.
-const double landscapeTabBarMaxWidth = 640;
+const double landscapeTabBarMaxWidth = 470;

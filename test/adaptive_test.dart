@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:mi_gasto/core/layout/adaptive.dart';
+import 'package:mi_gasto/core/layout/landscape_pane.dart';
 import 'package:mi_gasto/core/widgets/mg_tab_bar.dart';
 
 import 'support/app_harness.dart';
@@ -35,10 +37,24 @@ void main() {
         expect(rect.bottom, lessThanOrEqualTo(390));
         expect(rect.left, greaterThanOrEqualTo(0));
         expect(rect.right, lessThanOrEqualTo(844));
-        // Baja: en vertical mide 62 + 32 de relleno; aquí 46 + 16.
-        expect(rect.height, lessThanOrEqualTo(62));
+        // Chica: 36 de barra + 12 de relleno (en vertical son 62 + 32).
+        expect(rect.height, lessThanOrEqualTo(50));
+        expect(rect.width, lessThanOrEqualTo(landscapeTabBarMaxWidth));
       },
       size: const Size(844, 390),
     );
+  });
+
+  testWidgets('BleedClip recorta en vertical pero deja sangrar los brillos hacia los lados', (tester) async {
+    await tester.pumpWidget(const Directionality(
+      textDirection: TextDirection.ltr,
+      child: SizedBox(width: 100, height: 50, child: BleedClip(child: SizedBox())),
+    ));
+    final clip = tester.renderObject<RenderClipRect>(find.byType(ClipRect));
+    final rect = clip.clipper!.getClip(const Size(100, 50));
+    expect(rect.top, 0);
+    expect(rect.bottom, 50);
+    expect(rect.left, lessThan(0));
+    expect(rect.right, greaterThan(100));
   });
 }
