@@ -26,6 +26,7 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen>
   bool _overlayOn = false;
   bool _alertsOn = false;
   bool _batteryOn = false;
+  bool _locationOn = false;
 
   bool get _isAndroid => defaultTargetPlatform == TargetPlatform.android;
 
@@ -49,6 +50,8 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen>
   }
 
   Future<void> _refresh() async {
+    final location = await ref.read(locationServiceProvider).hasPermission();
+    if (mounted && location != _locationOn) setState(() => _locationOn = location);
     if (!_isAndroid) return;
     final permissions = ref.read(permissionsCheckerProvider);
     final listener = await permissions.isNotificationListenerEnabled();
@@ -62,6 +65,11 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen>
       _alertsOn = alerts;
       _batteryOn = battery;
     });
+  }
+
+  Future<void> _askLocation() async {
+    final granted = await ref.read(locationServiceProvider).requestPermission();
+    if (mounted) setState(() => _locationOn = granted);
   }
 
   /// Cierra la bienvenida y sigue con el inicio de sesión.
@@ -150,6 +158,29 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen>
                       _step(4, 'Evita que el teléfono la duerma',
                           'En Batería, elige «No restringido». Así no se pierden pagos.', _batteryOn),
                     ],
+                    // Ubicación (opcional, también en iPhone): solo mientras la app está en uso.
+                    SizedBox(height: _isAndroid ? 0 : 22),
+                    _step(_isAndroid ? 5 : 1, 'Permite la ubicación (opcional)',
+                        'Para ver en el mapa dónde pagaste y centrarlo donde estás. Solo se usa cuando tú lo pides, nunca en segundo plano.',
+                        _locationOn),
+                    if (!_locationOn)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 40, bottom: 4),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: OutlinedButton.icon(
+                            onPressed: _askLocation,
+                            icon: const Icon(Icons.my_location_rounded, size: 18),
+                            label: const Text('Permitir ubicación'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: MgColors.acc2,
+                              side: const BorderSide(color: MgColors.line),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),

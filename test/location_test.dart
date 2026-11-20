@@ -15,6 +15,11 @@ class _FakeLocation implements LocationService {
   int calls = 0;
 
   @override
+  Future<bool> hasPermission() async => false;
+  @override
+  Future<bool> requestPermission() async => true;
+
+  @override
   Future<LocationResult> captureCurrent() async {
     calls++;
     return result;

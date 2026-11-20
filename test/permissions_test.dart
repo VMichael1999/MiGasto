@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mi_gasto/core/navigation/navigation.dart';
 import 'package:mi_gasto/presentation/onboarding/permissions_screen.dart';
+import 'package:mi_gasto/data/services/location_service.dart';
 import 'package:mi_gasto/presentation/providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -40,8 +41,27 @@ class _FakePermissions extends PermissionsChecker {
   Future<void> openBatterySettings() async => calls.add('bateria');
 }
 
+class _FakeLocation implements LocationService {
+  bool granted = false;
+  int asked = 0;
+  @override
+  Future<bool> hasPermission() async => granted;
+  @override
+  Future<bool> requestPermission() async {
+    asked++;
+    granted = true;
+    return true;
+  }
+
+  @override
+  Future<LocationResult> captureCurrent() async => const LocationResult.failed(LocationFailure.unavailable);
+  @override
+  Future<void> openAppSettings() async {}
+}
+
 void main() {
   late SharedPreferences prefs;
+  final location = _FakeLocation();
 
   /// La plataforma simulada se restablece antes de que termine la prueba:
   /// Flutter exige las variables de depuración sin tocar al final.
@@ -56,6 +76,9 @@ void main() {
   }
 
   Future<void> open(WidgetTester tester, _FakePermissions fake) async {
+    location
+      ..granted = false
+      ..asked = 0;
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
@@ -70,6 +93,7 @@ void main() {
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
         permissionsCheckerProvider.overrideWithValue(fake),
+        locationServiceProvider.overrideWithValue(location),
       ],
       child: MaterialApp.router(theme: ThemeData.dark(), routerConfig: router),
     ));
@@ -154,5 +178,19 @@ void main() {
     expect(find.text('Qué lee la app y qué no'), findsOneWidget);
     // Cualquier otra ruta sin bienvenida completa vuelve al onboarding.
     expect(router.routerDelegate.currentConfiguration.uri.path, '/permisos');
+  });
+
+  androidTest('ofrece permitir la ubicación desde el inicio y lo marca al concederla', (tester) async {
+    await open(tester, _FakePermissions());
+    expect(find.text('Permite la ubicación (opcional)'), findsOneWidget);
+    expect(find.text('Permitir ubicación'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Permitir ubicación'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Permitir ubicación'));
+    await tester.pumpAndSettle();
+    expect(location.asked, 1);
+    // Ya concedida: el botón desaparece y el paso queda en «Listo».
+    expect(find.text('Permitir ubicación'), findsNothing);
   });
 }
