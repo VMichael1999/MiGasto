@@ -5,16 +5,17 @@
 <h1 align="center">MiGasto</h1>
 
 <p align="center">
-  <strong>Registra tus gastos e ingresos en el teléfono, sin escribirlos: lee tus pagos de Yape, Plin y Google Wallet.</strong><br>
-  Pensada para quien paga casi todo con el celular en Perú. Todo se guarda solo en tu teléfono, en una base de datos cifrada: no hay servidor ni cuenta.
+  <strong>Registra tus gastos e ingresos en el teléfono, sin escribirlos: lee tus pagos de Yape, Plin, Google Wallet y Apple Pay.</strong><br>
+  Pensada para quien paga casi todo con el celular en Perú. Tus movimientos se guardan solo en tu teléfono, en una base de datos cifrada. Puedes usarla como invitado o vincular una cuenta (Google o correo).
 </p>
 
 <p align="center">
   <a href="https://flutter.dev"><img src="https://img.shields.io/badge/Flutter-3.47-02569B?logo=flutter&logoColor=white" alt="Flutter" /></a>
   <a href="https://dart.dev"><img src="https://img.shields.io/badge/Dart-3.13-0175C2?logo=dart&logoColor=white" alt="Dart" /></a>
   <a href="https://kotlinlang.org"><img src="https://img.shields.io/badge/Nativo_Android-Kotlin-7F52FF?logo=kotlin&logoColor=white" alt="Kotlin" /></a>
-  <img src="https://img.shields.io/badge/Tests-118%20Flutter%20%2B%209%20nativas-brightgreen" alt="Tests" />
+  <img src="https://img.shields.io/badge/Tests-236%20Flutter%20%2B%209%20nativas-brightgreen" alt="Tests" />
   <img src="https://img.shields.io/badge/Plataformas-Android%20%7C%20iPhone-black?logo=android" alt="Plataformas" />
+  <img src="https://img.shields.io/badge/Cuentas-Firebase-FFCA28?logo=firebase&logoColor=white" alt="Firebase" />
   <img src="https://img.shields.io/badge/Datos-SQLite%20cifrada-2E7D32" alt="Datos cifrados" />
   <img src="https://img.shields.io/badge/Hecho%20en-Per%C3%BA-E60000" alt="Hecho en Perú" />
 </p>
@@ -23,40 +24,59 @@
 
 ## 📱 Capturas de Pantalla (Preview)
 
-> Capturas tomadas en un emulador Android (Google Pixel) con la versión *release* de MiGasto. Los nombres y montos son **datos de ejemplo**.
+> Capturas tomadas en un **iPhone 17 Pro Max** (simulador) con la versión de depuración de MiGasto. Los nombres, comercios y montos son **datos de ejemplo**: solo se ven en depuración; la versión *release* muestra únicamente tus datos reales.
 
-### Inicio y Resumen
+### Bienvenida y Acceso
 
-| 01. Bienvenida | 02. Resumen | 03. Montos ocultos | 04. Movimientos |
+| 01. Arranque | 02. Bienvenida | 03. Límites | 04. MiGastoIA |
 | :---: | :---: | :---: | :---: |
-| <img src="docs/screenshots/01-onboarding.png" width="160" alt="Pantalla de bienvenida"/> | <img src="docs/screenshots/02-resumen.png" width="160" alt="Resumen del mes"/> | <img src="docs/screenshots/03-resumen-oculto.png" width="160" alt="Resumen con los montos ocultos"/> | <img src="docs/screenshots/04-movimientos.png" width="160" alt="Lista de movimientos"/> |
-| *Qué lee la app y qué no,*<br>*y los permisos paso a paso* | *Saldo del mes, ingresos y gastos,*<br>*presupuesto y movimientos de hoy* | *El ojo oculta todos los montos;*<br>*al mostrarlos, el saldo cuenta desde 0* | *Agrupados por día, con alias,*<br>*íconos y fuente de cada pago* |
+| <img src="docs/screenshots/01-splash.png" width="160" alt="Pantalla de arranque"/> | <img src="docs/screenshots/02-bienvenida-mira.png" width="160" alt="Bienvenida: a dónde se va tu plata"/> | <img src="docs/screenshots/03-bienvenida-limites.png" width="160" alt="Bienvenida: límites"/> | <img src="docs/screenshots/04-bienvenida-ia.png" width="160" alt="Bienvenida: MiGastoIA"/> |
+| *Logo y lema, mientras se*<br>*abre la base cifrada* | *Cada gasto en su categoría*<br>*y el mes en una pantalla* | *Un límite por categoría, con*<br>*aviso antes de pasarte* | *Pregúntale a la IA con tus*<br>*propios números* |
 
-### Filtros, Reportes y Registro
-
-| 05. Filtros | 06. Reportes | 07. Detalle | 08. Registro manual |
+| 05. Permisos | 06. Apple Pay | 07. Inicio de sesión | 08. Crear cuenta |
 | :---: | :---: | :---: | :---: |
-| <img src="docs/screenshots/05-filtros.png" width="160" alt="Filtros de movimientos"/> | <img src="docs/screenshots/06-reportes.png" width="160" alt="Reportes por mes"/> | <img src="docs/screenshots/07-detalle.png" width="160" alt="Detalle de un movimiento"/> | <img src="docs/screenshots/08-registro-manual.png" width="160" alt="Registro manual de un gasto"/> |
-| *Por categoría (incluidas las*<br>*propias), fuente y rango de monto* | *Ingresos frente a gastos por mes*<br>*y tablas por categoría* | *Boleta con fecha, fuente,*<br>*categoría y ubicación opcional* | *Teclado numérico propio y*<br>*categorías, también las tuyas* |
+| <img src="docs/screenshots/05-permisos.png" width="160" alt="Privacidad y permisos"/> | <img src="docs/screenshots/06-guia-apple-pay.png" width="160" alt="Guía de Apple Pay en iPhone"/> | <img src="docs/screenshots/07-login.png" width="160" alt="Inicio de sesión"/> | <img src="docs/screenshots/08-crear-cuenta.png" width="160" alt="Crear cuenta"/> |
+| *Qué lee la app y qué no;*<br>*ubicación opcional* | *Automatización de Wallet paso a paso,*<br>*con tutorial en video* | *Google, correo o seguir*<br>*como invitado* | *Nombre, correo y contraseña,*<br>*con validación en línea* |
 
-### Categorías Propias y Lectura de Pagos
+### Inicio, Movimientos y Detalle
 
-| 09. Nueva categoría | 10. Mis categorías | 11. Ventana flotante | 12. Aviso con botones |
+| 09. Recuperar | 10. Inicio | 11. Movimientos | 12. Detalle |
 | :---: | :---: | :---: | :---: |
-| <img src="docs/screenshots/09-nueva-categoria.png" width="160" alt="Crear una categoría"/> | <img src="docs/screenshots/10-mis-categorias.png" width="160" alt="Lista de categorías propias"/> | <img src="docs/screenshots/11-ventana-flotante.png" width="160" alt="Ventana flotante de pago"/> | <img src="docs/screenshots/12-aviso-botones.png" width="160" alt="Notificación con Guardar e Ignorar"/> |
-| *Nombre y el ícono que quieras,*<br>*entre 56 disponibles* | *Las que creaste; si borras una,*<br>*sus movimientos pasan a «Otros»* | *Sobre cualquier app, con la cuenta*<br>*regresiva dentro de «Guardar»* | *Con la pantalla bloqueada: guarda o*<br>*ignora un ingreso sin abrir la app* |
+| <img src="docs/screenshots/09-recuperar-contrasena.png" width="160" alt="Recuperar contraseña"/> | <img src="docs/screenshots/10-inicio.png" width="160" alt="Inicio"/> | <img src="docs/screenshots/11-movimientos.png" width="160" alt="Movimientos agrupados por día"/> | <img src="docs/screenshots/12-detalle.png" width="160" alt="Detalle de un movimiento"/> |
+| *Enlace por correo para elegir*<br>*una contraseña nueva* | *Balance, próximos pagos*<br>*y movimientos de hoy* | *Por día, con el logo de cada*<br>*comercio (Rappi, Uber, Netflix…)* | *Categoría, tarjeta, límite del mes,*<br>*ubicación opcional y comparar* |
 
-### Ajustes, Respaldo y Modo Oscuro
+### Plan, MiGastoIA y Estadísticas
 
-| 13. Ajustes | 14. Respaldo | 15. Modo oscuro | 16. Reportes oscuro |
+| 13. Plan | 14. MiGastoIA | 15. Stats | 16. Categorías |
 | :---: | :---: | :---: | :---: |
-| <img src="docs/screenshots/13-ajustes.png" width="160" alt="Ajustes de lectura de pagos"/> | <img src="docs/screenshots/14-restaurar-respaldo.png" width="160" alt="Restaurar un respaldo cifrado"/> | <img src="docs/screenshots/15-modo-oscuro-resumen.png" width="160" alt="Resumen en modo oscuro"/> | <img src="docs/screenshots/16-modo-oscuro-reportes.png" width="160" alt="Reportes en modo oscuro"/> |
-| *Estado de cada permiso, fuentes*<br>*a registrar y guardado automático* | *Archivo .mgb cifrado con tu*<br>*contraseña; no borra lo que ya tienes* | *Claro u oscuro según el sistema,*<br>*con la misma jerarquía visual* | *Barras de ingresos y gastos y*<br>*detalle por categoría* |
+| <img src="docs/screenshots/13-plan.png" width="160" alt="Plan: límites y meta de ahorro"/> | <img src="docs/screenshots/14-migastoia.png" width="160" alt="MiGastoIA"/> | <img src="docs/screenshots/15-stats.png" width="160" alt="Estadísticas"/> | <img src="docs/screenshots/16-todas-las-categorias.png" width="160" alt="Todas las categorías"/> |
+| *Límites por categoría y una*<br>*meta de ahorro* | *Responde con tus gastos, límites*<br>*y metas; la conversación se guarda* | *Gastos por categoría, saldo a*<br>*30 días y evolución* | *Reparto del gasto, con su*<br>*porcentaje del total* |
+
+| 17. Desglose | 18. Buscar | 19. Perfil | 20. Vincular |
+| :---: | :---: | :---: | :---: |
+| <img src="docs/screenshots/17-gastos-por-categoria.png" width="160" alt="Gastos por categoría"/> | <img src="docs/screenshots/18-buscar.png" width="160" alt="Buscar movimientos"/> | <img src="docs/screenshots/19-perfil.png" width="160" alt="Perfil"/> | <img src="docs/screenshots/20-vincular-cuenta.png" width="160" alt="Vincular cuenta"/> |
+| *Dona o anillos, mayor gasto y*<br>*promedio diario* | *Búsqueda, filtros y totales*<br>*por tipo* | *Vincular cuenta, categorías,*<br>*respaldo y bloqueo* | *Google o correo; lo que ya*<br>*registraste pasa a tu cuenta* |
+
+### Mapa y Modo Horizontal
+
+| 21. Dónde gasto | 22. Inicio en horizontal | 23. MiGastoIA en horizontal |
+| :---: | :---: | :---: |
+| <img src="docs/screenshots/21-donde-gasto.png" width="160" alt="Dónde gasto"/> | <img src="docs/screenshots/22-inicio-horizontal.png" width="340" alt="Inicio en horizontal"/> | <img src="docs/screenshots/23-migastoia-horizontal.png" width="340" alt="MiGastoIA en horizontal"/> |
+| *Mapa de pagos con ubicación y*<br>*botón para centrarte* | *Tres zonas: balance, movimientos y*<br>*tarjetas; el detalle abre como panel* | *Preguntas sugeridas a un lado y*<br>*el chat con su caja de texto* |
 
 ---
 
 ## ⚡ Características Principales
 
+- **👤 Cuentas.** Se puede usar sin cuenta (**invitado**: todo queda en el teléfono) o con **Google** o **correo y contraseña** (Firebase Authentication), con pantalla propia de **crear cuenta** y de **recuperar contraseña**. Un invitado puede **vincular su cuenta** desde Perfil y lo que ya registró se queda con él. Al cerrar sesión, los datos de perfil que vinieron de la cuenta se limpian y los movimientos siguen en el teléfono. «Iniciar sesión con Apple» está listo en el código pero apagado hasta tener cuenta de Apple Developer de pago. Mientras se espera al servidor se muestra una capa de carga y los errores salen en español.
+- **🤖 MiGastoIA.** Asistente con Gemini que responde con tus gastos, límites y metas del mes: respuestas por *streaming*, hasta 10 consultas al día, y la conversación se guarda en el teléfono (últimos 100 mensajes). La clave va en el `.env`.
+- **🎯 Plan.** Límites por categoría (con aviso al pasarte) y una meta de ahorro.
+- **📈 Stats.** Gastos por categoría (dona o anillos), saldo proyectado a 30 días, comparación con el período anterior y detalle de cada categoría por quincena, mes, trimestre o semestre.
+- **🏪 Logos de comercios.** El ícono de cada movimiento es el logo de Rappi, Uber, Spotify, Netflix, etc. Se pide por internet **solo con el sitio web del comercio** (nunca montos ni datos tuyos), se guarda en caché y se puede apagar en Perfil > «Logos de comercios». Sin logo, se usa el ícono de la categoría.
+- **🗺️ Dónde gasto.** Mapa con los pagos que tienen ubicación y un botón para centrarlo en dónde estás.
+- **📱 Modo horizontal.** Inicio, Stats, Buscar, Plan, Perfil, MiGastoIA, el detalle de un movimiento, la bienvenida y el acceso se reorganizan en zonas; las hojas se vuelven paneles laterales o menús compactos.
+- **⌨️ Teclado.** Tocar un espacio vacío lo baja, aparece un botón para ocultarlo, y en MiGastoIA se esconde la barra de navegación al escribir y la conversación baja al último mensaje.
+- **🧪 Datos de ejemplo solo en depuración.** En una compilación de desarrollo se ven un sueldo, gastos, pagos próximos, límites y una meta de ejemplo (se apagan en Perfil). En *release* no existe nada de eso.
 - **💸 Gastos e ingresos.**
   - Los gastos se guardan solos. Los ingresos esperan tu confirmación y, si los ignoras, quedan en «Por confirmar».
   - En Ajustes puedes activar **Guardar ingresos automáticamente** (apagado por defecto).
@@ -84,45 +104,48 @@
 - **👁️ Ocultar y ver los montos.** El ojo de Resumen oculta el saldo, Ingresos, Gastos, el presupuesto y los montos de Movimientos, Reportes y el detalle (`S/ ••••`). Al volver a mostrarlos, el saldo sube contando desde 0. Se recuerda entre aperturas.
 - **📊 Resumen, Movimientos y Reportes.** Saldo del mes, presupuesto de gastos con estado en texto (empieza sin definir; lo eliges en Ajustes), filtros por tipo, fuente, categoría y monto, e ingresos frente a gastos por mes.
 - **📍 Ubicación opcional.** Se pide solo al tocar «Agregar ubicación» y con la app en uso. Muestra la dirección y un mapa de Google Maps; puedes quitarla de un movimiento o borrar todas.
-- **🍎 iPhone.** Acción de Atajos «Registrar movimiento» para Apple Pay y extensión para compartir capturas de Yape y Plin, con lectura de texto en el teléfono (Vision).
+- **🍎 iPhone.** Acción de Atajos **«Registrar pago de Wallet»** con un solo campo (la *Entrada de atajo* de la automatización de Wallet): MiGasto interpreta monto, comercio y tarjeta, y si no logra leer el monto guarda el pago como pendiente con el texto original. Acepta una **ubicación opcional** (la acción «Obtener ubicación actual») para ver el pago en el mapa. La guía dentro de la app trae un **tutorial en video** de 42 segundos. Además, extensión para compartir capturas de Yape y Plin, con lectura de texto en el teléfono (Vision).
 - **🔐 Datos cifrados.** SQLite con cifrado (SQLite3MultipleCiphers). La clave se genera en el teléfono y vive en el almacén seguro del sistema (Keychain en iPhone, Keystore en Android). Huella, rostro o PIN del teléfono para el bloqueo.
 - **💾 Respaldo cifrado.** Ajustes > Respaldo cifrado crea un archivo `.mgb` con tus movimientos (con ubicaciones y texto original), tu presupuesto, las categorías aprendidas, los nombres guardados y tus categorías propias, cifrado con **AES-256-GCM** y una clave derivada de tu contraseña con PBKDF2-SHA256 (210 000 vueltas). Lo compartes donde quieras (Drive, correo, tu computadora). MiGasto no guarda la contraseña: si la olvidas, el respaldo no se puede abrir. Ajustes > Restaurar un respaldo lo abre y **agrega lo que falta sin borrar nada** (los movimientos que ya están, por id, no se duplican). Una contraseña equivocada o un archivo alterado se detectan.
 - **📤 Exportar a CSV** (sin ubicaciones).
-- **🌗 Claro y oscuro** según el sistema. Tipografía Outfit, que la app descarga la primera vez que hay internet (sin conexión usa la del sistema).
+- **🌙 Interfaz oscura** (también con el teléfono en modo claro, con la barra de estado clara). Tipografía Inter, que la app descarga la primera vez que hay internet (sin conexión usa la del sistema).
 
 ---
 
 ## 🏗️ Arquitectura y Tecnologías
 
-Flutter 3.47 (Dart 3.13), Riverpod, GoRouter, Drift (SQLite cifrado), fl_chart, percent_indicator, google_maps_flutter, geolocator, geocoding, local_auth, flutter_svg, cryptography (respaldo), share_plus y file_picker. La detección en Android vive en la capa nativa (Kotlin) y Flutter es el **único que escribe en la base de datos**: lo nativo deja los pagos en una cola y Flutter la vacía.
+Flutter 3.47 (Dart 3.13), Riverpod, GoRouter, Drift (SQLite cifrado), fl_chart y Syncfusion Charts, liquid_glass_widgets (barra flotante), google_maps_flutter, geolocator, geocoding, local_auth, firebase_core, firebase_auth y google_sign_in (cuentas), cached_network_image (logos), video_player (tutorial), cryptography (respaldo), share_plus y file_picker. La detección en Android vive en la capa nativa (Kotlin) y Flutter es el **único que escribe en la base de datos**: lo nativo deja los pagos en una cola y Flutter la vacía.
 
 ```text
 MiGasto/
 ├── lib/
 │   ├── main.dart                      # Arranque, tema y rutas
-│   ├── core/                          # Tema (tokens y colores), navegación y configuración
+│   ├── core/                          # Tema, navegación, configuración (.env), diseño adaptable y widgets
 │   ├── data/
 │   │   ├── datasource/                # Base SQLite cifrada con Drift y su administrador
 │   │   ├── repositories/              # Repositorio de movimientos, alias y ajustes
-│   │   └── services/                  # Lector de pagos, clasificador, respaldo, ubicación
+│   │   └── services/                  # Lector de pagos, clasificador, respaldo, ubicación, cuentas, Gemini
 │   ├── domain/                        # Movimiento, categorías propias, alias, duplicados, avisos de ajuste
 │   ├── presentation/
-│   │   ├── dashboard/                 # Resumen (saldo, presupuesto, avisos)
+│   │   ├── dashboard/                 # Inicio (balance, próximos pagos, movimientos)
+│   │   ├── ai/ plan/ payments/        # MiGastoIA, límites y meta, pagos programados
+│   │   ├── auth/                      # Vincular cuenta y carga de acceso
 │   │   ├── expenses/                  # Movimientos, detalle, registro manual, categorías, mapa
 │   │   ├── reports/                   # Reportes por mes, año y rango
 │   │   ├── settings/                  # Ajustes, respaldo y restauración
-│   │   ├── onboarding/ lock/ setup/   # Bienvenida, bloqueo con huella o PIN, guía de Apple Pay
+│   │   ├── onboarding/ lock/ setup/   # Bienvenida, acceso, bloqueo con huella o PIN, guía y video de Apple Pay
 │   │   └── providers.dart             # Estado con Riverpod y puente con lo nativo
 │   └── shared/                        # Widgets (íconos, montos, filas), formato y CSV
 ├── assets/
 │   ├── reader_rules.json              # Qué es un pago (Yape, Plin, Wallet), compartido con Kotlin
 │   ├── category_rules.json            # Categorías por palabras clave, compartido con Kotlin
-│   └── brand/icon.svg                 # Logo
+│   ├── brand/icon.svg                 # Logo
+│   └── tutorial/apple_pay.mp4         # Video de la guía de Apple Pay
 ├── android/app/src/
 │   ├── main/kotlin/com/example/mi_gasto/   # Capa nativa de Android (ver abajo)
 │   └── test/                          # Pruebas JUnit del código nativo
 ├── ios/
-│   ├── Runner/                        # Atajos (Registrar movimiento) y cola por App Group
+│   ├── Runner/                        # Atajos (Registrar pago de Wallet) y cola por App Group
 │   ├── ShareExtension/                # Compartir capturas de Yape y Plin (lectura con Vision)
 │   └── WidgetExtension/               # Widget y control del Centro de control
 ├── test/                              # Pruebas de Flutter
@@ -163,17 +186,34 @@ cd MiGasto
 
 ### 2. Variables de entorno
 
-Copia `.env.example` a `.env` y completa tu clave de Google Maps. El `.env` no se sube al repositorio.
+Copia `.env.example` a `.env` y completa los valores. El `.env` no se sube al repositorio (tampoco `google-services.json`, `GoogleService-Info.plist` ni las firmas: ver `.gitignore`).
 
 ```bash
 cp .env.example .env
 ```
 
 ```env
-GOOGLE_MAPS_API_KEY=tu_clave_de_google_maps_aqui
+GOOGLE_MAPS_API_KEY=       # mapa de «Dónde gasto» y del detalle
+GEMINI_API_KEY=            # MiGastoIA
+
+# Firebase (cuentas): salen de google-services.json y GoogleService-Info.plist
+FIREBASE_PROJECT_ID=
+FIREBASE_MESSAGING_SENDER_ID=
+FIREBASE_STORAGE_BUCKET=
+FIREBASE_ANDROID_API_KEY=
+FIREBASE_ANDROID_APP_ID=
+FIREBASE_IOS_API_KEY=
+FIREBASE_IOS_APP_ID=
+FIREBASE_IOS_BUNDLE_ID=
+GOOGLE_WEB_CLIENT_ID=      # Google Sign-In en Android
+GOOGLE_IOS_CLIENT_ID=      # Google Sign-In en iPhone
+GOOGLE_REVERSED_CLIENT_ID= # esquema de retorno de Google en iPhone
 ```
 
-La clave también la leen Android (al compilar, desde `.env`) e iOS (por `xcconfig`). En Google Cloud conviene restringirla por app (ID de paquete y bundle ID) y a la API de Maps SDK. Sin clave la app funciona igual; solo el mapa del detalle no se muestra.
+- Los comentarios del `.env` usan `//` (Xcode también lee este archivo).
+- **Sin ninguna clave la app funciona igual**: sin las de Firebase solo hay modo invitado; sin la de Gemini MiGastoIA avisa que no está configurada; sin la de Maps el mapa no se muestra.
+- El `.env` se empaqueta como recurso de la app. Las claves de cliente de Firebase y de Maps no son secretas frente a quien tenga el APK: la protección real es **restringirlas en Google Cloud** (por ID de paquete o *bundle ID*, con la huella SHA-1 en Android, y por API). El identificador de la app es `com.migasto.co`.
+- Para Google en Android hay que registrar la huella **SHA-1** de la firma en Firebase (la de depuración sale con `cd android && ./gradlew signingReport`).
 
 ### 3. Instalar dependencias
 
@@ -200,6 +240,16 @@ flutter build apk --release
 adb install -r build/app/outputs/flutter-apk/app-release.apk
 ```
 
+El APK *release* no trae datos de ejemplo y lleva el permiso de internet (cuentas, MiGastoIA y logos). Sale firmado con la llave de depuración: sirve para probar, no para Google Play.
+
+### Compilar la versión *release* para iPhone
+
+```bash
+flutter build ios --release --no-codesign
+```
+
+Para instalarla en un iPhone físico se firma desde Xcode con tu equipo (`ios/Runner.xcworkspace`, *Signing & Capabilities*). Con una cuenta gratuita de Apple no se pueden firmar el widget, la extensión de compartir ni el grupo de app; hace falta una cuenta de Apple Developer de pago para la versión completa y para «Iniciar sesión con Apple».
+
 ---
 
 ## 🧪 Pruebas y Calidad de Código
@@ -211,7 +261,7 @@ flutter analyze
 flutter test
 ```
 
-Hay 118 pruebas: cifrado de la base, lector (gasto o ingreso, montos, textos que no son pagos, y los textos reales de la notificación y la constancia de Yape), categorías y categorías propias, duplicados, migración de datos antiguos, cola nativa (incluidos los botones del aviso), ventana de pago, guardado automático de ingresos, registro manual, ocultar montos, respaldo, ubicación y bloqueo.
+Hay 236 pruebas: cuentas (invitado, vincular, crear, recuperar), carga y errores de acceso, MiGastoIA y su conversación, logos de comercios, teclado, modo horizontal de las pantallas, mapa, Apple Pay y la acción de Atajos, además de cifrado de la base, lector (gasto o ingreso, montos, textos que no son pagos, y los textos reales de la notificación y la constancia de Yape), categorías y categorías propias, duplicados, migración de datos antiguos, cola nativa (incluidos los botones del aviso), ventana de pago, guardado automático de ingresos, registro manual, ocultar montos, respaldo, ubicación y bloqueo.
 
 ### 2. Pruebas nativas de Android (JUnit)
 
@@ -228,7 +278,7 @@ El resto de lo nativo (lector de reglas, servicio de notificaciones, accesibilid
 ### Estado de las pruebas
 
 ```text
-Flutter:  118 passed, 0 failed
+Flutter:  236 passed, 0 failed
 JUnit:      9 passed, 0 failed
 Análisis: sin problemas
 ```
@@ -243,7 +293,7 @@ Análisis: sin problemas
 - **Estado de la batería** (sin permiso extra): solo se consulta si la app está restringida y se abre su ficha de ajustes para que tú lo cambies.
 - **Notificaciones (Android 13 o más):** para avisarte de cada pago detectado cuando la ventana flotante no se puede ver.
 - **Vibración:** una vibración corta cuando aparece la ventana.
-- **Ubicación (solo en uso):** únicamente cuando tocas «Agregar ubicación».
+- **Ubicación (solo en uso, opcional):** se ofrece en la pantalla de permisos del inicio y se usa únicamente cuando tocas «Agregar ubicación» o el botón de mi ubicación del mapa. Nunca en segundo plano.
 
 La app explica qué lee y qué no antes de pedir cualquier permiso, y se puede usar solo con registro manual. Android puede marcar «Configuración restringida» al instalar fuera de Play Store: se permite desde Ajustes > Aplicaciones > MiGasto.
 
@@ -263,14 +313,15 @@ Para ver el flujo completo sin hacer un pago real, en una versión de **depuraci
 
 ## 🚧 Lo que todavía no hace
 
-- **iPhone:** Yape y Plin no se detectan solos (iOS no lo permite). Se registran compartiendo la captura de la constancia a MiGasto (el texto se lee en el teléfono) o con el botón +. Los pagos con Apple Pay en el POS se registran con la automatización Transacción de Atajos. Hay un widget y un control del Centro de control que abren el registro (`migasto://new`).
+- **iPhone:** Yape y Plin no se detectan solos (iOS no lo permite). Se registran compartiendo la captura de la constancia a MiGasto (el texto se lee en el teléfono) o con el botón +. Los pagos con Apple Pay en el POS se registran con una automatización de **Wallet** en Atajos (la guía de la app y su video explican cómo crearla). Hay un widget y un control del Centro de control que abren el registro (`migasto://new`).
 - **Validado con un teléfono real (Samsung, Yape):** pago recibido (notificación), yape enviado y pago de un servicio (constancia: la empresa es el nombre y cae en la categoría Servicios). **Sin validar:** Google Wallet y Plin dentro de las apps de BBVA, Interbank y Scotiabank; los nombres de paquete de esos bancos son suposiciones y el texto exacto de cada notificación falta confirmarlo (fase 0 del plan).
 - **Android:** en algunos teléfonos Samsung el servicio de Accesibilidad no recibe los avisos de notificación; por eso se usa el acceso a notificaciones.
 - **Respaldo:** es manual; no hay copia automática ni en la nube. Hay que acordarse de crearlo. En Android la copia automática de Google y la transferencia entre teléfonos están desactivadas a propósito (`allowBackup="false"`): la clave de la base no viaja, así que una copia restaurada no se podría abrir. Para pasar tus datos a otro teléfono usa el respaldo cifrado.
 - **Ventana flotante de Android:** todavía no ofrece tus categorías propias (solo las de siempre), y la app no aprende una categoría propia para los pagos futuros de un comercio (solo la aplica a los anteriores si lo pides).
-- **Ubicación automática al pagar** con Apple Pay (iPhone) y desde la ventana flotante de Android.
+- **Ubicación automática al pagar** desde la ventana flotante de Android. En iPhone se logra agregando «Obtener ubicación actual» al atajo.
+- **Iniciar sesión con Apple:** apagado hasta contar con una cuenta de Apple Developer de pago. Los datos no se sincronizan entre teléfonos: la cuenta identifica al usuario, pero los movimientos viven solo en el teléfono (el respaldo cifrado es la forma de pasarlos).
 
-Para publicar en las tiendas faltan además un identificador de app propio, la firma de *release* y la clave de Maps restringida; ver [`docs/publicacion.md`](docs/publicacion.md). La [política de privacidad](docs/politica-de-privacidad.md) explica qué datos usa la app.
+Para publicar en las tiendas faltan además la firma de *release* propia (el identificador `com.migasto.co` ya está definido) y las claves restringidas en Google Cloud; ver [`docs/publicacion.md`](docs/publicacion.md). La [política de privacidad](docs/politica-de-privacidad.md) explica qué datos usa la app.
 
 ---
 
