@@ -17,6 +17,7 @@ Future<CategoriaPropia?> showNewCategorySheet(
 ) {
   return showModalBottomSheet<CategoriaPropia>(
     context: context,
+    useRootNavigator: true,
     isScrollControlled: true,
     useSafeArea: true,
     builder: (_) => _NewCategorySheet(tipo: tipo),
