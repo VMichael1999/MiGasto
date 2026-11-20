@@ -29,7 +29,10 @@ enum _MovementFilter { todo, gastos, ingresos, pendientes }
 /// - Opciones avanzadas: filtro por categoría/fuente/rango, exportación a CSV y borrado masivo.
 /// - Botón flotante (`MgFab`) que abre `RegisterSheet`.
 class ExpensesScreen extends ConsumerStatefulWidget {
-  const ExpensesScreen({super.key});
+  const ExpensesScreen({super.key, this.autofocusSearch = false});
+
+  /// Abre la pantalla con el cursor en el buscador (lupa de Inicio).
+  final bool autofocusSearch;
 
   @override
   ConsumerState<ExpensesScreen> createState() => _ExpensesScreenState();
@@ -185,6 +188,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                                   Expanded(
                                     child: TextField(
                                       controller: _searchController,
+                                      autofocus: widget.autofocusSearch,
                                       onChanged: (val) =>
                                           setState(() => _searchQuery = val),
                                       style: const TextStyle(
@@ -464,21 +468,6 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                         ),
                 ),
               ],
-            ),
-
-            // Botón flotante (.fab)
-            Positioned(
-              right: 18,
-              bottom: 98,
-              child: MgFab(
-                onPressed: () {
-                  RegisterSheet.show(
-                    context: context,
-                    onSelectExpense: () => context.push('/new'),
-                    onSelectIncome: () => context.push('/new?type=ingreso'),
-                  );
-                },
-              ),
             ),
           ],
         ),

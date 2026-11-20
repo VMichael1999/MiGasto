@@ -51,8 +51,8 @@ class MgTabBar extends StatelessWidget {
       glowColor: Color(0xFF7C5CFF),
     ),
     GlassTab(
-      icon: Icon(Icons.person_outline_rounded, size: 20),
-      label: 'Perfil',
+      icon: Icon(Icons.search_rounded, size: 20),
+      label: 'Buscar',
       glowColor: Color(0xFF7C5CFF),
     ),
   ];

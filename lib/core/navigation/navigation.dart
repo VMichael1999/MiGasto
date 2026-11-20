@@ -77,6 +77,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/onboarding',
         builder: (context, state) => const OnboardingScreen(),
       ),
+      // Perfil: se abre desde el avatar de las cabeceras, no es una pestaña.
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const SettingsScreen(),
+      ),
       GoRoute(
         path: '/permisos',
         builder: (context, state) => const PermissionsScreen(),
@@ -160,20 +165,17 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/expenses',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: ExpensesScreen(),
+            pageBuilder: (context, state) => NoTransitionPage(
+              // /expenses?focus=1 (la lupa de Inicio) abre con el teclado listo.
+              child: ExpensesScreen(
+                autofocusSearch: state.uri.queryParameters['focus'] == '1',
+              ),
             ),
           ),
           GoRoute(
             path: '/reports',
             pageBuilder: (context, state) => const NoTransitionPage(
               child: ReportsScreen(),
-            ),
-          ),
-          GoRoute(
-            path: '/settings',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: SettingsScreen(),
             ),
           ),
         ],
@@ -200,9 +202,9 @@ class MainScaffoldWrapper extends ConsumerWidget {
       selectedIndex = 1;
     } else if (location.startsWith('/ai')) {
       selectedIndex = 2;
-    } else if (location.startsWith('/reports') || location.startsWith('/expenses')) {
+    } else if (location.startsWith('/reports')) {
       selectedIndex = 3;
-    } else if (location.startsWith('/settings')) {
+    } else if (location.startsWith('/expenses')) {
       selectedIndex = 4;
     }
 
@@ -229,7 +231,7 @@ class MainScaffoldWrapper extends ConsumerWidget {
                 } else if (index == 3) {
                   context.go('/reports');
                 } else if (index == 4) {
-                  context.go('/settings');
+                  context.go('/expenses');
                 }
               },
               onAddTap: () {
