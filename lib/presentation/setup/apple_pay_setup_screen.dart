@@ -130,7 +130,7 @@ class _ApplePaySetupScreenState extends ConsumerState<ApplePaySetupScreen> {
                                 children: [
                                   TextSpan(
                                     text: verified
-                                        ? 'Último pago registrado: ${DateFormat("d MMM, HH:mm", 'es').format(last.date)}. '
+                                        ? 'Último pago registrado: ${DateFormat("d MMM, HH:mm", 'es').format(last.date)}. Si fue una prueba con el atajo, paga una vez con Apple Pay para confirmar que corre solo. '
                                         : 'Cuando llegue tu primer pago registrado, marcaremos los pasos. ',
                                   ),
                                   const TextSpan(
@@ -156,12 +156,22 @@ class _ApplePaySetupScreenState extends ConsumerState<ApplePaySetupScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  FilledButton(onPressed: _openShortcuts, child: const Text('Abrir Atajos')),
-                  const SizedBox(height: 4),
-                  TextButton(
-                    onPressed: _later,
-                    child: Text(widget.fromOnboarding ? 'Lo hago después' : 'Cerrar'),
-                  ),
+                  if (verified) ...[
+                    // Ya llegó un pago: se puede seguir. Atajos queda a un toque por si hay que ajustar.
+                    FilledButton(
+                      onPressed: _later,
+                      child: Text(widget.fromOnboarding ? 'Continuar' : 'Listo'),
+                    ),
+                    const SizedBox(height: 4),
+                    TextButton(onPressed: _openShortcuts, child: const Text('Abrir Atajos')),
+                  ] else ...[
+                    FilledButton(onPressed: _openShortcuts, child: const Text('Abrir Atajos')),
+                    const SizedBox(height: 4),
+                    TextButton(
+                      onPressed: _later,
+                      child: Text(widget.fromOnboarding ? 'Lo hago después' : 'Cerrar'),
+                    ),
+                  ],
                 ],
               ),
             ),
