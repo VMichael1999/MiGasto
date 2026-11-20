@@ -749,6 +749,13 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
         : (safeToSpend - _amount);
     final pct = base > 0 ? (1.0 - (queda / base)).clamp(0.0, 1.0) : 1.0;
 
+    // Sin límite de la categoría ni presupuesto del mes no hay contra qué
+    // comparar: no se muestra nada (antes avisaba "Te pasas" sin límite).
+    if (!hasLimit && budget <= 0) return const SizedBox.shrink();
+    final overLabel = hasLimit
+        ? 'del límite de ${categoryLabel(_category).toLowerCase()}'
+        : 'del presupuesto del mes';
+
     final barColor = queda < 0
         ? MgColors.down
         : (pct > 0.8 ? MgColors.warn : MgColors.up);
@@ -768,7 +775,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
           // Texto descriptivo con aviso en rojo si se sobrepasa
           if (queda < 0)
             Text(
-              'Te pasas ${formatSoles(queda.abs())} del límite de ${categoryLabel(_category).toLowerCase()}.',
+              'Te pasas ${formatSoles(queda.abs())} $overLabel.',
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
