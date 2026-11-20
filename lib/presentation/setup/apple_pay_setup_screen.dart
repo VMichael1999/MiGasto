@@ -40,7 +40,7 @@ class _ApplePaySetupScreenState extends ConsumerState<ApplePaySetupScreen> {
   Future<void> _later() async {
     if (widget.fromOnboarding) {
       await ref.read(sharedPreferencesProvider).setBool('onboarding_complete', true);
-      if (mounted) context.go('/dashboard');
+      if (mounted) context.go('/login');
     } else {
       context.pop();
     }

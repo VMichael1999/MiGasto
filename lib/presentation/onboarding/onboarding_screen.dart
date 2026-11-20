@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/mg_colors.dart';
 import '../../core/widgets/charts.dart';
-import '../providers.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -38,23 +37,20 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     ),
   ];
 
-  void _onNext() async {
+  void _onNext() {
     if (_currentIndex < _slides.length - 1) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 380),
         curve: Curves.easeInOutCubic,
       );
     } else {
-      await _finish();
+      _finish();
     }
   }
 
-  Future<void> _finish() async {
-    await ref.read(sharedPreferencesProvider).setBool('onboarding_complete', true);
-    if (mounted) {
-      context.go('/login');
-    }
-  }
+  /// Las láminas terminan en el paso de privacidad y permisos; la bienvenida
+  /// se da por completa recién allí.
+  void _finish() => context.go('/permisos');
 
   @override
   void dispose() {

@@ -7,6 +7,7 @@ import '../../presentation/expenses/movement_detail_screen.dart';
 import '../../presentation/expenses/where_screen.dart';
 import '../../presentation/setup/apple_pay_setup_screen.dart';
 import '../../presentation/onboarding/onboarding_screen.dart';
+import '../../presentation/onboarding/permissions_screen.dart';
 import '../../presentation/onboarding/splash_screen.dart';
 import '../../presentation/onboarding/login_screen.dart';
 import '../../presentation/providers.dart';
@@ -51,7 +52,9 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // 1. Si no ha completado la bienvenida, debe ver el onboarding
       if (!onboardingComplete) {
-        return location == '/onboarding' ? null : '/onboarding';
+        // La bienvenida incluye el paso de permisos (y, en iPhone, la guía de Apple Pay).
+        const welcomeFlow = {'/onboarding', '/permisos', '/setup/apple-pay'};
+        return welcomeFlow.contains(location) ? null : '/onboarding';
       }
 
       // 2. Si completó bienvenida pero no ha iniciado sesión, forzar pantalla de login
@@ -74,6 +77,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/onboarding',
         builder: (context, state) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        path: '/permisos',
+        builder: (context, state) => const PermissionsScreen(),
       ),
       GoRoute(
         path: '/login',
