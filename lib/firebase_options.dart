@@ -1,36 +1,49 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
-/// Configuración de Firebase del proyecto `migasto-99dd5`.
-/// Son identificadores públicos de la app (no secretos): la protección está en
-/// las reglas y en las restricciones de la clave desde la consola de Firebase.
+import 'core/config/env.dart';
+
+/// Configuración de Firebase tomada del `.env` (ver `.env.example`).
+/// Si faltan los valores devuelve `null` y la app funciona solo como invitado.
 class DefaultFirebaseOptions {
-  static FirebaseOptions get currentPlatform {
+  static FirebaseOptions? get currentPlatform {
     switch (defaultTargetPlatform) {
       case TargetPlatform.iOS:
-        return ios;
+        return _build(
+          apiKey: Env.value('FIREBASE_IOS_API_KEY'),
+          appId: Env.value('FIREBASE_IOS_APP_ID'),
+          iosClientId: Env.value('GOOGLE_IOS_CLIENT_ID'),
+          iosBundleId: Env.value('FIREBASE_IOS_BUNDLE_ID'),
+        );
       case TargetPlatform.android:
-        return android;
+        return _build(
+          apiKey: Env.value('FIREBASE_ANDROID_API_KEY'),
+          appId: Env.value('FIREBASE_ANDROID_APP_ID'),
+        );
       default:
-        throw UnsupportedError('MiGasto solo corre en iPhone y Android.');
+        return null;
     }
   }
 
-  static const android = FirebaseOptions(
-    apiKey: 'AIzaSy-REDACTED',
-    appId: '1:000000000000:android:e622a66fb2af7fd2e831f1',
-    messagingSenderId: '000000000000',
-    projectId: 'migasto-99dd5',
-    storageBucket: 'migasto-99dd5.firebasestorage.app',
-  );
-
-  static const ios = FirebaseOptions(
-    apiKey: 'AIzaSy-REDACTED',
-    appId: '1:000000000000:ios:2a199125c74c79f5e831f1',
-    messagingSenderId: '000000000000',
-    projectId: 'migasto-99dd5',
-    storageBucket: 'migasto-99dd5.firebasestorage.app',
-    iosClientId: '000000000000-c9u4vs72al3n4ofn4mvlda1o1io1lp3t.apps.googleusercontent.com',
-    iosBundleId: 'com.migasto.co',
-  );
+  static FirebaseOptions? _build({
+    required String apiKey,
+    required String appId,
+    String iosClientId = '',
+    String iosBundleId = '',
+  }) {
+    final sender = Env.value('FIREBASE_MESSAGING_SENDER_ID');
+    final project = Env.value('FIREBASE_PROJECT_ID');
+    if (apiKey.isEmpty || appId.isEmpty || sender.isEmpty || project.isEmpty) return null;
+    return FirebaseOptions(
+      apiKey: apiKey,
+      appId: appId,
+      messagingSenderId: sender,
+      projectId: project,
+      storageBucket: Env.value('FIREBASE_STORAGE_BUCKET').isEmpty
+          ? null
+          : Env.value('FIREBASE_STORAGE_BUCKET'),
+      iosClientId: iosClientId.isEmpty ? null : iosClientId,
+      iosBundleId: iosBundleId.isEmpty ? null : iosBundleId,
+    );
+  }
 }

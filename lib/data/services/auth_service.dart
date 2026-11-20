@@ -3,7 +3,10 @@ import 'dart:math';
 
 import 'package:crypto/crypto.dart' as crypto;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
+
+import '../../core/config/env.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
@@ -37,14 +40,20 @@ abstract class AuthService {
   Future<void> signOut();
 }
 
-const _googleWebClientId =
-    '000000000000-cgq9bhqjdoepcdmgmpj3s9kh7lvven7t.apps.googleusercontent.com';
-const _googleIosClientId =
-    '000000000000-c9u4vs72al3n4ofn4mvlda1o1io1lp3t.apps.googleusercontent.com';
-
 class FirebaseAuthService implements AuthService {
-  FirebaseAuthService({FirebaseAuth? auth}) : _auth = auth ?? FirebaseAuth.instance;
-  final FirebaseAuth _auth;
+  FirebaseAuthService({FirebaseAuth? auth}) : _injected = auth;
+  final FirebaseAuth? _injected;
+
+  /// Firebase se inicia al arrancar solo si el `.env` trae su configuración.
+  FirebaseAuth get _auth {
+    if (_injected != null) return _injected;
+    if (Firebase.apps.isEmpty) {
+      throw const AuthException(
+        'Las cuentas no están disponibles en esta versión. Puedes seguir como invitado.',
+      );
+    }
+    return FirebaseAuth.instance;
+  }
   bool _googleReady = false;
 
   AuthAccount _map(User? u) {
@@ -99,8 +108,10 @@ class FirebaseAuthService implements AuthService {
         // En Android, Google exige el cliente web del proyecto (serverClientId);
         // en iPhone, el cliente de iOS.
         await GoogleSignIn.instance.initialize(
-          clientId: defaultTargetPlatform == TargetPlatform.iOS ? _googleIosClientId : null,
-          serverClientId: _googleWebClientId,
+          clientId: defaultTargetPlatform == TargetPlatform.iOS
+              ? _orNull(Env.value('GOOGLE_IOS_CLIENT_ID'))
+              : null,
+          serverClientId: _orNull(Env.value('GOOGLE_WEB_CLIENT_ID')),
         );
         _googleReady = true;
       }
@@ -151,6 +162,8 @@ class FirebaseAuthService implements AuthService {
     final r = Random.secure();
     return List.generate(length, (_) => chars[r.nextInt(chars.length)]).join();
   }
+
+  static String? _orNull(String v) => v.isEmpty ? null : v;
 
   static String _message(String code) => switch (code) {
         'invalid-email' => 'El correo no es válido.',

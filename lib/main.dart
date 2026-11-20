@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
+import 'core/config/env.dart';
 import 'core/theme/theme.dart';
 import 'firebase_options.dart';
 import 'core/navigation/navigation.dart';
@@ -19,9 +20,11 @@ void main() async {
     await LiquidGlassWidgets.initialize();
   } catch (_) {}
   
-  // Sin conexión o sin configuración la app sigue funcionando como invitado.
+  // Sin claves en el .env, sin conexión o con cualquier fallo, la app sigue como invitado.
   try {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    await Env.load();
+    final options = DefaultFirebaseOptions.currentPlatform;
+    if (options != null) await Firebase.initializeApp(options: options);
   } catch (_) {}
 
   // Initialize local Spanish formatting
