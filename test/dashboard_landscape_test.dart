@@ -6,6 +6,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:mi_gasto/core/theme/theme.dart';
 import 'package:mi_gasto/domain/entities/movimiento.dart';
 import 'package:mi_gasto/presentation/dashboard/dashboard_screen.dart';
+import 'package:mi_gasto/presentation/dashboard/movement_detail_panel.dart';
 import 'package:mi_gasto/presentation/plan/plan_providers.dart';
 import 'package:mi_gasto/presentation/providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -99,5 +100,37 @@ void main() {
     expect(find.text('Balance disponible'), findsOneWidget);
     expect(find.text('Presupuestos'), findsNothing);
     expect(find.text('Saldo a 30 días'), findsNothing);
+  });
+
+  testWidgets('horizontal: el detalle de un movimiento cubre solo las columnas de la derecha y se cierra deslizando', (tester) async {
+    final now = DateTime.now().subtract(const Duration(minutes: 1));
+    await open(tester, const Size(844, 390), [_m('a', 120, now)]);
+
+    // La tarjeta del panel (el deslizamiento se aplica a ella, no al hueco que ocupa).
+    final panelSurface = find
+        .descendant(of: find.byType(MovementDetailPanel), matching: find.byType(Material))
+        .first;
+
+    // Cerrado: el panel está fuera de la pantalla.
+    expect(find.text('Comercio a'), findsOneWidget);
+    expect(find.byType(MovementDetailPanel), findsOneWidget);
+    expect(tester.getTopLeft(panelSurface).dx, greaterThan(800));
+
+    await tester.tap(find.text('Comercio a'));
+    await tester.pumpAndSettle();
+
+    // Abierto: ocupa los dos tercios de la derecha y deja a la vista la columna de Inicio.
+    final panel = tester.getRect(panelSurface);
+    expect(panel.left, closeTo(844 / 3, 2));
+    expect(panel.right, closeTo(844, 2));
+    expect(find.text('Balance disponible'), findsOneWidget);
+    expect(tester.getRect(find.text('Balance disponible')).right, lessThan(panel.left));
+    expect(find.text('Detalle'), findsOneWidget);
+
+    // Deslizar hacia la derecha lo cierra y todo vuelve a como estaba.
+    await tester.fling(find.text('Detalle'), const Offset(400, 0), 1500);
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(panelSurface).dx, greaterThan(800));
+    expect(find.text('Movimientos'), findsOneWidget);
   });
 }

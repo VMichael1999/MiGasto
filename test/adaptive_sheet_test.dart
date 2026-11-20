@@ -28,7 +28,7 @@ void main() {
   const landscape = Size(844, 390);
 
   // La tarjeta de la hoja: el primer Material dentro del contenedor horizontal.
-  final _card = find.descendant(of: find.byType(LandscapeSheet), matching: find.byType(Material)).first;
+  final sheetCard = find.descendant(of: find.byType(LandscapeSheet), matching: find.byType(Material)).first;
 
   testWidgets('horizontal: la hoja es un panel pegado a la derecha, de todo el alto', (tester) async {
     await host(tester, landscape, (context) => () {
@@ -40,7 +40,7 @@ void main() {
     await tester.tap(find.text('abrir'));
     await tester.pumpAndSettle();
 
-    final rect = tester.getRect(_card);
+    final rect = tester.getRect(sheetCard);
     expect(rect.right, 844);
     expect(rect.height, 390);
     expect(rect.width, inInclusiveRange(340, 440));
@@ -71,7 +71,7 @@ void main() {
     final ingreso = tester.getRect(find.text('Ingreso'));
     expect((gasto.center.dy - ingreso.center.dy).abs(), lessThan(6)); // misma fila
     expect(ingreso.left, greaterThan(gasto.right));
-    final card = tester.getRect(_card);
+    final card = tester.getRect(sheetCard);
     expect(card.height, lessThan(140)); // compacto (con la tipografía de prueba, más ancha, el subtítulo baja a 2 líneas)
     expect(card.bottom, lessThan(390));
   });
@@ -83,7 +83,7 @@ void main() {
     await tester.tap(find.text('abrir'));
     await tester.pumpAndSettle();
 
-    final card = tester.getRect(_card);
+    final card = tester.getRect(sheetCard);
     expect(card.width, lessThanOrEqualTo(400));
     expect((card.center.dx - 422).abs(), lessThan(2));
     expect(find.text('¿Eliminar?'), findsOneWidget);

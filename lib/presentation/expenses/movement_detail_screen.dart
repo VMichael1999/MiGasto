@@ -36,9 +36,13 @@ void showExpenseDetailSheet(BuildContext context, WidgetRef ref, Movimiento movi
 /// - Barra fija inferior (.mv-dock): botones "Comparar" y "Editar".
 /// - Acción de eliminar destructiva con confirmación modal (`ConfirmSheet`).
 class MovementDetailScreen extends ConsumerStatefulWidget {
-  const MovementDetailScreen({super.key, required this.id});
+  const MovementDetailScreen({super.key, required this.id, this.onClose});
 
   final String id;
+
+  /// Si el detalle se muestra incrustado (p. ej. como panel sobre Inicio en
+  /// horizontal), esto lo cierra en lugar de salir de la pantalla.
+  final VoidCallback? onClose;
 
   @override
   ConsumerState<MovementDetailScreen> createState() => _MovementDetailScreenState();
@@ -46,6 +50,15 @@ class MovementDetailScreen extends ConsumerStatefulWidget {
 
 class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
   bool _locating = false;
+
+  void _close() {
+    final onClose = widget.onClose;
+    if (onClose != null) {
+      onClose();
+    } else {
+      context.pop();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -583,7 +596,7 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => context.pop(),
+        onTap: _close,
         borderRadius: BorderRadius.circular(19),
         child: Container(
           width: 38,
@@ -951,7 +964,7 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
     final notifier = ref.read(expensesStateProvider.notifier);
     await notifier.deleteExpense(m.id);
     if (!context.mounted) return;
-    context.pop();
+    _close();
     MgToast.show(
       context,
       message: '${kind[0].toUpperCase()}${kind.substring(1)} eliminado',

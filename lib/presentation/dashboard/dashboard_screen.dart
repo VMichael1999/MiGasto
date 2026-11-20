@@ -18,6 +18,7 @@ import '../expenses/expense_detail_dialog.dart';
 import '../payments/scheduled_payments_providers.dart';
 import '../plan/plan_providers.dart';
 import 'dashboard_side_cards.dart';
+import 'movement_detail_panel.dart';
 import '../providers.dart';
 import '../../core/layout/landscape_pane.dart';
 import '../../core/layout/adaptive.dart';
@@ -44,6 +45,18 @@ class DashboardScreen extends ConsumerStatefulWidget {
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   bool _safeOpen = true;
+
+  /// Movimiento abierto en el panel de detalle (solo horizontal) y el último
+  /// que se abrió, para que el panel conserve su contenido mientras se cierra.
+  String? _openId;
+  String? _lastOpenId;
+
+  void _openDetail(Movimiento m) => setState(() {
+        _openId = m.id;
+        _lastOpenId = m.id;
+      });
+
+  void _closeDetail() => setState(() => _openId = null);
 
   @override
   Widget build(BuildContext context) {
@@ -141,10 +154,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       count: confirmedMonth.length,
       onSearchTap: () => context.go('/expenses?focus=1'),
     );
+    final landscape = context.isLandscapePhone;
     final movementsList = _MovementsGroupedList(
       movements: confirmedMonth,
       hidden: hidden,
+      // En horizontal el detalle se abre como panel sobre las columnas de la derecha.
+      onOpen: landscape ? _openDetail : null,
     );
+    // Al volver a vertical no se queda un panel abierto escondido.
+    if (!landscape && _openId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _openId != null) setState(() => _openId = null);
+      });
+    }
 
     // Teléfono girado: tres columnas con scroll propio.
     if (context.isLandscapePhone) {
@@ -161,11 +183,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             padding: padding.copyWith(bottom: bottom),
             children: children,
           );
-      return Scaffold(
-        backgroundColor: MgColors.bg,
-        body: SafeArea(
-          bottom: false,
-          child: Row(
+      return PopScope(
+        // El gesto o botón de atrás cierra primero el panel de detalle.
+        canPop: _openId == null,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) _closeDetail();
+        },
+        child: Scaffold(
+          backgroundColor: MgColors.bg,
+          body: SafeArea(
+            bottom: false,
+            child: LayoutBuilder(
+              builder: (context, constraints) => Stack(
+                children: [
+                  Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               column([header, balanceCard, safeCard, ...banners]),
@@ -196,6 +227,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 padding: const EdgeInsets.fromLTRB(6, 14, 18, 0),
               ),
             ],
+          ),
+                  // Detalle de un movimiento: cubre las dos columnas de la derecha.
+                  Positioned(
+                    top: 0,
+                    bottom: 0,
+                    right: 0,
+                    width: constraints.maxWidth * 2 / 3,
+                    child: MovementDetailPanel(
+                      movementId: _lastOpenId,
+                      open: _openId != null,
+                      onClose: _closeDetail,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       );
@@ -1031,10 +1078,15 @@ class _MovementsGroupedList extends ConsumerWidget {
   const _MovementsGroupedList({
     required this.movements,
     required this.hidden,
+    this.onOpen,
   });
 
   final List<Movimiento> movements;
   final bool hidden;
+
+  /// Si se da, el detalle se abre aquí (panel sobre las columnas de la derecha)
+  /// en lugar de empujar una pantalla nueva.
+  final void Function(Movimiento)? onOpen;
 
   String _formatDayLabel(DateTime date, DateTime now) {
     if (date.year == now.year && date.month == now.month && date.day == now.day) {
@@ -1208,7 +1260,9 @@ class _MovementsGroupedList extends ConsumerWidget {
                   name: displayName(m.merchant, aliases),
                   isRecurring: _isRecurring(m),
                   hidden: hidden,
-                  onTap: () => showExpenseDetailSheet(context, ref, m),
+                  onTap: () => onOpen != null
+                      ? onOpen!(m)
+                      : showExpenseDetailSheet(context, ref, m),
                 ),
               ),
             ),
