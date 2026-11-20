@@ -51,97 +51,101 @@ class CategorySheet extends StatelessWidget {
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.78,
       ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 38,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: MgColors.line,
-                  borderRadius: BorderRadius.circular(2),
+      // Material propio: los ListTile pintan tinta y fondo sobre el Material más cercano.
+      child: Material(
+        color: Colors.transparent,
+        child: SafeArea(
+          top: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 38,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: MgColors.line,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Categoría',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: MgColors.ink,
-                letterSpacing: -0.3,
-              ),
-            ),
-            const SizedBox(height: 14),
-            // Frecuentes
-            const Text(
-              'Frecuentes',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: MgColors.ink2,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 10),
-            GridView.count(
-              crossAxisCount: 4,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-              childAspectRatio: 0.9,
-              children: [
-                for (final cat in frecuentes)
-                  _buildFrecuenteTile(cat),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Todas las categorías',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: MgColors.ink2,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Expanded(
-              child: ListView.separated(
-                itemCount: categories.length,
-                separatorBuilder: (_, _) => const Divider(
-                  color: MgColors.line,
-                  height: 1,
+              const SizedBox(height: 16),
+              const Text(
+                'Categoría',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: MgColors.ink,
+                  letterSpacing: -0.3,
                 ),
-                itemBuilder: (context, index) {
-                  final cat = categories[index];
-                  final isCurrent = cat == selected;
-
-                  return ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                    leading: CategoryIcon(category: cat, size: 36, iconSize: 18),
-                    title: Text(
-                      categoryLabel(cat),
-                      style: TextStyle(
-                        fontSize: 14.5,
-                        fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w500,
-                        color: isCurrent ? MgColors.acc2 : MgColors.ink,
+              ),
+              const SizedBox(height: 14),
+              // Frecuentes
+              const Text(
+                'Frecuentes',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: MgColors.ink2,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 10),
+              GridView.count(
+                crossAxisCount: 4,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                childAspectRatio: 0.9,
+                children: [
+                  for (final cat in frecuentes)
+                    _buildFrecuenteTile(cat),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Todas las categorías',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: MgColors.ink2,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Expanded(
+                child: ListView.separated(
+                  itemCount: categories.length,
+                  separatorBuilder: (_, _) => const Divider(
+                    color: MgColors.line,
+                    height: 1,
+                  ),
+                  itemBuilder: (context, index) {
+                    final cat = categories[index];
+                    final isCurrent = cat == selected;
+  
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      leading: CategoryIcon(category: cat, size: 36, iconSize: 18),
+                      title: Text(
+                        categoryLabel(cat),
+                        style: TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w500,
+                          color: isCurrent ? MgColors.acc2 : MgColors.ink,
+                        ),
                       ),
-                    ),
-                    trailing: isCurrent
-                        ? const Icon(Icons.check, color: MgColors.acc, size: 20)
-                        : null,
-                    onTap: () => onSelected(cat),
-                  );
-                },
+                      trailing: isCurrent
+                          ? const Icon(Icons.check, color: MgColors.acc, size: 20)
+                          : null,
+                      onTap: () => onSelected(cat),
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
