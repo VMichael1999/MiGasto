@@ -24,6 +24,7 @@ import '../../shared/profile.dart';
 import '../../shared/widgets/custom_icons.dart';
 import '../lock/lock_gate.dart';
 import '../providers.dart';
+import '../../core/layout/adaptive.dart';
 import '../../shared/dispose_later.dart';
 import 'widgets/connected_accounts_sheet.dart';
 
@@ -90,40 +91,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
 
     final catCount = Categoria.gastos.length + ref.watch(customCategoriesProvider).length;
 
-    return Scaffold(
-      backgroundColor: MgColors.bg,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 1. Barra de navegación (.nav)
-              _buildTopNav(context),
-
-              // 2. Tarjeta de usuario (.pf-card)
-              _buildUserCard(context),
-
-              // 4. Grupo: Cuenta (.grp)
-              _buildAccountGroup(context, catCount),
-
-              // 5. Grupo: Datos y seguridad (.grp)
-              _buildDataSecurityGroup(context, budget, lockOn),
-
-              // 6. Grupo Android (si aplica)
-              if (_isAndroid) ...[
-                _buildAndroidGroup(context, permissions),
-              ],
-
-              // 7. Botón Cerrar sesión AL FINAL
-              const SizedBox(height: 22),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: _buildLogoutCard(context),
-              ),
-
-              // Mensaje de privacidad
-              Padding(
+    final privacyNote = Padding(
                 padding: const EdgeInsets.fromLTRB(22, 22, 22, 0),
                 child: Column(
                   children: const [
@@ -147,16 +115,72 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                     ),
                   ],
                 ),
+              );
+    // Solo en compilaciones de desarrollo.
+    final debugSimulator = kDebugMode
+        ? Padding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
+            child: _simulator(context),
+          )
+        : null;
+    final topNav = _buildTopNav(context);
+    final userCard = _buildUserCard(context);
+    final accountGroup = _buildAccountGroup(context, catCount);
+    final dataGroup = _buildDataSecurityGroup(context, budget, lockOn);
+    final androidGroup = _isAndroid ? _buildAndroidGroup(context, permissions) : null;
+    final logout = Padding(
+      padding: const EdgeInsets.fromLTRB(18, 22, 18, 0),
+      child: _buildLogoutCard(context),
+    );
+
+    // Teléfono girado: perfil, cuenta y cierre de sesión a la izquierda; datos,
+    // seguridad y permisos a la derecha.
+    if (context.isLandscapePhone) {
+      Widget side(List<Widget> children) => Expanded(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.only(bottom: 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: children,
               ),
+            ),
+          );
+      return Scaffold(
+        backgroundColor: MgColors.bg,
+        body: SafeArea(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              side([topNav, userCard, accountGroup, logout]),
+              side([
+                dataGroup,
+                ?androidGroup,
+                privacyNote,
+                ?debugSimulator,
+              ]),
+            ],
+          ),
+        ),
+      );
+    }
 
-              if (kDebugMode) ...[
-                const SizedBox(height: 18),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 18),
-                  child: _simulator(context),
-                ),
-              ],
-
+    return Scaffold(
+      backgroundColor: MgColors.bg,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              topNav,
+              userCard,
+              accountGroup,
+              dataGroup,
+              ?androidGroup,
+              logout,
+              privacyNote,
+              ?debugSimulator,
               const SizedBox(height: 32),
             ],
           ),
