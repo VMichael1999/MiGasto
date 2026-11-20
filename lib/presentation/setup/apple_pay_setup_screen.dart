@@ -122,6 +122,10 @@ class _ApplePaySetupScreenState extends ConsumerState<ApplePaySetupScreen> {
                     const SizedBox(height: 14),
                     _step(context, 3, 'Actívala sin confirmación',
                         'Deja "Automatización" activada y "Notificar" apagado. Así se registra aunque no abras la app', verified),
+                    const SizedBox(height: 14),
+                    _step(context, 4, 'Opcional: guarda dónde pagaste',
+                        'En el atajo, antes de "Registrar pago de Wallet" agrega "Obtener ubicación actual" y ponla en el campo Ubicación. Así el pago aparece en el mapa de "Dónde gasto"',
+                        last?.tieneUbicacion ?? false),
                     const SizedBox(height: 20),
                     Container(
                       padding: const EdgeInsets.all(12),

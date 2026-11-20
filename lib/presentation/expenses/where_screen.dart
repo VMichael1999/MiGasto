@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../core/config/env.dart';
+import '../../core/widgets/mg_toast.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../domain/aliases.dart';
 import '../../domain/entities/movimiento.dart';
@@ -46,6 +47,24 @@ class WhereScreen extends ConsumerStatefulWidget {
 class _WhereScreenState extends ConsumerState<WhereScreen> {
   _Period _period = _Period.week;
   GoogleMapController? _map;
+  bool _locating = false;
+  bool _showMyLocation = false;
+
+  /// Centra el mapa en donde está el usuario ahora. Pide el permiso solo al tocar el botón.
+  Future<void> _centerOnMe() async {
+    if (_locating) return;
+    setState(() => _locating = true);
+    final result = await ref.read(locationServiceProvider).captureCurrent();
+    if (!mounted) return;
+    setState(() => _locating = false);
+    final loc = result.location;
+    if (loc == null) {
+      MgToast.show(context, message: result.message);
+      return;
+    }
+    setState(() => _showMyLocation = true);
+    await _map?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(loc.latitude, loc.longitude), 15.5));
+  }
 
   bool _inPeriod(DateTime d) {
     final now = DateTime.now();
@@ -127,6 +146,7 @@ class _WhereScreenState extends ConsumerState<WhereScreen> {
                           },
                           zoomControlsEnabled: false,
                           mapToolbarEnabled: false,
+                          myLocationEnabled: _showMyLocation,
                           myLocationButtonEnabled: false,
                         )
                       : ColoredBox(
@@ -144,6 +164,36 @@ class _WhereScreenState extends ConsumerState<WhereScreen> {
                             ),
                           ),
                         ),
+                ),
+                // Botón para centrar el mapa en mi ubicación.
+                Positioned(
+                  right: 14,
+                  bottom: 22,
+                  child: Tooltip(
+                    message: 'Mi ubicación',
+                    child: Material(
+                      color: scheme.surface,
+                      elevation: 3,
+                      borderRadius: BorderRadius.circular(AppRadius.field),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(AppRadius.field),
+                        onTap: _centerOnMe,
+                        child: SizedBox(
+                          width: AppSizes.iconButton + 6,
+                          height: AppSizes.iconButton + 6,
+                          child: Center(
+                            child: _locating
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : Icon(Icons.my_location_rounded, color: scheme.onSurface),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
                 Positioned(
                   top: 0,

@@ -1,4 +1,5 @@
 import AppIntents
+import CoreLocation
 import Foundation
 import UserNotifications
 
@@ -117,8 +118,13 @@ struct RegistrarPagoWalletIntent: AppIntent {
     @Parameter(title: "Pago", description: "La «Entrada de atajo» de la automatización de Wallet")
     var pago: String
 
+    @Parameter(title: "Ubicación", description: "Opcional: la acción «Obtener ubicación actual», para ver dónde pagaste en el mapa")
+    var ubicacion: CLPlacemark?
+
     static var parameterSummary: some ParameterSummary {
-        Summary("Registrar pago de Wallet \(\.$pago)")
+        Summary("Registrar pago de Wallet \(\.$pago)") {
+            \.$ubicacion
+        }
     }
 
     func perform() async throws -> some IntentResult {
@@ -140,6 +146,17 @@ struct RegistrarPagoWalletIntent: AppIntent {
             "at": Int(Date().timeIntervalSince1970 * 1000),
         ]
         if let card = parsed.card, !card.isEmpty { item["card"] = card }
+        if let coordinate = ubicacion?.location?.coordinate, CLLocationCoordinate2DIsValid(coordinate) {
+            item["latitude"] = coordinate.latitude
+            item["longitude"] = coordinate.longitude
+            if let accuracy = ubicacion?.location?.horizontalAccuracy, accuracy >= 0 { item["accuracy"] = accuracy }
+            // Dirección legible, la que Atajos ya resolvió (calle y zona).
+            let street = [ubicacion?.thoroughfare, ubicacion?.subThoroughfare]
+                .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " ")
+            let zone = ubicacion?.subLocality ?? ubicacion?.locality
+            let place = [street, zone ?? ""].filter { !$0.isEmpty }.joined(separator: ", ")
+            if !place.isEmpty { item["place"] = place }
+        }
         SharedQueue.enqueue(item)
         return .result()
     }
