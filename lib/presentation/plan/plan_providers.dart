@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/entities/movimiento.dart';
+import '../../data/debug_mock_data.dart';
 import '../providers.dart';
 
 /// Modelo de límite por categoría para la capa de presentación (Sección 4.7 del prompt y prototipo HTML).
@@ -27,6 +28,22 @@ class CategoryLimitItem {
   }
 }
 
+/// Planes de ejemplo para ver la pantalla Plan con datos (solo debug, en memoria).
+const debugMockLimits = [
+  CategoryLimitItem(category: Categoria.alimentacion, limit: 1200),
+  CategoryLimitItem(category: Categoria.compras, limit: 900),
+  CategoryLimitItem(category: Categoria.transporte, limit: 400),
+  CategoryLimitItem(category: Categoria.servicios, limit: 3000),
+  CategoryLimitItem(category: Categoria.entretenimiento, limit: 250),
+  CategoryLimitItem(category: Categoria.otros, limit: 2000),
+];
+
+const debugMockSavingsGoal = SavingsGoal(
+  title: 'Viaje a Cusco',
+  current: 3200,
+  target: 6000,
+);
+
 const _keyCategoryLimits = 'migasto_category_limits';
 const _keySavingsGoal = 'migasto_savings_goal';
 
@@ -39,7 +56,8 @@ class CategoryLimitsNotifier extends StateNotifier<List<CategoryLimitItem>> {
 
   static List<CategoryLimitItem> _load(SharedPreferences prefs) {
     final raw = prefs.getString(_keyCategoryLimits);
-    if (raw == null) return const [];
+    // Solo en debug y mientras el usuario no haya guardado nada propio.
+    if (raw == null) return debugMockEnabled(prefs) ? debugMockLimits : const [];
     try {
       final list = jsonDecode(raw) as List<dynamic>;
       return [
@@ -108,7 +126,8 @@ class SavingsGoalNotifier extends StateNotifier<SavingsGoal?> {
 
   static SavingsGoal? _load(SharedPreferences prefs) {
     final raw = prefs.getString(_keySavingsGoal);
-    if (raw == null) return null;
+    // Solo en debug y mientras el usuario no haya guardado nada propio.
+    if (raw == null) return debugMockEnabled(prefs) ? debugMockSavingsGoal : null;
     try {
       final m = jsonDecode(raw) as Map<String, dynamic>;
       return SavingsGoal(
