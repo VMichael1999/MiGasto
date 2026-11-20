@@ -135,6 +135,41 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       );
     }).toList();
 
+    final topBar = _buildTopBar(context, isHide);
+    final monthNav = _buildMonthNav();
+    final miniCards = _buildMiniCards(topDay, vsPeriodoText, vsPeriodoColor);
+    final categoryCard =
+        _buildCategoryCard(context, segments, catList, totalPorCategorias, isHide);
+    final incomeVsExpense = _buildIncomeVsExpenseCard(allMovs);
+
+    // Teléfono girado: gastos por categoría a la izquierda y el resto a la
+    // derecha, cada lado con su propio scroll.
+    if (context.isLandscapePhone) {
+      final bottom = context.tabBarClearance(160);
+      Widget side(List<Widget> children) => Expanded(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: EdgeInsets.only(bottom: bottom),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: children,
+              ),
+            ),
+          );
+      return Scaffold(
+        backgroundColor: MgColors.bg,
+        body: SafeArea(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              side([topBar, monthNav, categoryCard]),
+              side([miniCards, incomeVsExpense]),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: MgColors.bg,
       body: SafeArea(
@@ -144,19 +179,19 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Cabecera superior idéntica a inicio y plan
-              _buildTopBar(context, isHide),
+              topBar,
 
               // Selector de mes (.mnav)
-              _buildMonthNav(),
+              monthNav,
 
               // Mini cards (.mini)
-              _buildMiniCards(topDay, vsPeriodoText, vsPeriodoColor),
+              miniCards,
 
               // Tarjeta 1: Gastos por categoría
-              _buildCategoryCard(context, segments, catList, totalPorCategorias, isHide),
+              categoryCard,
 
               // Tarjeta 2: Ingresos vs gastos (6 meses)
-              _buildIncomeVsExpenseCard(allMovs),
+              incomeVsExpense,
 
               SizedBox(height: context.tabBarClearance(160)),
             ],
