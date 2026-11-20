@@ -748,7 +748,7 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
     var remember = m.esGasto;
     final propias = ref.read(customCategoriesProvider).where((c) => c.tipo == m.tipo).toList();
 
-    showModalBottomSheet(
+    showAdaptiveSheet(
       context: context,
       useRootNavigator: true,
       backgroundColor: Colors.transparent,
@@ -864,7 +864,7 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
     final notes = TextEditingController(
         text: m.notes == 'Registro manual' ? '' : m.notes);
 
-    showModalBottomSheet(
+    showAdaptiveSheet(
       context: context,
       useRootNavigator: true,
       backgroundColor: Colors.transparent,

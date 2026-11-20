@@ -185,7 +185,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
   }
 
   Future<void> _pickSource() async {
-    final picked = await showModalBottomSheet<PaymentSource>(
+    final picked = await showAdaptiveSheet<PaymentSource>(
       context: context,
       useRootNavigator: true,
       backgroundColor: MgColors.card,

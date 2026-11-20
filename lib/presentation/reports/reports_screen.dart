@@ -17,6 +17,7 @@ import '../../domain/balance_projection.dart';
 import '../../domain/balance_summary.dart';
 import '../dashboard/dashboard_side_cards.dart';
 import '../../core/layout/adaptive.dart';
+import '../../core/widgets/adaptive_sheet.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
@@ -872,7 +873,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     double total,
     bool isHide,
   ) {
-    showModalBottomSheet(
+    showAdaptiveSheet(
       context: context,
       useRootNavigator: true,
       backgroundColor: Colors.transparent,

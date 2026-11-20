@@ -272,7 +272,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         );
 
-    showModalBottomSheet<void>(
+    showAdaptiveSheet<void>(
       context: context,
       // Por encima de la barra de pestañas flotante.
       useRootNavigator: true,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/layout/adaptive.dart';
 import '../../core/theme/mg_colors.dart';
 import '../../core/widgets/category_sheet.dart';
 import '../../core/widgets/mg_sheet.dart';
@@ -40,7 +41,11 @@ class ScheduledPaymentsSheet extends ConsumerWidget {
     final now = DateTime.now();
 
     return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.7),
+      constraints: BoxConstraints(
+        maxHeight: context.isLandscapePhone
+            ? MediaQuery.sizeOf(context).height - 70
+            : MediaQuery.sizeOf(context).height * 0.7,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,

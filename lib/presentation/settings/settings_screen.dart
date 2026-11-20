@@ -27,6 +27,7 @@ import '../lock/lock_gate.dart';
 import '../providers.dart';
 import '../../core/layout/landscape_pane.dart';
 import '../../core/layout/adaptive.dart';
+import '../../core/widgets/adaptive_sheet.dart';
 import '../../shared/dispose_later.dart';
 import '../payments/scheduled_payments_providers.dart';
 import '../plan/plan_providers.dart';
@@ -715,7 +716,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   }
 
   void _showCustomCategories(BuildContext context) {
-    showModalBottomSheet<void>(
+    showAdaptiveSheet<void>(
       context: context,
       useRootNavigator: true,
       backgroundColor: Colors.transparent,

@@ -1,3 +1,4 @@
+import '../../core/widgets/adaptive_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -15,7 +16,7 @@ Future<CategoriaPropia?> showNewCategorySheet(
   WidgetRef ref,
   TipoMovimiento tipo,
 ) {
-  return showModalBottomSheet<CategoriaPropia>(
+  return showAdaptiveSheet<CategoriaPropia>(
     context: context,
     useRootNavigator: true,
     isScrollControlled: true,

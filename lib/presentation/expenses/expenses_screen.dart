@@ -705,7 +705,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     final categories = Categoria.values.toList();
     final propias = ref.read(customCategoriesProvider);
 
-    showModalBottomSheet(
+    showAdaptiveSheet(
       context: context,
       useRootNavigator: true,
       backgroundColor: Colors.transparent,
