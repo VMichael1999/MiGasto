@@ -455,7 +455,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
             final confirm = await ConfirmSheet.show(
               context,
               title: '¿Cerrar sesión?',
-              message: 'Tendrás que volver a iniciar sesión para acceder a tus movimientos.',
+              message: ref.read(isGuestProvider)
+                  ? 'Volverás a la pantalla de inicio. Tus datos siguen guardados en este teléfono.'
+                  : 'Tendrás que volver a iniciar sesión para acceder a tus movimientos.',
               confirmLabel: 'Cerrar sesión',
               isDestructive: true,
               icon: Icons.logout_rounded,
@@ -653,13 +655,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
               autofocus: true,
               textCapitalization: TextCapitalization.words,
               style: const TextStyle(color: MgColors.ink),
-              decoration: const InputDecoration(hintText: 'Nombre'),
+              decoration: const InputDecoration(labelText: 'Nombre'),
             ),
+            const SizedBox(height: 14),
             TextField(
               controller: emailCtrl,
               keyboardType: TextInputType.emailAddress,
               style: const TextStyle(color: MgColors.ink),
-              decoration: const InputDecoration(hintText: 'Correo (opcional)'),
+              decoration: const InputDecoration(labelText: 'Correo (opcional)'),
             ),
           ],
         ),

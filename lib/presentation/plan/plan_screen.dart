@@ -390,11 +390,13 @@ class PlanScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 TextField(controller: title, decoration: deco('Nombre (ej. Viaje)')),
+                const SizedBox(height: 10),
                 TextField(
                   controller: target,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   decoration: deco('Monto objetivo (S/)'),
                 ),
+                const SizedBox(height: 10),
                 TextField(
                   controller: current,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
