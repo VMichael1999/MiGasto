@@ -21,6 +21,7 @@ import '../../data/services/payment_reader.dart';
 import '../../domain/entities/movimiento.dart';
 import '../../shared/csv_export.dart';
 import '../../shared/format.dart';
+import '../../shared/labels.dart';
 import '../../shared/profile.dart';
 import '../../shared/widgets/custom_icons.dart';
 import '../lock/lock_gate.dart';
@@ -795,21 +796,44 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                         style: TextStyle(fontSize: 12, color: MgColors.ink2),
                       ),
                       const SizedBox(height: 12),
-                      if (propias.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
-                          child: Center(
-                            child: Text(
-                              'Aún no has creado ninguna categoría propia.',
-                              style: TextStyle(color: MgColors.ink2),
+                      Flexible(
+                        child: ListView(
+                          shrinkWrap: true,
+                          children: [
+                            const Text(
+                              'De MiGasto',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: MgColors.ink2),
                             ),
-                          ),
-                        )
-                      else
-                        Flexible(
-                          child: ListView(
-                            shrinkWrap: true,
-                            children: [
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                for (final c in Categoria.gastos)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                                    decoration: BoxDecoration(
+                                      color: MgColors.soft,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(categoryLabel(c),
+                                        style: const TextStyle(fontSize: 12.5, color: MgColors.ink)),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Tuyas',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: MgColors.ink2),
+                            ),
+                            if (propias.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 14),
+                                child: Text(
+                                  'Aún no has creado ninguna categoría propia.',
+                                  style: TextStyle(color: MgColors.ink2),
+                                ),
+                              ),
                               for (final p in propias)
                                 ListTile(
                                   contentPadding: EdgeInsets.zero,
@@ -825,9 +849,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                                         ref.read(customCategoriesProvider.notifier).remove(p.id),
                                   ),
                                 ),
-                            ],
-                          ),
+                          ],
                         ),
+                      ),
                     ],
                   ),
                 ),
