@@ -392,7 +392,7 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
     // Regla de duplicados: mismo monto y fuente dentro de 2 minutos.
     final pendingNow = _ref.read(pendingExpenseProvider);
     if (isDuplicateMovement(
-      [...state, ?pendingNow],
+      [...state, if (pendingNow != null) pendingNow],
       amount: amount,
       source: source,
       date: now,
