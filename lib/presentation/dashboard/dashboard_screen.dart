@@ -13,6 +13,7 @@ import '../../shared/format.dart';
 import '../../shared/labels.dart';
 import '../../shared/widgets/profile_avatar_button.dart';
 import '../../domain/balance_projection.dart';
+import '../../domain/balance_summary.dart';
 import '../expenses/expense_detail_dialog.dart';
 import '../plan/plan_providers.dart';
 import 'dashboard_side_cards.dart';
@@ -56,31 +57,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     final confirmedMonth =
         expenses.where((m) => m.isConfirmed && isThisMonth(m)).toList();
-    final spent = confirmedMonth
-        .where((m) => m.esGasto)
-        .fold(0.0, (sum, m) => sum + m.amount);
-    final income = confirmedMonth
-        .where((m) => m.esIngreso)
-        .fold(0.0, (sum, m) => sum + m.amount);
-
-    // Saldo del mes anterior
+    // Saldo que arrastra del mes anterior y cifras del mes: solo con datos reales.
+    final summary = computeBalanceSummary(expenses, now);
+    final spent = summary.spent;
+    final income = summary.income;
     final prevMonthDate = DateTime(now.year, now.month - 1, 1);
-    final prevMonthExpenses = expenses
-        .where((m) =>
-            m.isConfirmed &&
-            m.date.year == prevMonthDate.year &&
-            m.date.month == prevMonthDate.month)
-        .toList();
-    final prevIncome = prevMonthExpenses
-        .where((m) => m.esIngreso)
-        .fold(0.0, (sum, m) => sum + m.amount);
-    final prevSpent = prevMonthExpenses
-        .where((m) => m.esGasto)
-        .fold(0.0, (sum, m) => sum + m.amount);
-    // Saldo que arrastra del mes anterior: solo con datos reales (0 si no hubo).
-    final prevBalance = prevIncome - prevSpent;
+    final prevBalance = summary.prevBalance;
 
-    final balance = prevBalance + income - spent;
+    final balance = summary.balance;
     final totalDispon = prevBalance + income;
     final dispPercent = totalDispon > 0
         ? ((balance / totalDispon) * 100).clamp(0, 100).round()
@@ -992,6 +976,8 @@ class _MovementsSectionHeader extends StatelessWidget {
             ),
           ),
           const Spacer(),
+          // Separación mínima: en columnas estrechas la lupa no se pega a la cuenta.
+          const SizedBox(width: 16),
           Material(
             color: Colors.transparent,
             child: InkWell(
