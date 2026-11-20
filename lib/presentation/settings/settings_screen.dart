@@ -28,6 +28,8 @@ import '../providers.dart';
 import '../../core/layout/landscape_pane.dart';
 import '../../core/layout/adaptive.dart';
 import '../../shared/dispose_later.dart';
+import '../payments/scheduled_payments_providers.dart';
+import '../plan/plan_providers.dart';
 import 'widgets/connected_accounts_sheet.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -1008,6 +1010,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                 onChanged: (on) async {
                   await ref.read(sharedPreferencesProvider).setBool(keyDebugMockData, on);
                   await ref.read(expensesStateProvider.notifier).reload();
+                  // Los planes y pagos de ejemplo también se vuelven a leer.
+                  ref.invalidate(categoryLimitsProvider);
+                  ref.invalidate(savingsGoalProvider);
+                  ref.invalidate(scheduledPaymentsProvider);
                   if (mounted) setState(() {});
                 },
               ),

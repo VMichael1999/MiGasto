@@ -15,6 +15,7 @@ import '../../shared/widgets/profile_avatar_button.dart';
 import '../../domain/balance_projection.dart';
 import '../../domain/balance_summary.dart';
 import '../expenses/expense_detail_dialog.dart';
+import '../payments/scheduled_payments_providers.dart';
 import '../plan/plan_providers.dart';
 import 'dashboard_side_cards.dart';
 import '../providers.dart';
@@ -171,6 +172,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               column([movementsHeader, movementsList]),
               column(
                 [
+                  ScheduledPaymentsCard(
+                    payments: ref.watch(scheduledPaymentsProvider),
+                    hidden: hidden,
+                  ),
                   LimitsOverviewCard(
                     limits: limits,
                     monthExpenses: monthExpenses,
@@ -213,6 +218,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   header,
                   balanceCard,
                   safeCard,
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+                    child: ScheduledPaymentsCard(
+                      payments: ref.watch(scheduledPaymentsProvider),
+                      hidden: hidden,
+                      margin: EdgeInsets.zero,
+                    ),
+                  ),
                   ...banners,
                   movementsHeader,
                   movementsList,

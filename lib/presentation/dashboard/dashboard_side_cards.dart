@@ -11,6 +11,8 @@ import '../../domain/balance_projection.dart';
 import '../../domain/entities/movimiento.dart';
 import '../../shared/format.dart';
 import '../../shared/labels.dart';
+import '../../domain/scheduled_payment.dart';
+import '../payments/scheduled_payments_sheet.dart';
 import '../plan/plan_providers.dart';
 
 const _cardMargin = EdgeInsets.fromLTRB(0, 0, 0, 10);
@@ -274,6 +276,96 @@ class BalanceForecastCard extends StatelessWidget {
               style: const TextStyle(fontSize: 11, height: 1.3, color: MgColors.ink2),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+
+/// «Próximos pagos»: lo que vence (o se cobra) en los próximos 30 días.
+class ScheduledPaymentsCard extends StatelessWidget {
+  const ScheduledPaymentsCard({
+    super.key,
+    required this.payments,
+    required this.hidden,
+    this.margin = _cardMargin,
+  });
+
+  final List<ScheduledPayment> payments;
+  final bool hidden;
+  final EdgeInsets margin;
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final upcoming = upcomingPayments(payments, now).take(3).toList();
+    return MgCard(
+      margin: margin,
+      padding: const EdgeInsets.all(14),
+      onTap: () => ScheduledPaymentsSheet.show(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _cardTitle('Próximos pagos',
+              trailing: const Icon(Icons.chevron_right_rounded, size: 16, color: MgColors.ink3)),
+          const SizedBox(height: 10),
+          if (upcoming.isEmpty)
+            Text(
+              payments.isEmpty
+                  ? 'Aún no tienes pagos programados. Toca para agregar uno.'
+                  : 'Nada vence en los próximos 30 días.',
+              style: const TextStyle(fontSize: 12, height: 1.35, color: MgColors.ink2),
+            )
+          else
+            for (final p in upcoming)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 9),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            p.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: MgColors.ink,
+                            ),
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            dueLabel(p, now),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              color: p.isOverdue(now) && !p.esIngreso
+                                  ? MgColors.warn
+                                  : MgColors.ink2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      hidden
+                          ? 'S/ ••••'
+                          : '${p.esIngreso ? '+' : '−'}${formatSoles(p.amount)}',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: p.esIngreso ? MgColors.up : MgColors.ink,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
         ],
       ),
     );
