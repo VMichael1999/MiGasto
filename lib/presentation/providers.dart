@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatf
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../data/services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../data/datasource/local_database.dart';
@@ -936,7 +937,21 @@ final setupIssuesProvider = Provider<List<SetupIssue>>((ref) {
 /// Cómo entró el usuario: `guest` (sin cuenta, datos solo en el teléfono) o `account`.
 const authModeKey = 'auth_mode';
 
-final isGuestProvider = Provider<bool>((ref) {
-  final prefs = ref.watch(sharedPreferencesProvider);
-  return (prefs.getString(authModeKey) ?? 'guest') == 'guest';
-});
+final authServiceProvider = Provider<AuthService>((ref) => FirebaseAuthService());
+
+class AuthModeNotifier extends StateNotifier<String> {
+  AuthModeNotifier(this._prefs) : super(_prefs.getString(authModeKey) ?? 'guest');
+  final SharedPreferences _prefs;
+
+  /// Marca la sesión como cuenta vinculada (o vuelve a invitado) y la recuerda.
+  Future<void> set(String mode) async {
+    await _prefs.setString(authModeKey, mode);
+    state = mode;
+  }
+}
+
+final authModeProvider = StateNotifierProvider<AuthModeNotifier, String>(
+  (ref) => AuthModeNotifier(ref.read(sharedPreferencesProvider)),
+);
+
+final isGuestProvider = Provider<bool>((ref) => ref.watch(authModeProvider) == 'guest');

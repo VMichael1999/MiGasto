@@ -24,6 +24,7 @@ import '../../shared/format.dart';
 import '../../shared/profile.dart';
 import '../../shared/widgets/custom_icons.dart';
 import '../lock/lock_gate.dart';
+import '../auth/account_link.dart';
 import '../providers.dart';
 import '../../core/layout/landscape_pane.dart';
 import '../../core/layout/adaptive.dart';
@@ -246,7 +247,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
-      child: Row(
+      child: Column(
+        children: [
+      Row(
         children: [
           // Avatar 56×56 (.pf-av)
           Container(
@@ -314,6 +317,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
               ),
             ),
           ),
+        ],
+      ),
+          if (ref.watch(isGuestProvider)) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: FilledButton.icon(
+                onPressed: () => showLinkAccountSheet(context),
+                icon: const Icon(Icons.link_rounded, size: 18),
+                label: const Text('Vincular cuenta'),
+                style: FilledButton.styleFrom(minimumSize: const Size(120, 44)),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Hoy usas MiGasto como invitado: tus datos están solo en este teléfono.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 11.5, color: MgColors.ink3),
+            ),
+          ],
         ],
       ),
     );
@@ -463,6 +487,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
               icon: Icons.logout_rounded,
             );
             if (confirm && context.mounted) {
+              if (!ref.read(isGuestProvider)) {
+                await ref.read(authServiceProvider).signOut();
+                await ref.read(authModeProvider.notifier).set('guest');
+              }
               await ref.read(sharedPreferencesProvider).setBool('is_logged_in', false);
               if (context.mounted) {
                 MgToast.show(context, message: 'Sesión cerrada.');

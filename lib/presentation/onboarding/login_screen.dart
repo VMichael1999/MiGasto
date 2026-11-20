@@ -1,9 +1,13 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/layout/adaptive.dart';
 import '../../core/theme/mg_colors.dart';
 import '../../core/widgets/mg_toast.dart';
+import '../../data/services/auth_service.dart';
+import '../auth/account_link.dart';
 import '../providers.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -25,14 +29,57 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _login() async {
-    final email = _emailController.text.trim();
-    if (email.isNotEmpty) {
-      await ref.read(profileEmailProvider.notifier).updateValue(email);
+  bool _busy = false;
+
+  /// Corre una acción de autenticación; si sale bien entra a la app con esa cuenta.
+  Future<void> _auth(Future<AuthAccount> Function(AuthService) action) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final account = await action(ref.read(authServiceProvider));
+      await applyAccount(ref, account);
+      if (mounted) context.go('/dashboard');
+    } on AuthException catch (e) {
+      if (mounted && !e.cancelled) MgToast.show(context, message: e.message);
+    } catch (_) {
+      if (mounted) MgToast.show(context, message: 'No se pudo completar. Intenta de nuevo.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
-    await ref.read(sharedPreferencesProvider).setBool('is_logged_in', true);
-    if (mounted) {
-      context.go('/dashboard');
+  }
+
+  /// Devuelve correo y contraseña si están completos; si no, avisa y devuelve null.
+  (String, String)? _credentials() {
+    final email = _emailController.text.trim();
+    final pass = _passwordController.text;
+    if (!email.contains('@') || pass.length < 6) {
+      MgToast.show(context, message: 'Escribe tu correo y una contraseña de 6 o más caracteres.');
+      return null;
+    }
+    return (email, pass);
+  }
+
+  Future<void> _login() async {
+    final c = _credentials();
+    if (c != null) await _auth((a) => a.signInWithEmail(c.$1, c.$2));
+  }
+
+  Future<void> _createAccount() async {
+    final c = _credentials();
+    if (c != null) await _auth((a) => a.createWithEmail(c.$1, c.$2));
+  }
+
+  Future<void> _forgotPassword() async {
+    final email = _emailController.text.trim();
+    if (!email.contains('@')) {
+      MgToast.show(context, message: 'Escribe tu correo para enviarte el enlace.');
+      return;
+    }
+    try {
+      await ref.read(authServiceProvider).sendPasswordReset(email);
+      if (mounted) MgToast.show(context, message: 'Te enviamos un correo para cambiar tu contraseña.');
+    } on AuthException catch (e) {
+      if (mounted) MgToast.show(context, message: e.message);
     }
   }
 
@@ -42,14 +89,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     await prefs.setString(authModeKey, 'guest');
     await prefs.setBool('is_logged_in', true);
     if (mounted) context.go('/dashboard');
-  }
-
-  Future<void> _loginOAuth(String provider) async {
-    await ref.read(sharedPreferencesProvider).setBool('is_logged_in', true);
-    if (mounted) {
-      MgToast.show(context, message: 'Sesión iniciada con $provider.');
-      context.go('/dashboard');
-    }
   }
 
   @override
@@ -188,7 +227,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   padding: const EdgeInsets.only(top: 6),
                   child: GestureDetector(
                     onTap: () {
-                      MgToast.show(context, message: 'Te enviaríamos un correo para cambiarla.');
+                      _forgotPassword();
                     },
                     child: const Text(
                       '¿Olvidaste tu contraseña?',
@@ -257,6 +296,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               // Botones OAuth: Apple y Google con logos oficiales
               Row(
                 children: [
+                  if (Platform.isIOS) ...[
                   Expanded(
                     child: _buildOAuthButton(
                       leading: Image.asset(
@@ -266,10 +306,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         fit: BoxFit.contain,
                       ),
                       label: 'Apple',
-                      onTap: () => _loginOAuth('Apple'),
+                      onTap: () => _auth((a) => a.signInWithApple()),
                     ),
                   ),
                   const SizedBox(width: 10),
+                  ],
                   Expanded(
                     child: _buildOAuthButton(
                       leading: Image.asset(
@@ -279,7 +320,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         fit: BoxFit.contain,
                       ),
                       label: 'Google',
-                      onTap: () => _loginOAuth('Google'),
+                      onTap: () => _auth((a) => a.signInWithGoogle()),
                     ),
                   ),
                 ],
@@ -323,7 +364,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   GestureDetector(
                     onTap: () {
-                      MgToast.show(context, message: 'Crearías tu cuenta.');
+                      _createAccount();
                     },
                     child: const Text(
                       'Crea tu cuenta',

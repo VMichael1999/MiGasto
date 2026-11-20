@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -5,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import 'core/theme/theme.dart';
+import 'firebase_options.dart';
 import 'core/navigation/navigation.dart';
 import 'data/services/nlp_classifier_service.dart';
 import 'presentation/lock/lock_gate.dart';
@@ -17,6 +19,11 @@ void main() async {
     await LiquidGlassWidgets.initialize();
   } catch (_) {}
   
+  // Sin conexión o sin configuración la app sigue funcionando como invitado.
+  try {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  } catch (_) {}
+
   // Initialize local Spanish formatting
   await initializeDateFormatting('es', null);
   
