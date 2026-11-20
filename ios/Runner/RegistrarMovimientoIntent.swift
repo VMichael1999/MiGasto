@@ -100,6 +100,117 @@ enum RegistroError: Error, CustomLocalizedStringResourceConvertible {
     }
 }
 
+/// Acción de Atajos "Registrar pago de Wallet": un solo campo, la «Entrada de atajo» de la
+/// automatización de Wallet. Sirve cuando Atajos no deja elegir monto y comercio por separado:
+/// MiGasto interpreta el texto y, si no logra leerlo, guarda el pago como pendiente con el texto
+/// original para que se complete a mano.
+@available(iOS 16.0, *)
+struct RegistrarPagoWalletIntent: AppIntent {
+    static var title: LocalizedStringResource = "Registrar pago de Wallet"
+    static var description = IntentDescription(
+        "Guarda el pago que te pasa la automatización de Wallet. Solo pon la «Entrada de atajo».",
+        categoryName: "Movimientos"
+    )
+
+    static var openAppWhenRun: Bool = false
+
+    @Parameter(title: "Pago", description: "La «Entrada de atajo» de la automatización de Wallet")
+    var pago: String
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("Registrar pago de Wallet \(\.$pago)")
+    }
+
+    func perform() async throws -> some IntentResult {
+        let parsed = WalletTextParser.parse(pago)
+        let known = parsed.amount != nil && (parsed.amount ?? 0) > 0
+        let amount = parsed.amount ?? 0
+        let name = parsed.merchant ?? "Pago con Apple Pay"
+        let original = String(pago.trimmingCharacters(in: .whitespacesAndNewlines).prefix(500))
+
+        var item: [String: Any] = [
+            "amount": amount,
+            "peer": name,
+            "provider": "tarjeta",
+            "type": "gasto",
+            "channel": "wallet",
+            "rawText": "Apple Pay: \(original)",
+            // Si no se pudo leer el monto queda pendiente, para que no se pierda.
+            "confirmed": known,
+            "at": Int(Date().timeIntervalSince1970 * 1000),
+        ]
+        if let card = parsed.card, !card.isEmpty { item["card"] = card }
+        SharedQueue.enqueue(item)
+        return .result()
+    }
+}
+
+/// Interpreta el texto que entrega Wallet cuando Atajos no separa los datos.
+enum WalletTextParser {
+    struct Result {
+        var amount: Double?
+        var merchant: String?
+        var card: String?
+    }
+
+    static func parse(_ raw: String) -> Result {
+        var result = Result()
+        let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return result }
+
+        // Campos con etiqueta: «Comercio: Tambo», «Merchant: Tambo», «Tarjeta: Visa ···4821».
+        func labeled(_ names: [String]) -> String? {
+            for name in names {
+                let pattern = "(?im)^\\s*\(name)\\s*[:=]\\s*(.+)$"
+                if let re = try? NSRegularExpression(pattern: pattern),
+                   let m = re.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+                   let r = Range(m.range(at: 1), in: text) {
+                    let value = String(text[r]).trimmingCharacters(in: .whitespaces)
+                    if !value.isEmpty { return value }
+                }
+            }
+            return nil
+        }
+
+        result.merchant = labeled(["Comercio", "Merchant", "Nombre", "Name"])
+        result.card = labeled(["Tarjeta o pase", "Tarjeta", "Card or Pass", "Card"])
+        if let a = labeled(["Monto", "Cantidad", "Importe", "Amount"]) {
+            result.amount = AmountParser.parse(a)
+        }
+
+        // Monto suelto: junto a una moneda («S/ 25.50», «PEN 25.50», «$25.50») o el primer número con decimales.
+        if result.amount == nil {
+            let patterns = [
+                "(?:S/\\.?|PEN|USD|US\\$|\\$)\\s*([0-9][0-9.,]*)",
+                "([0-9][0-9.,]*)\\s*(?:soles|PEN|USD)",
+                "([0-9]+[.,][0-9]{2})(?![0-9])",
+            ]
+            for pattern in patterns {
+                if let re = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
+                   let m = re.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+                   let r = Range(m.range(at: 1), in: text),
+                   let value = AmountParser.parse(String(text[r])) {
+                    result.amount = value
+                    break
+                }
+            }
+        }
+
+        // Sin etiqueta: la primera línea que no es un monto ni una tarjeta es el comercio.
+        if result.merchant == nil {
+            let lines = text.components(separatedBy: CharacterSet(charactersIn: "\n·|"))
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+            result.merchant = lines.first { line in
+                let digits = line.filter { $0.isNumber }.count
+                return digits * 2 < line.count && !line.contains("···") && !line.lowercased().contains("visa")
+                    && !line.lowercased().contains("mastercard")
+            }
+        }
+        return result
+    }
+}
+
 /// Lee montos como "25.50", "S/ 25,50" o "1,200.50".
 enum AmountParser {
     static func parse(_ raw: String) -> Double? {
@@ -125,6 +236,12 @@ struct MiGastoShortcuts: AppShortcutsProvider {
             phrases: ["Registrar un movimiento en \(.applicationName)"],
             shortTitle: "Registrar movimiento",
             systemImageName: "plus.circle"
+        )
+        AppShortcut(
+            intent: RegistrarPagoWalletIntent(),
+            phrases: ["Registrar un pago de Wallet en \(.applicationName)"],
+            shortTitle: "Registrar pago de Wallet",
+            systemImageName: "creditcard"
         )
     }
 }
