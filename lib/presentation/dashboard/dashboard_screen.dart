@@ -252,6 +252,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     showModalBottomSheet<void>(
       context: context,
+      // Por encima de la barra de pestañas flotante.
+      useRootNavigator: true,
       backgroundColor: MgColors.card,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -272,7 +274,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              row('Saldo de $prevMonthName', money(prevBalance)),
+              row('Saldo de ${prevMonthName.toLowerCase()}', money(prevBalance)),
               row('Ingresos del mes', '+${money(income)}', color: MgColors.up),
               row('Gastos del mes', '−${money(spent)}', color: MgColors.down),
               const Divider(color: MgColors.line, height: 18),
