@@ -215,6 +215,22 @@ class AppTheme {
         hintStyle: text.bodyMedium?.copyWith(color: muted),
         labelStyle: text.bodyMedium?.copyWith(color: muted),
       ),
+      // Chips (períodos, tipo de pago…): seleccionado en violeta suave, sin la
+      // marca de verificación ni el verde del tema base.
+      chipTheme: ChipThemeData(
+        backgroundColor: Colors.transparent,
+        selectedColor: MgColors.accSoft,
+        showCheckmark: false,
+        side: BorderSide(color: line),
+        labelStyle: TextStyle(color: muted, fontSize: 13, fontWeight: FontWeight.w500),
+        secondaryLabelStyle: const TextStyle(
+          color: MgColors.acc2,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
+        secondarySelectedColor: MgColors.accSoft,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {

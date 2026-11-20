@@ -206,6 +206,10 @@ Future<void> showScheduledPaymentForm(
                       child: ChoiceChip(
                         label: Text(t == TipoMovimiento.gasto ? 'Pago' : 'Cobro'),
                         selected: tipo == t,
+                        labelStyle: TextStyle(
+                          color: tipo == t ? MgColors.acc2 : MgColors.ink2,
+                          fontWeight: tipo == t ? FontWeight.w600 : FontWeight.w500,
+                        ),
                         onSelected: (_) => setState(() {
                           tipo = t;
                           category = t == TipoMovimiento.ingreso
