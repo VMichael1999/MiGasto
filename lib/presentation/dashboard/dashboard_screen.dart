@@ -772,7 +772,7 @@ class _SafeToSpendCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 9),
-              Flexible(child: Text(
+              Flexible(flex: 100, child: Text(
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 'Seguro para gastar',
