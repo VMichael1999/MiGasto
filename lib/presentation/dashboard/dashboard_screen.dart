@@ -2,76 +2,1302 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:percent_indicator/percent_indicator.dart';
 
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/mg_colors.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../core/widgets/widgets.dart';
 import '../../domain/aliases.dart';
 import '../../domain/entities/movimiento.dart';
 import '../../domain/setup_issues.dart';
-import '../../shared/category_display.dart';
 import '../../shared/format.dart';
 import '../../shared/labels.dart';
-import '../../shared/widgets/app_icons.dart';
-import '../../shared/widgets/big_amount.dart';
-import '../../shared/widgets/movement_row.dart';
+import '../../shared/profile.dart';
 import '../expenses/expense_detail_dialog.dart';
 import '../providers.dart';
 
-enum _BudgetState { ok, warning, over }
-
-class DashboardScreen extends ConsumerWidget {
+/// Pantalla 1: Inicio (s-home en prototipo HTML y Sección 4.4 del prompt).
+/// - Cabecera: mark de 34, selector de espacio ("Personal ›") con mes debajo,
+///   botón de ojo (modo privado) y avatar con iniciales ("MD").
+/// - Tarjeta de balance: degradado violeta, radio 24, "Balance disponible ›",
+///   monto en 33/800, "Saldo de octubre", "Disponible XX %" con barra blanca,
+///   y dos cápsulas de vidrio con Ingresos y Gastos.
+/// - Seguro para gastar: monto en verde, "S/ XX / día · XX días restantes" y
+///   toggle "Ver menos" / "Ver más".
+/// - Avisos de permisos y movimientos pendientes (si existen).
+/// - Movimientos: encabezado con contador del mes y búsqueda; lista agrupada por día
+///   con totales por día, deslizamiento para borrar (`SwipeToDelete`), menú contextual
+///   (`LongPressMenu`), íconos a color y montos tabulares.
+/// - Botón flotante (`MgFab`) que despliega la hoja de registro (`RegisterSheet`).
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  String _currentSpace = 'personal';
+  bool _safeOpen = true;
+
+  String _getSpaceName(String id) {
+    switch (id) {
+      case 'personal':
+        return 'Personal';
+      case 'trabajo':
+        return 'Trabajo';
+      case 'compartido':
+        return 'Compartido';
+      default:
+        return 'Personal';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final expenses = ref.watch(expensesStateProvider);
     final budget = ref.watch(budgetProvider);
     final issues = ref.watch(setupIssuesProvider);
+    final hidden = ref.watch(balanceHiddenProvider);
 
     final now = DateTime.now();
-    bool isThisMonth(Movimiento m) => m.date.year == now.year && m.date.month == now.month;
+    bool isThisMonth(Movimiento m) =>
+        m.date.year == now.year && m.date.month == now.month;
 
-    // Solo lo confirmado suma; lo pendiente se muestra aparte.
-    final confirmedMonth = expenses.where((m) => m.isConfirmed && isThisMonth(m)).toList();
-    final spent = confirmedMonth.where((m) => m.esGasto).fold(0.0, (sum, m) => sum + m.amount);
-    final income = confirmedMonth.where((m) => m.esIngreso).fold(0.0, (sum, m) => sum + m.amount);
-    final balance = income - spent;
+    final confirmedMonth =
+        expenses.where((m) => m.isConfirmed && isThisMonth(m)).toList();
+    final spent = confirmedMonth
+        .where((m) => m.esGasto)
+        .fold(0.0, (sum, m) => sum + m.amount);
+    final income = confirmedMonth
+        .where((m) => m.esIngreso)
+        .fold(0.0, (sum, m) => sum + m.amount);
 
-    final pending = expenses.where((m) => m.estado == EstadoMovimiento.pendiente).toList();
-    final today = expenses
+    // Saldo del mes anterior
+    final prevMonthDate = DateTime(now.year, now.month - 1, 1);
+    final prevMonthExpenses = expenses
         .where((m) =>
-            m.date.year == now.year && m.date.month == now.month && m.date.day == now.day)
+            m.isConfirmed &&
+            m.date.year == prevMonthDate.year &&
+            m.date.month == prevMonthDate.month)
+        .toList();
+    final prevIncome = prevMonthExpenses
+        .where((m) => m.esIngreso)
+        .fold(0.0, (sum, m) => sum + m.amount);
+    final prevSpent = prevMonthExpenses
+        .where((m) => m.esGasto)
+        .fold(0.0, (sum, m) => sum + m.amount);
+    // Saldo que arrastra del mes anterior: solo con datos reales (0 si no hubo).
+    final prevBalance = prevIncome - prevSpent;
+
+    final balance = prevBalance + income - spent;
+    final totalDispon = prevBalance + income;
+    final dispPercent = totalDispon > 0
+        ? ((balance / totalDispon) * 100).clamp(0, 100).round()
+        : (spent == 0 ? 100 : 0);
+
+    // Seguro para gastar: lo que falta por gastar del presupuesto del mes, sin
+    // pasar del saldo disponible. Sin presupuesto definido no se inventa un
+    // número: la tarjeta pide definirlo.
+    final hasBudget = budget > 0;
+    final safeToSpend = hasBudget
+        ? (budget - spent).clamp(0.0, balance > 0 ? balance : 0.0).toDouble()
+        : 0.0;
+    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    final remainingDays = (daysInMonth - now.day).clamp(1, 31);
+    final safePerDay = safeToSpend / remainingDays;
+
+    final pending = expenses
+        .where((m) => m.estado == EstadoMovimiento.pendiente)
         .toList();
 
     return Scaffold(
+      backgroundColor: MgColors.bg,
       body: SafeArea(
         bottom: false,
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(AppSpacing.xl, 6, AppSpacing.xl, 18),
+        child: Stack(
+          children: [
+            SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
+              padding: const EdgeInsets.only(bottom: 130),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 1. Cabecera común (.top)
+                  _HomeHeader(
+                    spaceName: _getSpaceName(_currentSpace),
+                    now: now,
+                    hidden: hidden,
+                    onSpaceTap: () async {
+                      final selected = await SpaceSheet.show(
+                        context,
+                        selectedId: _currentSpace,
+                      );
+                      if (selected != null && mounted) {
+                        setState(() => _currentSpace = selected);
+                      }
+                    },
+                    onEyeTap: () =>
+                        ref.read(balanceHiddenProvider.notifier).toggle(),
+                    onAvatarTap: () => context.go('/settings'),
+                    initials: initialsOf(ref.watch(profileNameProvider)),
+                  ),
+
+                  // 2. Tarjeta de balance (.bal)
+                  _BalanceCard(
+                    balance: balance,
+                    prevBalance: prevBalance,
+                    prevMonthName: toBeginningOfSentenceCase(
+                      DateFormat('MMMM', 'es').format(prevMonthDate),
+                    )!,
+                    dispPercent: dispPercent,
+                    income: income,
+                    spent: spent,
+                    hidden: hidden,
+                    onTap: () => _showBalanceDetail(
+                      context,
+                      prevMonthName: toBeginningOfSentenceCase(
+                        DateFormat('MMMM', 'es').format(prevMonthDate),
+                      )!,
+                      prevBalance: prevBalance,
+                      income: income,
+                      spent: spent,
+                      balance: balance,
+                      hidden: hidden,
+                    ),
+                  ),
+
+                  // 3. Seguro para gastar (.card)
+                  _SafeToSpendCard(
+                    hasBudget: hasBudget,
+                    onDefineBudget: () => context.go('/settings'),
+                    safeToSpend: safeToSpend,
+                    safePerDay: safePerDay,
+                    remainingDays: remainingDays,
+                    isOpen: _safeOpen,
+                    hidden: hidden,
+                    onToggle: () => setState(() => _safeOpen = !_safeOpen),
+                  ),
+
+                  // Avisos de permisos y lectura (si existen)
+                  if (issues.isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+                      child: _SetupBanner(issue: issues.first),
+                    ),
+                  ],
+
+                  // Avisos de pendientes por confirmar (si existen)
+                  if (pending.isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+                      child: _PendingBanner(pending: pending, hidden: hidden),
+                    ),
+                  ],
+
+                  // 4. Encabezado de movimientos (.sec)
+                  _MovementsSectionHeader(
+                    count: confirmedMonth.length,
+                    onSearchTap: () => context.go('/expenses'),
+                  ),
+
+                  // 5. Lista de movimientos agrupada por día
+                  _MovementsGroupedList(
+                    movements: confirmedMonth,
+                    hidden: hidden,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Detalle del balance: de dónde sale la cifra (todo con datos reales).
+  void _showBalanceDetail(
+    BuildContext context, {
+    required String prevMonthName,
+    required double prevBalance,
+    required double income,
+    required double spent,
+    required double balance,
+    required bool hidden,
+  }) {
+    String money(double v) => hidden ? 'S/ ••••' : formatSoles(v);
+    Widget row(String label, String value, {bool bold = false, Color? color}) =>
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 7),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(label,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      color: bold ? MgColors.ink : MgColors.ink2,
+                      fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+                    )),
+              ),
+              Text(value,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
+                    color: color ?? MgColors.ink,
+                  )),
+            ],
+          ),
+        );
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: MgColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _Header(now: now),
-              const SizedBox(height: 14),
-              _Balance(balance: balance),
-              const SizedBox(height: 14),
-              _IncomeExpenseTiles(income: income, spent: spent),
-              const SizedBox(height: 14),
-              if (issues.isNotEmpty) ...[
-                _SetupBanner(issue: issues.first),
-                const SizedBox(height: 10),
+              const Text(
+                'Balance disponible',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: MgColors.ink,
+                ),
+              ),
+              const SizedBox(height: 8),
+              row('Saldo de $prevMonthName', money(prevBalance)),
+              row('Ingresos del mes', '+${money(income)}', color: MgColors.up),
+              row('Gastos del mes', '−${money(spent)}', color: MgColors.down),
+              const Divider(color: MgColors.line, height: 18),
+              row('Balance disponible', money(balance), bold: true),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+}
+
+// =============================================================================
+// CABECERA COMÚN (.top)
+// =============================================================================
+class _HomeHeader extends StatelessWidget {
+  const _HomeHeader({
+    required this.spaceName,
+    required this.now,
+    required this.hidden,
+    required this.onSpaceTap,
+    required this.onEyeTap,
+    required this.onAvatarTap,
+    required this.initials,
+  });
+
+  final String spaceName;
+  final DateTime now;
+  final bool hidden;
+  final VoidCallback onSpaceTap;
+  final VoidCallback onEyeTap;
+  final VoidCallback onAvatarTap;
+  final String initials;
+
+  @override
+  Widget build(BuildContext context) {
+    final monthLabel = toBeginningOfSentenceCase(
+      DateFormat("MMMM 'de' yyyy", 'es').format(now),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+      child: Row(
+        children: [
+          // Official 3D Brand Icon
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(11),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            ),
+            padding: const EdgeInsets.all(4),
+            child: Image.asset(
+              'assets/brand/logo_3d.png',
+              fit: BoxFit.contain,
+            ),
+          ),
+          const SizedBox(width: 11),
+
+          // Selector de espacio (.who)
+          Expanded(
+            child: InkWell(
+              onTap: onSpaceTap,
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          spaceName,
+                          style: const TextStyle(
+                            fontFamily: AppText.fontFamily,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.02 * 16,
+                            color: MgColors.ink,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          size: 16,
+                          color: MgColors.ink2,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      monthLabel,
+                      style: const TextStyle(
+                        fontFamily: AppText.fontFamily,
+                        fontSize: 11.5,
+                        color: MgColors.ink2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Botón del ojo (.rnd)
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onEyeTap,
+              borderRadius: BorderRadius.circular(19),
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: hidden ? MgColors.accSoft : MgColors.soft,
+                ),
+                child: Center(
+                  child: Icon(
+                    hidden ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                    size: 19,
+                    color: hidden ? MgColors.acc2 : MgColors.ink,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+
+          // Avatar (.av)
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onAvatarTap,
+              borderRadius: BorderRadius.circular(19),
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: MgColors.accSoft,
+                  border: Border.all(color: MgColors.accLine, width: 1),
+                ),
+                child: Center(
+                  child: initials.isEmpty
+                      ? const Icon(Icons.person_outline_rounded,
+                          size: 19, color: MgColors.acc2)
+                      : Text(
+                          initials,
+                          style: const TextStyle(
+                            fontFamily: AppText.fontFamily,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: MgColors.acc2,
+                          ),
+                        ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// TARJETA DE BALANCE (.bal)
+// =============================================================================
+class _BalanceCard extends StatelessWidget {
+  const _BalanceCard({
+    required this.balance,
+    required this.prevBalance,
+    required this.prevMonthName,
+    required this.dispPercent,
+    required this.income,
+    required this.spent,
+    required this.hidden,
+    required this.onTap,
+  });
+
+  final VoidCallback onTap;
+  final double balance;
+  final double prevBalance;
+  final String prevMonthName;
+  final int dispPercent;
+  final double income;
+  final double spent;
+  final bool hidden;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+      margin: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF8E73FF), Color(0xFF6A46F5), Color(0xFF5A36E8)],
+          stops: [0.0, 0.58, 1.0],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF7C5CFF).withValues(alpha: 0.38),
+            blurRadius: 36,
+            offset: const Offset(0, 18),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(
+          children: [
+            // Resplandor radial tenue superior derecho
+            Positioned(
+              top: -70,
+              right: -50,
+              width: 200,
+              height: 200,
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      Colors.white.withValues(alpha: 0.22),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.68],
+                  ),
+                ),
+              ),
+            ),
+
+            // Contenido de la tarjeta
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Cabecera: Balance disponible ›
+                  Row(
+                    children: [
+                      Text(
+                        'Balance disponible',
+                        style: TextStyle(
+                          fontFamily: AppText.fontFamily,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white.withValues(alpha: 0.78),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        size: 16,
+                        color: Colors.white.withValues(alpha: 0.78),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+
+                  // Monto grande (33/800)
+                  if (hidden)
+                    Text(
+                      'S/ ••••••',
+                      style: AppText.money(
+                        size: 33,
+                        weight: FontWeight.w800,
+                        color: Colors.white,
+                      ).copyWith(letterSpacing: 2.0),
+                    )
+                  else
+                    MoneyText(
+                      amount: balance,
+                      showSign: false,
+                      color: Colors.white,
+                      style: AppText.money(
+                        size: 33,
+                        weight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+
+                  // Saldo del mes anterior
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'SALDO DE $prevMonthName'.toUpperCase(),
+                        style: TextStyle(
+                          fontFamily: AppText.fontFamily,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.9,
+                          color: Colors.white.withValues(alpha: 0.70),
+                        ),
+                      ),
+                      Text(
+                        hidden
+                            ? '•••'
+                            : (prevBalance >= 0
+                                ? '+${formatSoles(prevBalance)}'
+                                : '−${formatSoles(prevBalance.abs())}'),
+                        style: const TextStyle(
+                          fontFamily: AppText.fontFamily,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 9),
+
+                  // Disponible XX %
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'DISPONIBLE',
+                        style: TextStyle(
+                          fontFamily: AppText.fontFamily,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.9,
+                          color: Colors.white.withValues(alpha: 0.70),
+                        ),
+                      ),
+                      Text(
+                        '$dispPercent%',
+                        style: const TextStyle(
+                          fontFamily: AppText.fontFamily,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 7),
+
+                  // Pista blanca (.track)
+                  Container(
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.26),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    alignment: Alignment.centerLeft,
+                    child: FractionallySizedBox(
+                      widthFactor: (dispPercent / 100).clamp(0.0, 1.0),
+                      child: Container(
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Dos cápsulas de vidrio (.two)
+                  Row(
+                    children: [
+                      // Ingresos
+                      Expanded(
+                        child: _GlassCapsule(
+                          icon: Icons.arrow_upward_rounded,
+                          label: 'INGRESOS',
+                          amount: '+${formatSoles(income)}',
+                          hidden: hidden,
+                        ),
+                      ),
+                      const SizedBox(width: 9),
+                      // Gastos
+                      Expanded(
+                        child: _GlassCapsule(
+                          icon: Icons.arrow_downward_rounded,
+                          label: 'GASTOS',
+                          amount: '−${formatSoles(spent)}',
+                          hidden: hidden,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+    );
+  }
+}
+
+class _GlassCapsule extends StatelessWidget {
+  const _GlassCapsule({
+    required this.icon,
+    required this.label,
+    required this.amount,
+    required this.hidden,
+  });
+
+  final IconData icon;
+  final String label;
+  final String amount;
+  final bool hidden;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.17),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                icon,
+                size: 12,
+                color: Colors.white.withValues(alpha: 0.85),
+              ),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: TextStyle(
+                  fontFamily: AppText.fontFamily,
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 1.0,
+                  color: Colors.white.withValues(alpha: 0.80),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 3),
+          Text(
+            hidden ? '•••••' : amount,
+            style: const TextStyle(
+              fontFamily: AppText.fontFamily,
+              fontSize: 15.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.02 * 15.5,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// TARJETA SEGURO PARA GASTAR (.card)
+// =============================================================================
+class _SafeToSpendCard extends StatelessWidget {
+  const _SafeToSpendCard({
+    required this.hasBudget,
+    required this.onDefineBudget,
+    required this.safeToSpend,
+    required this.safePerDay,
+    required this.remainingDays,
+    required this.isOpen,
+    required this.hidden,
+    required this.onToggle,
+  });
+
+  final bool hasBudget;
+  final VoidCallback onDefineBudget;
+  final double safeToSpend;
+  final double safePerDay;
+  final int remainingDays;
+  final bool isOpen;
+  final bool hidden;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return MgCard(
+      margin: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+      padding: const EdgeInsets.all(15),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Cabecera: ícono de escudo + Seguro para gastar + botón (i)
+          Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: MgColors.accSoft,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.shield_outlined,
+                    size: 15,
+                    color: MgColors.acc2,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 9),
+              const Text(
+                'Seguro para gastar',
+                style: TextStyle(
+                  fontFamily: AppText.fontFamily,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: MgColors.ink,
+                ),
+              ),
+              const Spacer(),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    MgToast.show(
+                      context,
+                      message: 'Es lo que te queda por gastar de tu presupuesto del mes, sin pasar de tu saldo.',
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(13),
+                  child: const SizedBox(
+                    width: 26,
+                    height: 26,
+                    child: Center(
+                      child: Icon(
+                        Icons.info_outline_rounded,
+                        size: 15,
+                        color: MgColors.ink3,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 9),
+
+          // Monto en verde (.safe), o aviso si aún no hay presupuesto
+          if (!hasBudget)
+            InkWell(
+              onTap: onDefineBudget,
+              borderRadius: BorderRadius.circular(6),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 2),
+                child: Text(
+                  'Define tu presupuesto en Ajustes para verlo ›',
+                  style: TextStyle(
+                    fontFamily: AppText.fontFamily,
+                    fontSize: 13,
+                    color: MgColors.ink2,
+                  ),
+                ),
+              ),
+            )
+          else
+            Text(
+              hidden ? '••••••' : formatSoles(safeToSpend),
+              style: AppText.money(
+                size: 24,
+                weight: FontWeight.w800,
+                color: MgColors.up,
+              ),
+            ),
+
+          // Detalle diario colapsable
+          if (isOpen && hasBudget) ...[
+            const SizedBox(height: 7),
+            Row(
+              children: [
+                const Icon(
+                  Icons.calendar_today_outlined,
+                  size: 13,
+                  color: MgColors.ink2,
+                ),
+                const SizedBox(width: 7),
+                Text(
+                  hidden
+                      ? '•••• / día · $remainingDays días restantes'
+                      : '${formatSoles(safePerDay)} / día · $remainingDays días restantes',
+                  style: const TextStyle(
+                    fontFamily: AppText.fontFamily,
+                    fontSize: 11.5,
+                    color: MgColors.ink2,
+                  ),
+                ),
               ],
-              if (pending.isNotEmpty) ...[
-                _PendingBanner(pending: pending),
+            ),
+          ],
+          const SizedBox(height: 7),
+
+          // Botón Ver menos / Ver más
+          if (hasBudget)
+          Align(
+            alignment: Alignment.centerRight,
+            child: InkWell(
+              onTap: onToggle,
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      isOpen ? 'Ver menos' : 'Ver más',
+                      style: const TextStyle(
+                        fontFamily: AppText.fontFamily,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
+                        color: MgColors.ink3,
+                      ),
+                    ),
+                    const SizedBox(width: 3),
+                    Icon(
+                      isOpen
+                          ? Icons.keyboard_arrow_up_rounded
+                          : Icons.keyboard_arrow_down_rounded,
+                      size: 13,
+                      color: MgColors.ink3,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// ENCABEZADO DE SECCIÓN (.sec)
+// =============================================================================
+class _MovementsSectionHeader extends StatelessWidget {
+  const _MovementsSectionHeader({
+    required this.count,
+    required this.onSearchTap,
+  });
+
+  final int count;
+  final VoidCallback onSearchTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 22, 18, 6),
+      child: Row(
+        children: [
+          const Text(
+            'Movimientos',
+            style: TextStyle(
+              fontFamily: AppText.fontFamily,
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.025 * 17,
+              color: MgColors.ink,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            height: 24,
+            padding: const EdgeInsets.symmetric(horizontal: 9),
+            decoration: BoxDecoration(
+              color: MgColors.soft,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.calendar_today_outlined,
+                  size: 12,
+                  color: MgColors.ink2,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  '$count',
+                  style: const TextStyle(
+                    fontFamily: AppText.fontFamily,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: MgColors.ink2,
+                  ),
+                ),
               ],
-              if (budget > 0) ...[
-                const SizedBox(height: 14),
-                _BudgetProgress(spent: spent, budget: budget, now: now),
-              ],
-              const SizedBox(height: 14),
-              _TodaySection(movements: today),
+            ),
+          ),
+          const Spacer(),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onSearchTap,
+              borderRadius: BorderRadius.circular(19),
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: MgColors.soft,
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.search_rounded,
+                    size: 19,
+                    color: MgColors.ink,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// LISTA DE MOVIMIENTOS AGRUPADA POR DÍA (.day + .mv + .swipe)
+// =============================================================================
+class _MovementsGroupedList extends ConsumerWidget {
+  const _MovementsGroupedList({
+    required this.movements,
+    required this.hidden,
+  });
+
+  final List<Movimiento> movements;
+  final bool hidden;
+
+  String _formatDayLabel(DateTime date, DateTime now) {
+    if (date.year == now.year && date.month == now.month && date.day == now.day) {
+      return 'Hoy';
+    }
+    final yesterday = now.subtract(const Duration(days: 1));
+    if (date.year == yesterday.year &&
+        date.month == yesterday.month &&
+        date.day == yesterday.day) {
+      return 'Ayer';
+    }
+    return toBeginningOfSentenceCase(DateFormat('d MMMM', 'es').format(date))!;
+  }
+
+  bool _isRecurring(Movimiento m) {
+    final note = m.notes.toLowerCase();
+    return note.contains('recurrente') ||
+        note.contains('subs') ||
+        m.category == Categoria.entretenimiento;
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (movements.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 24),
+        child: EmptyState(
+          icon: Icons.receipt_long_outlined,
+          title: 'Sin movimientos este mes',
+          message: 'Tus gastos e ingresos aparecerán aquí agrupados por día.',
+          actionLabel: 'Registrar movimiento',
+          onAction: () {
+            RegisterSheet.show(
+              context: context,
+              onSelectExpense: () => context.push('/new'),
+              onSelectIncome: () => context.push('/new'),
+              onSelectTransfer: () => context.push('/where'),
+            );
+          },
+        ),
+      );
+    }
+
+    final now = DateTime.now();
+    final aliases = ref.watch(aliasesProvider);
+
+    // Agrupación por día (clave YYYY-MM-DD)
+    final grouped = <String, List<Movimiento>>{};
+    for (final m in movements) {
+      final key = DateFormat('yyyy-MM-dd').format(m.date);
+      grouped.putIfAbsent(key, () => []).add(m);
+    }
+
+    final sortedKeys = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final key in sortedKeys) ...[
+          // Cabecera del día (.day)
+          Builder(
+            builder: (context) {
+              final dayList = grouped[key]!;
+              final dayDate = dayList.first.date;
+              final dayTotal = dayList.fold(
+                0.0,
+                (sum, m) => sum + (m.esIngreso ? m.amount : -m.amount),
+              );
+
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(18, 16, 18, 6),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _formatDayLabel(dayDate, now),
+                      style: const TextStyle(
+                        fontFamily: AppText.fontFamily,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
+                        color: MgColors.ink2,
+                      ),
+                    ),
+                    Text(
+                      hidden
+                          ? '•••'
+                          : (dayTotal >= 0
+                              ? '+${formatSoles(dayTotal)}'
+                              : '−${formatSoles(dayTotal.abs())}'),
+                      style: const TextStyle(
+                        fontFamily: AppText.fontFamily,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: MgColors.ink2,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+
+          // Filas del día
+          for (final m in grouped[key]!) ...[
+            SwipeToDelete(
+              itemKey: ValueKey(m.id),
+              confirmTitle: '¿Eliminar movimiento?',
+              confirmMessage:
+                  'Se borrará «${displayName(m.merchant, aliases)}» de tu historial.',
+              onDelete: () async {
+                final deleted = m;
+                await ref.read(expensesStateProvider.notifier).deleteExpense(m.id);
+                if (context.mounted) {
+                  MgToast.show(
+                    context,
+                    message: 'Movimiento eliminado',
+                    actionLabel: 'Deshacer',
+                    onAction: () {
+                      ref.read(expensesStateProvider.notifier).restoreExpense(deleted);
+                    },
+                  );
+                }
+              },
+              child: LongPressMenu(
+                onAction: (action) async {
+                  switch (action) {
+                    case MgMenuAction.edit:
+                      context.push('/movement/${m.id}');
+                    case MgMenuAction.addToCommon:
+                      MgToast.show(
+                        context,
+                        message: 'Agregado a registros comunes',
+                      );
+                    case MgMenuAction.compare:
+                      MgToast.show(
+                        context,
+                        message: 'Comparando con periodos anteriores',
+                      );
+                    case MgMenuAction.delete:
+                      final ok = await ConfirmSheet.show(
+                        context,
+                        title: '¿Eliminar movimiento?',
+                        message:
+                            'Se borrará «${displayName(m.merchant, aliases)}» de tu historial.',
+                        confirmLabel: 'Eliminar',
+                        isDestructive: true,
+                      );
+                      if (ok && context.mounted) {
+                        final deleted = m;
+                        await ref
+                            .read(expensesStateProvider.notifier)
+                            .deleteExpense(m.id);
+                        if (context.mounted) {
+                          MgToast.show(
+                            context,
+                            message: 'Movimiento eliminado',
+                            actionLabel: 'Deshacer',
+                            onAction: () {
+                              ref
+                                  .read(expensesStateProvider.notifier)
+                                  .restoreExpense(deleted);
+                            },
+                          );
+                        }
+                      }
+                  }
+                },
+                child: _MovementItemRow(
+                  movement: m,
+                  name: displayName(m.merchant, aliases),
+                  isRecurring: _isRecurring(m),
+                  hidden: hidden,
+                  onTap: () => showExpenseDetailSheet(context, ref, m),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ],
+    );
+  }
+}
+
+class _MovementItemRow extends StatelessWidget {
+  const _MovementItemRow({
+    required this.movement,
+    required this.name,
+    required this.isRecurring,
+    required this.hidden,
+    required this.onTap,
+  });
+
+  final Movimiento movement;
+  final String name;
+  final bool isRecurring;
+  final bool hidden;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final catName = categoryLabel(movement.category);
+    final catColor = CategoryIcon.colorForCategory(movement.category);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+          child: Row(
+            children: [
+              // Cuadrito redondeado de categoría (.ic)
+              CategoryIcon(
+                category: movement.category,
+                size: 38,
+                radius: 12,
+              ),
+              const SizedBox(width: 12),
+
+              // Nombre y categoría (.mid)
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            name,
+                            style: const TextStyle(
+                              fontFamily: AppText.fontFamily,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: -0.01 * 14,
+                              color: MgColors.ink,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (isRecurring) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: catColor,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      catName,
+                      style: const TextStyle(
+                        fontFamily: AppText.fontFamily,
+                        fontSize: 11.5,
+                        color: MgColors.ink2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+
+              // Monto (.amt)
+              MoneyText(
+                amount: movement.amount,
+                isIncome: movement.esIngreso,
+                isExpense: movement.esGasto,
+                hidden: hidden,
+                style: AppText.money(
+                  size: 14.5,
+                  weight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),
@@ -80,217 +1306,9 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-class _Header extends ConsumerWidget {
-  const _Header({required this.now});
-
-  final DateTime now;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final hidden = ref.watch(balanceHiddenProvider);
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final month = toBeginningOfSentenceCase(DateFormat('MMMM', 'es').format(now));
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          children: [
-            Text(month, style: theme.textTheme.headlineMedium),
-            const SizedBox(width: 4),
-            AppIcon(
-              AppIcons.expand,
-              size: AppIconSize.small,
-              color: scheme.onSurfaceVariant,
-            ),
-          ],
-        ),
-        Row(
-          children: [
-            _HeaderButton(
-              label: hidden ? 'Mostrar montos' : 'Ocultar montos',
-              icon: hidden ? AppIcons.eyeOff : AppIcons.eye,
-              onTap: () => ref.read(balanceHiddenProvider.notifier).toggle(),
-            ),
-            const SizedBox(width: 8),
-            _HeaderButton(
-              label: 'Buscar movimientos',
-              icon: AppIcons.search,
-              onTap: () => context.go('/expenses'),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _HeaderButton extends StatelessWidget {
-  const _HeaderButton({required this.label, required this.icon, required this.onTap});
-
-  final String label;
-  final AppIcons icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Tooltip(
-      message: label,
-      child: Semantics(
-        button: true,
-        label: label,
-        excludeSemantics: true,
-        child: Material(
-          color: scheme.surface,
-          borderRadius: BorderRadius.circular(AppRadius.field),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(AppRadius.field),
-            onTap: onTap,
-            child: SizedBox(
-              width: AppSizes.iconButton,
-              height: AppSizes.iconButton,
-              child: Center(child: AppIcon(icon, color: scheme.onSurface)),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Balance extends ConsumerStatefulWidget {
-  const _Balance({required this.balance});
-
-  final double balance;
-
-  @override
-  ConsumerState<_Balance> createState() => _BalanceState();
-}
-
-class _BalanceState extends ConsumerState<_Balance> {
-  /// Cuántas veces se volvió a mostrar el saldo: cada vez el número sube desde 0.
-  int _reveals = 0;
-  bool _wasHidden = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final hidden = ref.watch(balanceHiddenProvider);
-    if (_wasHidden && !hidden) _reveals++;
-    _wasHidden = hidden;
-    final negative = widget.balance < 0;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Te quedan de este mes',
-          style: theme.textTheme.bodyMedium!.copyWith(
-            fontSize: 13.5,
-            fontWeight: FontWeight.w500,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 4),
-        BigAmount(
-          widget.balance.abs(),
-          key: ValueKey(_reveals),
-          prefix: negative && !hidden ? '− S/' : 'S/',
-          color: negative && !hidden ? context.appColors.budgetOver : null,
-          hidden: hidden,
-          countUpFromZero: _reveals > 0,
-        ),
-      ],
-    );
-  }
-}
-
-class _IncomeExpenseTiles extends StatelessWidget {
-  const _IncomeExpenseTiles({required this.income, required this.spent});
-
-  final double income;
-  final double spent;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _Tile(
-            icon: AppIcons.arrowUp,
-            label: 'Ingresos',
-            value: income,
-            iconColor: context.appColors.income,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _Tile(
-            icon: AppIcons.arrowDown,
-            label: 'Gastos',
-            value: spent,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _Tile extends ConsumerWidget {
-  const _Tile({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.iconColor,
-  });
-
-  final AppIcons icon;
-  final String label;
-  final double value;
-  final Color? iconColor;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final hidden = ref.watch(balanceHiddenProvider);
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
-    return Semantics(
-      label: '$label, ${hidden ? 'monto oculto' : formatSoles(value).replaceAll('S/', 'soles')}',
-      excludeSemantics: true,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: scheme.surface,
-          borderRadius: BorderRadius.circular(AppRadius.card),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                AppIcon(icon, size: 14, color: iconColor ?? scheme.onSurfaceVariant),
-                const SizedBox(width: 5),
-                Text(label, style: theme.textTheme.labelMedium),
-              ],
-            ),
-            const SizedBox(height: 2),
-            Text(
-              solesOrHidden(value, hidden),
-              style: AppText.amount(theme.textTheme.titleMedium!.copyWith(
-                fontSize: 17,
-              )),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Avisa cuando la lectura de pagos no puede funcionar: permiso apagado o batería restringida.
+// =============================================================================
+// AVISOS FUNCIONALES (SetupBanner & PendingBanner)
+// =============================================================================
 class _SetupBanner extends ConsumerWidget {
   const _SetupBanner({required this.issue});
 
@@ -298,8 +1316,6 @@ class _SetupBanner extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final colors = context.appColors;
     final permissions = ref.read(permissionsCheckerProvider);
     final off = issue == SetupIssue.lecturaApagada;
 
@@ -309,15 +1325,18 @@ class _SetupBanner extends ConsumerWidget {
     switch (issue) {
       case SetupIssue.lecturaApagada:
         title = 'La lectura de pagos está apagada';
-        body = 'MiGasto no está viendo tus pagos de Yape, Plin ni Wallet. Actívala en Acceso a notificaciones.';
+        body =
+            'MiGasto no está viendo tus pagos de Yape, Plin ni Wallet. Actívala en Acceso a notificaciones.';
         action = 'Activar';
       case SetupIssue.avisosApagados:
         title = 'Activa los avisos de MiGasto';
-        body = 'Con la pantalla apagada o bloqueada, solo así sabrás qué pago se detectó.';
+        body =
+            'Con la pantalla apagada o bloqueada, solo así sabrás qué pago se detectó.';
         action = 'Activar';
       case SetupIssue.bateriaRestringida:
         title = 'Evita que el teléfono cierre la lectura';
-        body = 'Entra a Batería y elige «No restringido» («Sin restricciones» en otras marcas). Si no, el teléfono puede dormir la app y se pierden pagos.';
+        body =
+            'Entra a Batería y elige «No restringido». Si no, el teléfono puede dormir la app y se pierden pagos.';
         action = 'Ajustar';
     }
 
@@ -344,316 +1363,143 @@ class _SetupBanner extends ConsumerWidget {
       }
     }
 
-    return Semantics(
-      container: true,
-      label: '$title. $body',
-      child: Material(
-        color: colors.budgetWarningSoft,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 4, 6),
-          child: Column(
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 10, 8),
+      decoration: BoxDecoration(
+        color: MgColors.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: MgColors.warn.withValues(alpha: 0.35), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: AppIcon(AppIcons.alert,
-                        size: AppIconSize.small, color: colors.budgetWarning),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(title,
-                              style: theme.textTheme.bodyMedium!
-                                  .copyWith(fontSize: 13.5, fontWeight: FontWeight.w600)),
-                          const SizedBox(height: 2),
-                          Text(body, style: theme.textTheme.bodySmall),
-                        ],
+              const Padding(
+                padding: EdgeInsets.only(top: 2),
+                child: Icon(Icons.warning_amber_rounded, size: 18, color: MgColors.warn),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontFamily: AppText.fontFamily,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: MgColors.ink,
                       ),
                     ),
-                  ),
-                ],
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  if (!off) TextButton(onPressed: dismiss, child: const Text('Ahora no')),
-                  TextButton(onPressed: act, child: Text(action)),
-                ],
+                    const SizedBox(height: 3),
+                    Text(
+                      body,
+                      style: const TextStyle(
+                        fontFamily: AppText.fontFamily,
+                        fontSize: 12,
+                        color: MgColors.ink2,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-        ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              if (!off)
+                TextButton(
+                  onPressed: dismiss,
+                  child: const Text('Ahora no', style: TextStyle(color: MgColors.ink2)),
+                ),
+              TextButton(
+                onPressed: act,
+                child: Text(
+                  action,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: MgColors.acc2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 }
 
-/// Aviso de lo que espera confirmación del usuario. No suma al saldo.
-class _PendingBanner extends ConsumerWidget {
-  const _PendingBanner({required this.pending});
+class _PendingBanner extends StatelessWidget {
+  const _PendingBanner({
+    required this.pending,
+    required this.hidden,
+  });
 
   final List<Movimiento> pending;
+  final bool hidden;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final hidden = ref.watch(balanceHiddenProvider);
-    final theme = Theme.of(context);
-    final colors = context.appColors;
+  Widget build(BuildContext context) {
     final count = pending.length;
     final allIncome = pending.every((m) => m.esIngreso);
     final noun = allIncome
         ? (count == 1 ? 'ingreso' : 'ingresos')
         : (count == 1 ? 'movimiento' : 'movimientos');
-    final incomeTotal = pending.where((m) => m.esIngreso).fold(0.0, (s, m) => s + m.amount);
-    final bodyStyle = theme.textTheme.bodyMedium!.copyWith(fontSize: 13);
+    final incomeTotal =
+        pending.where((m) => m.esIngreso).fold(0.0, (s, m) => s + m.amount);
 
-    return Semantics(
-      button: true,
-      label: '$count $noun por confirmar',
-      excludeSemantics: true,
-      child: Material(
-        color: colors.pendingReviewSoft,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () => context.go('/expenses'),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: AppSizes.minTouch),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              child: Row(
-                children: [
-                  AppIcon(AppIcons.info,
-                      size: AppIconSize.small, color: colors.pendingReview),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text.rich(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => context.go('/expenses'),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: MgColors.accSoft,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: MgColors.accLine, width: 1),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline_rounded, size: 18, color: MgColors.acc2),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    style: const TextStyle(
+                      fontFamily: AppText.fontFamily,
+                      fontSize: 13,
+                      color: MgColors.ink,
+                    ),
+                    children: [
                       TextSpan(
-                        style: bodyStyle,
-                        children: [
-                          TextSpan(
-                            text: '$count $noun',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          const TextSpan(text: ' por confirmar'),
-                        ],
+                        text: '$count $noun',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
-                    ),
+                      const TextSpan(text: ' por confirmar'),
+                    ],
                   ),
-                  if (incomeTotal > 0)
-                    Text(
-                      '+ ${solesOrHidden(incomeTotal, hidden)}',
-                      style: AppText.amount(bodyStyle.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: colors.pendingReview,
-                      )),
-                    ),
-                ],
+                ),
               ),
-            ),
+              if (incomeTotal > 0)
+                Text(
+                  hidden ? '+ S/ ••••' : '+ ${formatSoles(incomeTotal)}',
+                  style: AppText.money(
+                    size: 13,
+                    weight: FontWeight.w600,
+                    color: MgColors.acc2,
+                  ),
+                ),
+            ],
           ),
         ),
       ),
-    );
-  }
-}
-
-class _BudgetProgress extends ConsumerWidget {
-  const _BudgetProgress({
-    required this.spent,
-    required this.budget,
-    required this.now,
-  });
-
-  final double spent;
-  final double budget;
-  final DateTime now;
-
-  _BudgetState get _state {
-    final ratio = spent / budget;
-    if (ratio > 1.0) return _BudgetState.over;
-    if (ratio >= 0.75) return _BudgetState.warning;
-    return _BudgetState.ok;
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final hidden = ref.watch(balanceHiddenProvider);
-    final theme = Theme.of(context);
-    final colors = context.appColors;
-    final ratio = spent / budget;
-    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
-    final monthFraction = (now.day / daysInMonth).clamp(0.0, 1.0);
-    final percent = (ratio * 100).round();
-
-    late Color color;
-    late AppIcons icon;
-    late String status;
-    switch (_state) {
-      case _BudgetState.ok:
-        color = colors.budgetOk;
-        icon = AppIcons.checkCircle;
-        status = 'Gastos: vas bien';
-      case _BudgetState.warning:
-        color = colors.budgetWarning;
-        icon = AppIcons.alert;
-        status = 'Gastos: cerca del límite';
-      case _BudgetState.over:
-        color = colors.budgetOver;
-        icon = AppIcons.alert;
-        status = 'Gastos: te pasaste';
-    }
-
-    // Con los montos ocultos tampoco se ve cuánto del presupuesto va gastado.
-    if (hidden) {
-      icon = AppIcons.wallet;
-      color = theme.colorScheme.onSurfaceVariant;
-      status = 'Presupuesto del mes';
-    }
-
-    final statusStyle = theme.textTheme.bodyMedium!.copyWith(
-      fontSize: 13.5,
-      fontWeight: FontWeight.w600,
-    );
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                AppIcon(icon, size: AppIconSize.small, color: color),
-                const SizedBox(width: 6),
-                Text(status, style: statusStyle),
-              ],
-            ),
-            Text(
-              hidden
-                  ? '$hiddenAmount % de S/ $hiddenAmount'
-                  : '$percent % de S/ ${NumberFormat('#,##0', 'en').format(budget)}',
-              style: AppText.amount(theme.textTheme.bodySmall!),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Semantics(
-          label: hidden
-              ? 'presupuesto oculto'
-              : '$percent % del presupuesto de gastos usado, ${(monthFraction * 100).round()} % del mes transcurrido',
-          excludeSemantics: true,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final width = constraints.maxWidth;
-              return SizedBox(
-                height: AppSizes.track + 4,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    LinearPercentIndicator(
-                      padding: EdgeInsets.zero,
-                      lineHeight: AppSizes.track + 4,
-                      percent: hidden ? 0.0 : ratio.clamp(0.0, 1.0),
-                      barRadius: const Radius.circular(AppSizes.track),
-                      backgroundColor: theme.colorScheme.outline,
-                      progressColor: color,
-                      animation: true,
-                      animationDuration: 700,
-                      curve: Curves.easeOutCubic,
-                      animateFromLastPercent: true,
-                    ),
-                    // Marca de cuánto del mes ya pasó: el paquete no la trae.
-                    if (!hidden)
-                      Positioned(
-                      left: (width * monthFraction - 1).clamp(0.0, width - 2),
-                      top: -4,
-                      bottom: -4,
-                      child: Container(
-                        width: 2,
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.onSurface,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _TodaySection extends ConsumerWidget {
-  const _TodaySection({required this.movements});
-
-  final List<Movimiento> movements;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final colors = context.appColors;
-    final timeFormat = DateFormat('HH:mm');
-    final aliases = ref.watch(aliasesProvider);
-    final propias = ref.watch(customCategoriesProvider);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('Hoy', style: theme.textTheme.titleMedium),
-            TextButton(
-              onPressed: () => context.go('/expenses'),
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-              ),
-              child: Text(
-                'Ver todos',
-                style: theme.textTheme.labelLarge!.copyWith(
-                  fontSize: 13,
-                  color: colors.brandInk,
-                ),
-              ),
-            ),
-          ],
-        ),
-        if (movements.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: Text(
-              'Hoy aún no registras movimientos.',
-              style: theme.textTheme.bodySmall,
-            ),
-          ),
-        for (var i = 0; i < movements.length; i++) ...[
-          if (i > 0) Divider(color: theme.colorScheme.outline, height: 1),
-          MovementRow(
-            icon: categoryDisplay(movements[i].category, movements[i].categoriaPropia, propias).glyph,
-            title: displayName(movements[i].merchant, aliases),
-            amount: movements[i].amount,
-            sourceName: movements[i].source.name,
-            sourceLabel: sourceLabel(movements[i].source),
-            time: timeFormat.format(movements[i].date),
-            isIncome: movements[i].esIngreso,
-            isPending: movements[i].estado == EstadoMovimiento.pendiente,
-            onTap: () => showExpenseDetailSheet(context, ref, movements[i]),
-          ),
-        ],
-      ],
     );
   }
 }
