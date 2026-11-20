@@ -488,10 +488,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
               icon: Icons.logout_rounded,
             );
             if (confirm && context.mounted) {
-              if (!ref.read(isGuestProvider)) {
-                await ref.read(authServiceProvider).signOut();
-                await ref.read(authModeProvider.notifier).set('guest');
-              }
+              if (!ref.read(isGuestProvider)) await signOutAccount(ref);
               await ref.read(sharedPreferencesProvider).setBool('is_logged_in', false);
               if (context.mounted) {
                 MgToast.show(context, message: 'Sesión cerrada.');
@@ -707,6 +704,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     if (ok != true) return;
     await nameNotifier.updateValue(name);
     await emailNotifier.updateValue(email);
+    await markProfileAsOwn(ref);
   }
 
   Future<void> _editBudget(BuildContext context, double current) async {

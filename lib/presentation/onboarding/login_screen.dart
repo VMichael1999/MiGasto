@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/layout/adaptive.dart';
 import '../../core/theme/mg_colors.dart';
+import '../../core/widgets/mg_busy_overlay.dart';
 import '../../core/widgets/mg_toast.dart';
 import '../../data/services/auth_service.dart';
 import '../auth/account_link.dart';
@@ -30,21 +31,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   bool _busy = false;
+  String _busyMessage = 'Iniciando sesión…';
 
   /// Corre una acción de autenticación; si sale bien entra a la app con esa cuenta.
-  Future<void> _auth(Future<AuthAccount> Function(AuthService) action) async {
+  Future<void> _auth(Future<AuthAccount> Function(AuthService) action, {String? message}) async {
     if (_busy) return;
-    setState(() => _busy = true);
-    try {
-      final account = await action(ref.read(authServiceProvider));
-      await applyAccount(ref, account);
-      if (mounted) context.go('/dashboard');
-    } on AuthException catch (e) {
-      if (mounted && !e.cancelled) MgToast.show(context, message: e.message);
-    } catch (_) {
-      if (mounted) MgToast.show(context, message: 'No se pudo completar. Intenta de nuevo.');
-    } finally {
-      if (mounted) setState(() => _busy = false);
+    setState(() {
+      _busy = true;
+      _busyMessage = message ?? 'Iniciando sesión…';
+    });
+    final service = ref.read(authServiceProvider);
+    final outcome = await attemptAuth(ref, () => action(service));
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (outcome.ok) {
+      context.go('/dashboard');
+    } else if (outcome.error != null) {
+      MgToast.show(context, message: outcome.error!);
     }
   }
 
@@ -301,7 +304,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         fit: BoxFit.contain,
                       ),
                       label: 'Apple',
-                      onTap: () => _auth((a) => a.signInWithApple()),
+                      onTap: () => _auth((a) => a.signInWithApple(), message: 'Conectando con Apple…'),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -315,7 +318,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         fit: BoxFit.contain,
                       ),
                       label: 'Google',
-                      onTap: () => _auth((a) => a.signInWithGoogle()),
+                      onTap: () => _auth((a) => a.signInWithGoogle(), message: 'Conectando con Google…'),
                     ),
                   ),
                 ],
@@ -375,7 +378,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     ];
     return Scaffold(
       backgroundColor: MgColors.bg,
-      body: SafeArea(
+      body: MgBusyOverlay(
+        busy: _busy,
+        message: _busyMessage,
+        child: SafeArea(
         child: context.isLandscapePhone
             // Horizontal: bienvenida a la izquierda y formulario a la derecha.
             ? Row(
@@ -411,6 +417,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   children: [...header, ...form],
                 ),
               ),
+      ),
       ),
     );
   }

@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/mg_colors.dart';
+import '../../core/widgets/mg_busy_overlay.dart';
 import '../../core/widgets/mg_sheet.dart';
 import '../../core/widgets/mg_toast.dart';
 import '../../data/services/auth_service.dart';
@@ -16,11 +18,82 @@ Future<void> applyAccount(WidgetRef ref, AuthAccount account) async {
   await prefs.setString('auth_uid', account.uid);
   await prefs.setBool('is_logged_in', true);
   await ref.read(authModeProvider.notifier).set('account');
+  // Lo que se completa desde la cuenta se recuerda, para quitarlo al cerrar sesión
+  // y que el siguiente invitado no vea los datos de otra persona.
   if (ref.read(profileEmailProvider).trim().isEmpty && (account.email ?? '').isNotEmpty) {
     await ref.read(profileEmailProvider.notifier).updateValue(account.email!);
+    await prefs.setBool(profileEmailFromAccountKey, true);
   }
   if (ref.read(profileNameProvider).trim().isEmpty && (account.name ?? '').isNotEmpty) {
     await ref.read(profileNameProvider.notifier).updateValue(account.name!);
+    await prefs.setBool(profileNameFromAccountKey, true);
+  }
+}
+
+const profileEmailFromAccountKey = 'profile_email_from_account';
+const profileNameFromAccountKey = 'profile_name_from_account';
+
+/// El usuario editó su perfil a mano: ya es suyo y no se borra al cerrar sesión.
+Future<void> markProfileAsOwn(WidgetRef ref) async {
+  final prefs = ref.read(sharedPreferencesProvider);
+  await prefs.remove(profileEmailFromAccountKey);
+  await prefs.remove(profileNameFromAccountKey);
+}
+
+/// Cierra la sesión de la cuenta y vuelve a modo invitado. Los movimientos se
+/// quedan en el teléfono; solo se quitan los datos de perfil que vinieron de la cuenta.
+Future<void> signOutAccount(WidgetRef ref) async {
+  final prefs = ref.read(sharedPreferencesProvider);
+  final service = ref.read(authServiceProvider);
+  final current = service.current;
+  try {
+    await service.signOut();
+  } catch (e) {
+    debugPrint('No se pudo cerrar la sesión en el servidor: $e');
+  }
+  // También se quita lo que coincide con los datos de la cuenta (sesiones de antes de las marcas).
+  final sameEmail = (current?.email ?? '').isNotEmpty &&
+      ref.read(profileEmailProvider).trim().toLowerCase() == current!.email!.toLowerCase();
+  final sameName = (current?.name ?? '').isNotEmpty &&
+      ref.read(profileNameProvider).trim() == current!.name!.trim();
+  if (sameEmail || (prefs.getBool(profileEmailFromAccountKey) ?? false)) {
+    await ref.read(profileEmailProvider.notifier).updateValue('');
+  }
+  if (sameName || (prefs.getBool(profileNameFromAccountKey) ?? false)) {
+    await ref.read(profileNameProvider.notifier).updateValue('');
+  }
+  await markProfileAsOwn(ref);
+  await prefs.remove('auth_uid');
+  await ref.read(authModeProvider.notifier).set('guest');
+}
+
+/// Resultado de un intento de iniciar sesión, crear o vincular una cuenta.
+/// Si [account] es nulo y [error] también, el usuario canceló la ventana del proveedor.
+class AuthOutcome {
+  const AuthOutcome({this.account, this.error});
+  final AuthAccount? account;
+  final String? error;
+  bool get ok => account != null;
+}
+
+/// Corre [action] sin dejar escapar ningún error: devuelve la cuenta ya aplicada
+/// a la app o un mensaje listo para mostrar. Tiene tiempo límite para que una
+/// conexión colgada no deje la pantalla esperando para siempre.
+Future<AuthOutcome> attemptAuth(
+  WidgetRef ref,
+  Future<AuthAccount> Function() action,
+) async {
+  try {
+    final account = await action().timeout(const Duration(minutes: 2));
+    await applyAccount(ref, account);
+    return AuthOutcome(account: account);
+  } on AuthException catch (e) {
+    return AuthOutcome(error: e.cancelled ? null : e.message);
+  } on TimeoutException {
+    return const AuthOutcome(error: 'Tardó demasiado. Revisa tu conexión e intenta de nuevo.');
+  } catch (e) {
+    debugPrint('Fallo de autenticación: $e');
+    return const AuthOutcome(error: 'No se pudo completar. Intenta de nuevo.');
   }
 }
 
@@ -57,24 +130,24 @@ class _LinkAccountSheetState extends ConsumerState<_LinkAccountSheet> {
   }
 
   Future<void> _run(Future<AuthAccount> Function(AuthService) action) async {
+    if (_busy) return;
     setState(() {
       _busy = true;
       _error = null;
     });
-    try {
-      final account = await action(ref.read(authServiceProvider));
-      await applyAccount(ref, account);
-      if (!mounted) return;
+    final service = ref.read(authServiceProvider);
+    final outcome = await attemptAuth(ref, () => action(service));
+    if (!mounted) return;
+    if (outcome.ok) {
       final messenger = ScaffoldMessenger.of(context);
       Navigator.of(context).pop(true);
       messenger.hideCurrentSnackBar();
       MgToast.show(context, message: 'Cuenta vinculada. Tus datos siguen contigo.');
-    } on AuthException catch (e) {
-      if (mounted) setState(() => _error = e.cancelled ? null : e.message);
-    } catch (_) {
-      if (mounted) setState(() => _error = 'No se pudo completar. Intenta de nuevo.');
-    } finally {
-      if (mounted) setState(() => _busy = false);
+    } else {
+      setState(() {
+        _busy = false;
+        _error = outcome.error;
+      });
     }
   }
 
@@ -91,22 +164,24 @@ class _LinkAccountSheetState extends ConsumerState<_LinkAccountSheet> {
   @override
   Widget build(BuildContext context) {
     final showApple = Platform.isIOS;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+    final content = Padding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 22),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
             'Vincular cuenta',
+            textAlign: TextAlign.center,
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: MgColors.ink),
           ),
           const SizedBox(height: 6),
           const Text(
             'Todo lo que ya registraste se queda contigo y pasa a tu cuenta.',
+            textAlign: TextAlign.center,
             style: TextStyle(fontSize: 13, color: MgColors.ink2, height: 1.4),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           if (!_emailMode) ...[
             _Option(
               leading: Image.asset('assets/icons/google_logo.png', width: 22, height: 22, fit: BoxFit.contain),
@@ -152,6 +227,7 @@ class _LinkAccountSheetState extends ConsumerState<_LinkAccountSheet> {
                 child: Text(_creating ? 'Crear cuenta y vincular' : 'Entrar y vincular'),
               ),
             ),
+            const SizedBox(height: 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -166,18 +242,44 @@ class _LinkAccountSheetState extends ConsumerState<_LinkAccountSheet> {
               ],
             ),
           ],
-          if (_error != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text(_error!, style: const TextStyle(fontSize: 12.5, color: MgColors.down)),
+          if (_error != null) _ErrorNote(_error!),
+        ],
+      ),
+    );
+    return MgBusyOverlay(
+      busy: _busy,
+      message: _creating && _emailMode ? 'Creando tu cuenta…' : 'Vinculando tu cuenta…',
+      child: content,
+    );
+  }
+}
+
+/// Aviso de error dentro de un formulario: visible, con icono y a todo el ancho.
+class _ErrorNote extends StatelessWidget {
+  const _ErrorNote(this.message);
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: MgColors.down.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: MgColors.down.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.error_outline_rounded, size: 17, color: MgColors.down),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(fontSize: 12.5, height: 1.35, color: MgColors.ink),
             ),
-          if (_busy)
-            const Padding(
-              padding: EdgeInsets.only(top: 12),
-              child: Center(
-                child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
-              ),
-            ),
+          ),
         ],
       ),
     );
@@ -206,12 +308,15 @@ class _Option extends StatelessWidget {
             border: Border.all(color: MgColors.line),
           ),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               SizedBox(width: 24, child: Center(child: leading)),
               const SizedBox(width: 12),
-              Expanded(
+              Flexible(
                 child: Text(
                   label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: MgColors.ink),
                 ),
               ),

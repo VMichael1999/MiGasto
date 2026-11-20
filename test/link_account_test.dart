@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:mi_gasto/data/services/auth_service.dart';
+import 'package:mi_gasto/presentation/auth/account_link.dart';
 import 'package:mi_gasto/presentation/providers.dart';
 import 'package:mi_gasto/presentation/settings/settings_screen.dart';
 import 'package:mi_gasto/core/theme/theme.dart';
@@ -68,5 +69,63 @@ void main() {
     expect(container.read(profileNameProvider), 'Ana Pérez');
     // Ya no se ofrece vincular.
     expect(find.text('Vincular cuenta'), findsNothing);
+  });
+
+  testWidgets('al cerrar la sesión de la cuenta, el perfil del invitado queda limpio', (tester) async {
+    SharedPreferences.setMockInitialValues({'is_logged_in': true});
+    final prefs = await SharedPreferences.getInstance();
+    final auth = FakeAuth();
+    final container = ProviderContainer(overrides: [
+      sharedPreferencesProvider.overrideWithValue(prefs),
+      authServiceProvider.overrideWithValue(auth),
+    ]);
+    addTearDown(container.dispose);
+    late WidgetRef captured;
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(
+        home: Consumer(builder: (context, ref, _) {
+          captured = ref;
+          return const SizedBox();
+        }),
+      ),
+    ));
+
+    await applyAccount(captured, const AuthAccount(uid: 'u1', email: 'ana@correo.com', name: 'Ana'));
+    expect(container.read(profileEmailProvider), 'ana@correo.com');
+    expect(container.read(isGuestProvider), isFalse);
+
+    await signOutAccount(captured);
+    expect(container.read(profileEmailProvider), '');
+    expect(container.read(profileNameProvider), '');
+    expect(container.read(isGuestProvider), isTrue);
+    expect(prefs.getString('auth_uid'), isNull);
+    expect(auth.signOuts, 1);
+  });
+
+  testWidgets('lo que el usuario escribió en su perfil no se borra al cerrar sesión', (tester) async {
+    SharedPreferences.setMockInitialValues({'is_logged_in': true, 'profile_name': 'Luis'});
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(overrides: [
+      sharedPreferencesProvider.overrideWithValue(prefs),
+      authServiceProvider.overrideWithValue(FakeAuth()),
+    ]);
+    addTearDown(container.dispose);
+    late WidgetRef captured;
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(
+        home: Consumer(builder: (context, ref, _) {
+          captured = ref;
+          return const SizedBox();
+        }),
+      ),
+    ));
+    await applyAccount(captured, const AuthAccount(uid: 'u1', email: 'luis@correo.com', name: 'Otro'));
+    // El nombre ya existía: no se pisa. El correo vino de la cuenta.
+    expect(container.read(profileNameProvider), 'Luis');
+    await signOutAccount(captured);
+    expect(container.read(profileNameProvider), 'Luis');
+    expect(container.read(profileEmailProvider), '');
   });
 }

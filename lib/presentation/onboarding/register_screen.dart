@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/layout/adaptive.dart';
 import '../../core/theme/mg_colors.dart';
+import '../../core/widgets/mg_busy_overlay.dart';
 import '../../data/services/auth_service.dart';
 import '../auth/account_link.dart';
 import '../providers.dart';
@@ -26,6 +27,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _repeat = TextEditingController();
   bool _obscure = true;
   bool _busy = false;
+  String _busyMessage = 'Creando tu cuenta…';
   bool _submitted = false;
   String? _serverError;
 
@@ -54,26 +56,27 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     return _repeat.text == _password.text ? null : 'Las contraseñas no coinciden.';
   }
 
-  Future<void> _run(Future<AuthAccount> Function(AuthService) action) async {
+  Future<void> _run(Future<AuthAccount> Function(AuthService) action, {String? message}) async {
     if (_busy) return;
     setState(() {
       _busy = true;
+      _busyMessage = message ?? 'Creando tu cuenta…';
       _serverError = null;
     });
-    try {
-      final account = await action(ref.read(authServiceProvider));
-      await applyAccount(ref, account);
+    final service = ref.read(authServiceProvider);
+    final outcome = await attemptAuth(ref, () => action(service));
+    if (!mounted) return;
+    if (outcome.ok) {
       // Si escribió su nombre y la cuenta no lo trae, se guarda en el perfil.
       if (ref.read(profileNameProvider).trim().isEmpty && _name.text.trim().isNotEmpty) {
         await ref.read(profileNameProvider.notifier).updateValue(_name.text.trim());
       }
       if (mounted) context.go('/dashboard');
-    } on AuthException catch (e) {
-      if (mounted && !e.cancelled) setState(() => _serverError = e.message);
-    } catch (_) {
-      if (mounted) setState(() => _serverError = 'No se pudo completar. Intenta de nuevo.');
-    } finally {
-      if (mounted) setState(() => _busy = false);
+    } else {
+      setState(() {
+        _busy = false;
+        _serverError = outcome.error;
+      });
     }
   }
 
@@ -127,10 +130,25 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       _field('Repite la contraseña', Icons.lock_outline_rounded, _repeat,
           obscure: _obscure, error: _repeatError, onSubmitted: (_) => _create()),
       if (_serverError != null)
-        Padding(
-          padding: const EdgeInsets.only(top: 12),
-          child: Text(_serverError!,
-              style: const TextStyle(fontSize: 12.5, color: MgColors.down)),
+        Container(
+          margin: const EdgeInsets.only(top: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: MgColors.down.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: MgColors.down.withValues(alpha: 0.35)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.error_outline_rounded, size: 17, color: MgColors.down),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(_serverError!,
+                    style: const TextStyle(fontSize: 12.5, height: 1.35, color: MgColors.ink)),
+              ),
+            ],
+          ),
         ),
       const SizedBox(height: 20),
       SizedBox(
@@ -144,13 +162,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             textStyle: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
           ),
-          child: _busy
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                )
-              : const Text('Crear cuenta'),
+          child: const Text('Crear cuenta'),
         ),
       ),
       const SizedBox(height: 20),
@@ -172,7 +184,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               child: _oauth(
                 Image.asset('assets/icons/apple_logo.png', width: 17, height: 17),
                 'Apple',
-                () => _run((a) => a.signInWithApple()),
+                () => _run((a) => a.signInWithApple(), message: 'Conectando con Apple…'),
               ),
             ),
             const SizedBox(width: 10),
@@ -181,7 +193,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             child: _oauth(
               Image.asset('assets/icons/google_logo.png', width: 18, height: 18),
               'Google',
-              () => _run((a) => a.signInWithGoogle()),
+              () => _run((a) => a.signInWithGoogle(), message: 'Conectando con Google…'),
             ),
           ),
         ],
@@ -204,7 +216,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     return Scaffold(
       backgroundColor: MgColors.bg,
-      body: SafeArea(
+      body: MgBusyOverlay(
+        busy: _busy,
+        message: _busyMessage,
+        child: SafeArea(
         child: context.isLandscapePhone
             ? Row(
                 children: [
@@ -239,6 +254,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   children: [...header, ...form],
                 ),
               ),
+      ),
       ),
     );
   }
