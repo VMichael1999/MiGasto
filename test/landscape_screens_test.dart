@@ -10,7 +10,9 @@ import 'package:mi_gasto/presentation/expenses/expenses_screen.dart';
 import 'package:mi_gasto/presentation/expenses/manual_entry_screen.dart';
 import 'package:mi_gasto/presentation/onboarding/login_screen.dart';
 import 'package:mi_gasto/presentation/onboarding/onboarding_screen.dart';
+import 'package:mi_gasto/core/widgets/charts.dart';
 import 'package:mi_gasto/presentation/plan/plan_providers.dart';
+import 'package:mi_gasto/presentation/reports/fullscreen_chart_screen.dart';
 import 'package:mi_gasto/presentation/plan/plan_screen.dart';
 import 'package:mi_gasto/presentation/providers.dart';
 import 'package:mi_gasto/presentation/reports/reports_screen.dart';
@@ -134,5 +136,32 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 6));
+  });
+
+  testWidgets('Gastos por categoría en horizontal: gráfico a la izquierda y desglose a la derecha', (tester) async {
+    FullscreenChartScreen screen() => FullscreenChartScreen(
+          month: DateTime(2026, 11),
+          spaceName: 'Personal',
+          segments: const [
+            DonutSegment(label: 'Servicios', value: 300, color: Colors.purple),
+            DonutSegment(label: 'Compras', value: 100, color: Colors.blue),
+          ],
+          catList: const [
+            MapEntry(Categoria.servicios, 300),
+            MapEntry(Categoria.compras, 100),
+          ],
+          total: 400,
+          isHide: false,
+          initialChartIndex: 1,
+        );
+    await show(tester, screen());
+    final chartTotal = tester.getTopLeft(find.text('S/ 400.00'));
+    final breakdown = tester.getTopLeft(find.text('Desglose por categoría'));
+    expect(chartTotal.dx, lessThan(383));
+    expect(breakdown.dx, greaterThan(383));
+    // Las métricas rápidas quedan visibles sin desplazar.
+    expect(find.text('Mayor gasto'), findsOneWidget);
+    expect(tester.getTopLeft(find.text('Mayor gasto')).dy, lessThan(390));
+    expect(tester.takeException(), isNull);
   });
 }

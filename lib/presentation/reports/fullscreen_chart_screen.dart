@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/layout/adaptive.dart';
+import '../../core/layout/landscape_pane.dart';
 import '../../core/theme/mg_colors.dart';
 import '../../core/widgets/category_icon.dart';
 import '../../core/widgets/charts.dart';
@@ -58,7 +60,77 @@ class _FullscreenChartScreenState extends State<FullscreenChartScreen> {
             // Cabecera superior
             _buildHeader(context),
 
-            // Contenido desplazable
+            if (context.isLandscapePhone)
+              // Horizontal: el gráfico y las métricas a la izquierda, el desglose a la derecha.
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      flex: 5,
+                      child: BleedClip(
+                        child: SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(18, 8, 9, 24),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildHeroChartCard(compact: true),
+                              const SizedBox(height: 12),
+                              _buildKpiRow(topCat),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 6,
+                      child: BleedClip(
+                        child: SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(9, 8, 18, 24),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                    // Título del desglose
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Expanded(
+                          child: Text(
+                          'Desglose por categoría',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: MgColors.ink,
+                            letterSpacing: -0.2,
+                          ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${widget.catList.length} categorías',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: MgColors.ink2,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                              const SizedBox(height: 10),
+                              _buildCategoryBreakdownCard(),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
@@ -80,15 +152,20 @@ class _FullscreenChartScreenState extends State<FullscreenChartScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        const Expanded(
+                          child: Text(
                           'Desglose por categoría',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                             color: MgColors.ink,
                             letterSpacing: -0.2,
                           ),
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         Text(
                           '${widget.catList.length} categorías',
                           style: const TextStyle(
@@ -234,13 +311,13 @@ class _FullscreenChartScreenState extends State<FullscreenChartScreen> {
   }
 
   /// Tarjeta con gráfico grande y total
-  Widget _buildHeroChartCard() {
+  Widget _buildHeroChartCard({bool compact = false}) {
     final formattedTotal = widget.isHide
         ? '••••'
         : 'S/ ${NumberFormat('#,##0.00', 'en').format(widget.total)}';
 
     return MgCard(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 22),
+      padding: EdgeInsets.symmetric(horizontal: 18, vertical: compact ? 14 : 22),
       child: Column(
         children: [
           AnimatedSwitcher(
@@ -257,7 +334,7 @@ class _FullscreenChartScreenState extends State<FullscreenChartScreen> {
                     key: const ValueKey('full_radial_rings'),
                     segments: widget.segments,
                     total: widget.total,
-                    size: 250,
+                    size: compact ? 184 : 250,
                     centerWidget: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -285,8 +362,8 @@ class _FullscreenChartScreenState extends State<FullscreenChartScreen> {
                     key: const ValueKey('full_donut_chart'),
                     segments: widget.segments,
                     total: widget.total,
-                    size: 230,
-                    strokeWidth: 24,
+                    size: compact ? 170 : 230,
+                    strokeWidth: compact ? 20 : 24,
                     centerWidget: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
