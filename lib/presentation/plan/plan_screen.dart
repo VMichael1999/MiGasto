@@ -41,6 +41,45 @@ class PlanScreen extends ConsumerWidget {
             m.esGasto)
         .toList();
 
+    final header = _buildHeader(context, ref, hidden);
+    final goalCard = _buildSavingsGoalCard(context, ref, goal, hidden);
+    final limitCards = [
+      for (final l in limits)
+        _buildCategoryLimitCard(context, l, currentMonthExpenses, hidden),
+    ];
+    final addLimit = _buildAddLimitButton(context);
+
+    // Teléfono girado: cabecera, meta y «agregar límite» a la izquierda y los
+    // límites por categoría a la derecha.
+    if (context.isLandscapePhone) {
+      final bottom = context.tabBarClearance(170);
+      Widget side(List<Widget> children) => Expanded(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: EdgeInsets.only(bottom: bottom),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: children,
+              ),
+            ),
+          );
+      return Scaffold(
+        backgroundColor: MgColors.bg,
+        body: SafeArea(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              side([header, goalCard, if (limitCards.isEmpty) addLimit]),
+              side([
+                ...limitCards,
+                if (limitCards.isNotEmpty) addLimit,
+              ]),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: MgColors.bg,
       body: SafeArea(
@@ -53,22 +92,16 @@ class PlanScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // 1. Cabecera (.top)
-                  _buildHeader(context, ref, hidden),
+                  header,
 
                   // 2. Tarjeta Meta de Ahorro (.card)
-                  _buildSavingsGoalCard(context, ref, goal, hidden),
+                  goalCard,
 
                   // 3. Tarjetas de límites por categoría (.card .lim)
-                  for (final l in limits)
-                    _buildCategoryLimitCard(
-                      context,
-                      l,
-                      currentMonthExpenses,
-                      hidden,
-                    ),
+                  ...limitCards,
 
                   // 4. Botón Agregar un límite (.card .add-lim)
-                  _buildAddLimitButton(context),
+                  addLimit,
                 ],
               ),
             ),
