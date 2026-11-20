@@ -280,7 +280,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               // Botones OAuth: Apple y Google con logos oficiales
               Row(
                 children: [
-                  if (Platform.isIOS) ...[
+                  if (kAppleSignInEnabled && Platform.isIOS) ...[
                   Expanded(
                     child: _buildOAuthButton(
                       leading: Image.asset(

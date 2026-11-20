@@ -32,12 +32,12 @@ class Env {
   /// Valor de [key], o cadena vacía si no está configurado.
   static String value(String key) => _values[key] ?? '';
 
-  /// Convierte el contenido de un `.env` (CLAVE=valor, con # para comentarios).
+  /// Convierte el contenido de un `.env` (CLAVE=valor; los comentarios empiezan con // porque Xcode también lee este archivo).
   static Map<String, String> parse(String content) {
     final map = <String, String>{};
     for (final raw in content.split('\n')) {
       final line = raw.trim();
-      if (line.isEmpty || line.startsWith('#')) continue;
+      if (line.isEmpty || line.startsWith('#') || line.startsWith('//')) continue;
       final i = line.indexOf('=');
       if (i <= 0) continue;
       var v = line.substring(i + 1).trim();

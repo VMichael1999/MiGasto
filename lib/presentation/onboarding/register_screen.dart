@@ -179,7 +179,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       const SizedBox(height: 16),
       Row(
         children: [
-          if (Platform.isIOS) ...[
+          if (kAppleSignInEnabled && Platform.isIOS) ...[
             Expanded(
               child: _oauth(
                 Image.asset('assets/icons/apple_logo.png', width: 17, height: 17),

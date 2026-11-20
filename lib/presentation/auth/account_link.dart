@@ -163,7 +163,7 @@ class _LinkAccountSheetState extends ConsumerState<_LinkAccountSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final showApple = Platform.isIOS;
+    final showApple = kAppleSignInEnabled && Platform.isIOS;
     final content = Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 22),
       child: Column(

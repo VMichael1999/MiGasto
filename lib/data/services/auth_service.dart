@@ -10,6 +10,10 @@ import '../../core/config/env.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
+/// «Iniciar sesión con Apple» se activa cuando haya cuenta de Apple Developer de pago
+/// (capacidad, identificador de servicio y proveedor en Firebase).
+const bool kAppleSignInEnabled = false;
+
 /// Datos mínimos de la cuenta con la que entró el usuario.
 class AuthAccount {
   const AuthAccount({required this.uid, this.email, this.name});
