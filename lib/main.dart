@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show SystemUiOverlayStyle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -80,7 +81,11 @@ class _MyAppState extends ConsumerState<MyApp> {
       themeMode: ThemeMode.system,
       routerConfig: router,
       builder: (context, child) {
-        return KeyboardDismisser(child: LockGate(child: child ?? const SizedBox()));
+        // La app es oscura aunque el teléfono esté en modo claro: la barra de estado debe verse clara.
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle.light,
+          child: KeyboardDismisser(child: LockGate(child: child ?? const SizedBox())),
+        );
       },
     );
   }
