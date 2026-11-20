@@ -943,53 +943,58 @@ class _MovementsSectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 22, 18, 6),
       child: Row(
         children: [
-          const Flexible(
-            // Casi todo el espacio libre para el título; el resto, al Spacer.
-            flex: 100,
-            child: Text(
-              'Movimientos',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontFamily: AppText.fontFamily,
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.025 * 17,
-                color: MgColors.ink,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            height: 24,
-            padding: const EdgeInsets.symmetric(horizontal: 9),
-            decoration: BoxDecoration(
-              color: MgColors.soft,
-              borderRadius: BorderRadius.circular(8),
-            ),
+          // Título y contador pegados a la izquierda; la lupa, al borde derecho.
+          Expanded(
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  Icons.calendar_today_outlined,
-                  size: 12,
-                  color: MgColors.ink2,
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  '$count',
-                  style: const TextStyle(
+              const Flexible(
+                // El título toma lo que necesite; el resto del ancho queda libre.
+                flex: 100,
+                child: Text(
+                  'Movimientos',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
                     fontFamily: AppText.fontFamily,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: MgColors.ink2,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.025 * 17,
+                    color: MgColors.ink,
                   ),
                 ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                height: 24,
+                padding: const EdgeInsets.symmetric(horizontal: 9),
+                decoration: BoxDecoration(
+                  color: MgColors.soft,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.calendar_today_outlined,
+                      size: 12,
+                      color: MgColors.ink2,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      '$count',
+                      style: const TextStyle(
+                        fontFamily: AppText.fontFamily,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: MgColors.ink2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               ],
             ),
           ),
-          const Spacer(),
-          // Separación mínima: en columnas estrechas la lupa no se pega a la cuenta.
           const SizedBox(width: 16),
           Material(
             color: Colors.transparent,

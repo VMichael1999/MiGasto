@@ -62,6 +62,12 @@ void main() {
     expect(find.text('Gastos por categoría'), findsOneWidget);
     expect(find.text('Saldo a 30 días'), findsOneWidget);
     expect(find.text('Aún no tienes límites. Créalos en Plan.'), findsOneWidget);
+
+    // La lupa de Movimientos queda en el borde derecho de su columna (la del
+    // medio va de 281 a 563, con 18 de margen y el botón de 38 con el ícono de 19),
+    // no pegada al contador.
+    final lupa = tester.getRect(find.byIcon(Icons.search_rounded).first);
+    expect(lupa.right, closeTo(563 - 18 - 9.5, 3));
     expect(find.text('Aún no hay gastos este mes.'), findsOneWidget);
     expect(find.textContaining('Registra al menos 3 movimientos'), findsOneWidget);
     expect(tester.takeException(), isNull);
