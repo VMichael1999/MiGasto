@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -34,69 +36,73 @@ void main() {
   });
 
   testWidgets('App loads dashboard correctly', (WidgetTester tester) async {
-    // Stub native method channels
-    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-      const MethodChannel('com.example.mi_gasto/accessibility'),
-      (MethodCall methodCall) async {
-        if (methodCall.method == 'isAccessibilityServiceEnabled') {
-          return false;
-        }
-        if (methodCall.method == 'isOverlayPermissionGranted') {
-          return false;
-        }
-        return null;
-      },
-    );
+    // Sin red, google_fonts no puede bajar las variantes de Inter y lanza errores
+    // asíncronos que no tienen que ver con la pantalla: se ignoran solo esos.
+    final done = Completer<void>();
+    runZonedGuarded(() async {
+      // Stub native method channels
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('com.example.mi_gasto/accessibility'),
+        (MethodCall methodCall) async {
+          if (methodCall.method == 'isAccessibilityServiceEnabled') {
+            return false;
+          }
+          if (methodCall.method == 'isOverlayPermissionGranted') {
+            return false;
+          }
+          return null;
+        },
+      );
 
-    // Mock path provider to avoid native exceptions
-    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-      const MethodChannel('plugins.flutter.io/path_provider'),
-      (MethodCall methodCall) async {
-        if (methodCall.method == 'getApplicationDocumentsDirectory') {
-          return '.';
-        }
-        return null;
-      },
-    );
+      // Mock path provider to avoid native exceptions
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('plugins.flutter.io/path_provider'),
+        (MethodCall methodCall) async {
+          if (methodCall.method == 'getApplicationDocumentsDirectory') {
+            return '.';
+          }
+          return null;
+        },
+      );
 
-    SharedPreferences.setMockInitialValues({});
-    final prefs = await SharedPreferences.getInstance();
+      // Usuario que ya vio la bienvenida e inició sesión: el arranque lo lleva al Inicio.
+      SharedPreferences.setMockInitialValues({
+        'onboarding_complete': true,
+        'is_logged_in': true,
+      });
+      final prefs = await SharedPreferences.getInstance();
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          sharedPreferencesProvider.overrideWithValue(prefs),
-          localDatabaseProvider.overrideWithValue(_MemoryDb()),
-        ],
-        child: MyApp(
-          themeOverride: ThemeData(
-            brightness: Brightness.dark,
-            // Override with basic text theme to avoid Google Fonts errors
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            localDatabaseProvider.overrideWithValue(_MemoryDb()),
+          ],
+          child: MyApp(
+            themeOverride: ThemeData(
+              brightness: Brightness.dark,
+              // Override with basic text theme to avoid Google Fonts errors
+            ),
           ),
         ),
-      ),
-    );
+      );
     
-    // Wait for async database init to complete
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 150));
-    await tester.pump();
+      // La pantalla de arranque anima y luego navega al Inicio.
+      for (var i = 0; i < 60 && find.text('Balance disponible').evaluate().isEmpty; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
 
-    // El onboarding muestra qué lee la app y deja usarla solo con registro manual
-    expect(find.text('Qué lee la app y qué no'), findsOneWidget);
-    expect(find.text('Usar solo registro manual'), findsOneWidget);
-
-    // Sin dar permisos se puede entrar al Resumen
-    await tester.tap(find.text('Usar solo registro manual'));
-    
-    // Process route transition frames
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 150));
-    await tester.pumpAndSettle();
-
-    // Verify we are now on the 'Resumen' (Dashboard) screen: the rediseño no
-    // tiene título 'Resumen' arriba, solo la etiqueta de la barra inferior.
-    expect(find.text('Resumen'), findsOneWidget);
-    expect(find.text('Te quedan de este mes'), findsOneWidget);
+      // Inicio sin datos: no hay cifras inventadas (antes salía S/ 1,120 de "saldo anterior").
+      expect(find.text('Balance disponible'), findsOneWidget);
+      expect(find.text('Seguro para gastar'), findsOneWidget);
+      expect(find.text('Define tu presupuesto en Ajustes para verlo ›'), findsOneWidget);
+      expect(find.textContaining('1,120'), findsNothing);
+      expect(find.textContaining('3,000'), findsNothing);
+      done.complete();
+    }, (error, stack) {
+      if (error.toString().contains('GoogleFonts')) return;
+      if (!done.isCompleted) done.completeError(error, stack);
+    });
+    await done.future;
   });
 }
