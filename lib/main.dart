@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import 'core/config/env.dart';
+import 'core/widgets/keyboard_dismisser.dart';
 import 'core/theme/theme.dart';
 import 'firebase_options.dart';
 import 'core/navigation/navigation.dart';
@@ -79,7 +80,7 @@ class _MyAppState extends ConsumerState<MyApp> {
       themeMode: ThemeMode.system,
       routerConfig: router,
       builder: (context, child) {
-        return LockGate(child: child ?? const SizedBox());
+        return KeyboardDismisser(child: LockGate(child: child ?? const SizedBox()));
       },
     );
   }

@@ -180,6 +180,8 @@ class _AiScreenState extends ConsumerState<AiScreen> {
     return ListView.builder(
       controller: _scrollController,
       physics: const BouncingScrollPhysics(),
+      // Al arrastrar la conversación el teclado se baja.
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
       itemCount: _messages.length + (_isTyping ? 1 : 0),
       itemBuilder: (context, index) {
@@ -572,6 +574,8 @@ class _AiScreenState extends ConsumerState<AiScreen> {
         Expanded(
           child: TextField(
             controller: _inputController,
+            // Al entrar a MiGastoIA el cursor ya está listo para escribir.
+            autofocus: true,
             cursorColor: MgColors.acc,
             style: const TextStyle(
               fontSize: 13.5,
