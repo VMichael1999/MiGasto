@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:crypto/crypto.dart' as crypto;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
@@ -35,6 +36,11 @@ abstract class AuthService {
   Future<void> sendPasswordReset(String email);
   Future<void> signOut();
 }
+
+const _googleWebClientId =
+    '000000000000-cgq9bhqjdoepcdmgmpj3s9kh7lvven7t.apps.googleusercontent.com';
+const _googleIosClientId =
+    '000000000000-c9u4vs72al3n4ofn4mvlda1o1io1lp3t.apps.googleusercontent.com';
 
 class FirebaseAuthService implements AuthService {
   FirebaseAuthService({FirebaseAuth? auth}) : _auth = auth ?? FirebaseAuth.instance;
@@ -90,7 +96,12 @@ class FirebaseAuthService implements AuthService {
   Future<AuthAccount> signInWithGoogle() async {
     try {
       if (!_googleReady) {
-        await GoogleSignIn.instance.initialize();
+        // En Android, Google exige el cliente web del proyecto (serverClientId);
+        // en iPhone, el cliente de iOS.
+        await GoogleSignIn.instance.initialize(
+          clientId: defaultTargetPlatform == TargetPlatform.iOS ? _googleIosClientId : null,
+          serverClientId: _googleWebClientId,
+        );
         _googleReady = true;
       }
       final account = await GoogleSignIn.instance.authenticate();
@@ -101,6 +112,7 @@ class FirebaseAuthService implements AuthService {
       if (e.code == GoogleSignInExceptionCode.canceled) {
         throw const AuthException('Cancelado', cancelled: true);
       }
+      debugPrint('Google Sign-In falló: ${e.code} ${e.description}');
       throw const AuthException('No se pudo entrar con Google. Intenta de nuevo.');
     }
   }
