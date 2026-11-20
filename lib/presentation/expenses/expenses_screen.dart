@@ -153,17 +153,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     final sortedKeys = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
     final now = DateTime.now();
 
-    return Scaffold(
-      backgroundColor: MgColors.bg,
-      body: SafeArea(
-        bottom: false,
-        child: Stack(
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // 1. Buscador y Filtros (.bs-top)
-                Padding(
+    final searchPanel = Padding(
                   padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
                   child: Column(
                     children: [
@@ -294,10 +284,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                       ),
                     ],
                   ),
-                ),
-
-                // 2. Resumen (.bs-sum)
-                Padding(
+                );
+    final summary = Padding(
                   padding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -326,10 +314,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                         ),
                     ],
                   ),
-                ),
-
-                // 3. Lista de resultados o estado vacío (.vacio)
-                Expanded(
+                );
+    final listArea = Expanded(
                   child: results.isEmpty
                       ? _buildEmptyState()
                       : ListView.builder(
@@ -470,9 +456,38 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                             );
                           },
                         ),
-                ),
-              ],
-            ),
+                );
+
+    return Scaffold(
+      backgroundColor: MgColors.bg,
+      body: SafeArea(
+        bottom: false,
+        child: Stack(
+          children: [
+            // Teléfono girado: búsqueda, filtros y resumen a la izquierda y la
+            // lista de movimientos a la derecha, para que la lista tenga alto.
+            if (context.isLandscapePhone)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: (MediaQuery.sizeOf(context).width * 0.42).clamp(280.0, 380.0),
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [searchPanel, summary],
+                      ),
+                    ),
+                  ),
+                  listArea,
+                ],
+              )
+            else
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [searchPanel, summary, listArea],
+              ),
           ],
         ),
       ),
