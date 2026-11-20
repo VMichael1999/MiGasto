@@ -10,6 +10,7 @@ import '../../presentation/onboarding/onboarding_screen.dart';
 import '../../presentation/onboarding/permissions_screen.dart';
 import '../../presentation/onboarding/splash_screen.dart';
 import '../../presentation/onboarding/login_screen.dart';
+import '../../presentation/onboarding/register_screen.dart';
 import '../../presentation/providers.dart';
 import '../../presentation/reports/reports_screen.dart';
 import '../../presentation/settings/settings_screen.dart';
@@ -59,11 +60,12 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // 2. Si completó bienvenida pero no ha iniciado sesión, forzar pantalla de login
       if (!isLoggedIn) {
-        return location == '/login' ? null : '/login';
+        return (location == '/login' || location == '/register') ? null : '/login';
       }
 
       // 3. Si ya tiene sesión activa y se intenta acceder a login u onboarding, enviar al dashboard
-      if (isLoggedIn && (location == '/login' || location == '/onboarding')) {
+      if (isLoggedIn &&
+          (location == '/login' || location == '/register' || location == '/onboarding')) {
         return '/dashboard';
       }
 
@@ -90,6 +92,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const RegisterScreen(),
       ),
       GoRoute(
         path: '/movement/:id',

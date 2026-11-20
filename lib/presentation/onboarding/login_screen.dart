@@ -64,11 +64,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (c != null) await _auth((a) => a.signInWithEmail(c.$1, c.$2));
   }
 
-  Future<void> _createAccount() async {
-    final c = _credentials();
-    if (c != null) await _auth((a) => a.createWithEmail(c.$1, c.$2));
-  }
-
   Future<void> _forgotPassword() async {
     final email = _emailController.text.trim();
     if (!email.contains('@')) {
@@ -364,7 +359,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   GestureDetector(
                     onTap: () {
-                      _createAccount();
+                      context.push('/register');
                     },
                     child: const Text(
                       'Crea tu cuenta',

@@ -22,7 +22,7 @@ class FakeAuth implements AuthService {
   Future<AuthAccount> signInWithEmail(String email, String password) async =>
       AuthAccount(uid: 'u2', email: email);
   @override
-  Future<AuthAccount> createWithEmail(String email, String password) async =>
+  Future<AuthAccount> createWithEmail(String email, String password, {String? name}) async =>
       AuthAccount(uid: 'u3', email: email);
   @override
   Future<void> sendPasswordReset(String email) async {}

@@ -31,7 +31,7 @@ abstract class AuthService {
   Future<AuthAccount> signInWithGoogle();
   Future<AuthAccount> signInWithApple();
   Future<AuthAccount> signInWithEmail(String email, String password);
-  Future<AuthAccount> createWithEmail(String email, String password);
+  Future<AuthAccount> createWithEmail(String email, String password, {String? name});
   Future<void> sendPasswordReset(String email);
   Future<void> signOut();
 }
@@ -65,8 +65,17 @@ class FirebaseAuthService implements AuthService {
       _run(() => _auth.signInWithEmailAndPassword(email: email, password: password));
 
   @override
-  Future<AuthAccount> createWithEmail(String email, String password) =>
-      _run(() => _auth.createUserWithEmailAndPassword(email: email, password: password));
+  Future<AuthAccount> createWithEmail(String email, String password, {String? name}) async {
+    final account = await _run(
+        () => _auth.createUserWithEmailAndPassword(email: email, password: password));
+    final clean = name?.trim() ?? '';
+    if (clean.isEmpty) return account;
+    // El nombre es opcional para Firebase: si falla, la cuenta ya quedó creada.
+    try {
+      await _auth.currentUser?.updateDisplayName(clean);
+    } catch (_) {}
+    return AuthAccount(uid: account.uid, email: account.email, name: clean);
+  }
 
   @override
   Future<void> sendPasswordReset(String email) async {
