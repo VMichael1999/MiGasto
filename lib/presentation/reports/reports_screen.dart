@@ -12,6 +12,7 @@ import '../../shared/widgets/profile_avatar_button.dart';
 import '../../shared/profile.dart';
 import '../providers.dart';
 import 'fullscreen_chart_screen.dart';
+import '../../core/layout/landscape_pane.dart';
 import '../../core/layout/adaptive.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
@@ -146,15 +147,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     // derecha, cada lado con su propio scroll.
     if (context.isLandscapePhone) {
       final bottom = context.tabBarClearance(160);
-      Widget side(List<Widget> children) => Expanded(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: EdgeInsets.only(bottom: bottom),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: children,
-              ),
-            ),
+      Widget side(List<Widget> children) => LandscapePane(
+            padding: EdgeInsets.only(bottom: bottom),
+            children: children,
           );
       return Scaffold(
         backgroundColor: MgColors.bg,

@@ -17,6 +17,7 @@ import '../expenses/expense_detail_dialog.dart';
 import '../plan/plan_providers.dart';
 import 'dashboard_side_cards.dart';
 import '../providers.dart';
+import '../../core/layout/landscape_pane.dart';
 import '../../core/layout/adaptive.dart';
 
 /// Pantalla 1: Inicio (s-home en prototipo HTML y Sección 4.4 del prompt).
@@ -171,15 +172,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       );
       final bottom = context.tabBarClearance(130);
       Widget column(List<Widget> children, {EdgeInsets padding = EdgeInsets.zero}) =>
-          Expanded(
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-              padding: padding.copyWith(bottom: bottom),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: children,
-              ),
-            ),
+          LandscapePane(
+            padding: padding.copyWith(bottom: bottom),
+            children: children,
           );
       return Scaffold(
         backgroundColor: MgColors.bg,
@@ -705,14 +700,20 @@ class _GlassCapsule extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 3),
-          Text(
-            hidden ? '•••••' : amount,
-            style: const TextStyle(
-              fontFamily: AppText.fontFamily,
-              fontSize: 15.5,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.02 * 15.5,
-              color: Colors.white,
+          // Una sola línea: si la cifra no cabe (columna estrecha), se achica.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              hidden ? '•••••' : amount,
+              maxLines: 1,
+              style: const TextStyle(
+                fontFamily: AppText.fontFamily,
+                fontSize: 15.5,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.02 * 15.5,
+                color: Colors.white,
+              ),
             ),
           ),
         ],

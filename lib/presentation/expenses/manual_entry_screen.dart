@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/layout/adaptive.dart';
+import '../../core/layout/landscape_pane.dart';
 import '../../core/theme/mg_colors.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/widgets.dart';
@@ -349,30 +350,27 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
         body: SafeArea(
           child: Row(
             children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildNav(context),
-                      _buildAmountWrap(context),
-                      _buildDateChip(context),
-                      _buildDescriptionField(context),
-                      _buildCategoryRow(context),
-                      if (!_isIncome) _buildLimitBar(context),
-                      _buildTagsRow(context),
-                      _buildAuxiliaryRow(context),
-                    ],
-                  ),
-                ),
+              LandscapePane(
+                padding: const EdgeInsets.only(bottom: 16),
+                children: [
+                  _buildNav(context),
+                  _buildAmountWrap(context),
+                  _buildDateChip(context),
+                  _buildDescriptionField(context),
+                  _buildCategoryRow(context),
+                  if (!_isIncome) _buildLimitBar(context),
+                  _buildTagsRow(context),
+                  _buildAuxiliaryRow(context),
+                ],
               ),
               SizedBox(
                 width: (MediaQuery.sizeOf(context).width * 0.4).clamp(300.0, 400.0),
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: _buildDock(context),
+                child: BleedClip(
+                  child: SingleChildScrollView(
+                    clipBehavior: Clip.none,
+                    physics: const BouncingScrollPhysics(),
+                    child: _buildDock(context),
+                  ),
                 ),
               ),
             ],

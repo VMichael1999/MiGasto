@@ -16,6 +16,7 @@ import '../../shared/labels.dart';
 import '../providers.dart';
 import 'expense_detail_dialog.dart';
 import '../../core/layout/adaptive.dart';
+import '../../core/layout/landscape_pane.dart';
 
 enum _MovementFilter { todo, gastos, ingresos, pendientes }
 
@@ -472,11 +473,14 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                 children: [
                   SizedBox(
                     width: (MediaQuery.sizeOf(context).width * 0.42).clamp(280.0, 380.0),
-                    child: SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [searchPanel, summary],
+                    child: BleedClip(
+                      child: SingleChildScrollView(
+                        clipBehavior: Clip.none,
+                        physics: const BouncingScrollPhysics(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [searchPanel, summary],
+                        ),
                       ),
                     ),
                   ),

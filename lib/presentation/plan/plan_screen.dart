@@ -13,6 +13,7 @@ import '../../shared/labels.dart';
 import '../../shared/widgets/profile_avatar_button.dart';
 import '../providers.dart';
 import 'plan_providers.dart';
+import '../../core/layout/landscape_pane.dart';
 import '../../core/layout/adaptive.dart';
 
 /// Pantalla 5: Plan y Límites (#s-plan / R.plan en migasto-prototipo.html)
@@ -53,15 +54,9 @@ class PlanScreen extends ConsumerWidget {
     // límites por categoría a la derecha.
     if (context.isLandscapePhone) {
       final bottom = context.tabBarClearance(170);
-      Widget side(List<Widget> children) => Expanded(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: EdgeInsets.only(bottom: bottom),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: children,
-              ),
-            ),
+      Widget side(List<Widget> children) => LandscapePane(
+            padding: EdgeInsets.only(bottom: bottom),
+            children: children,
           );
       return Scaffold(
         backgroundColor: MgColors.bg,
