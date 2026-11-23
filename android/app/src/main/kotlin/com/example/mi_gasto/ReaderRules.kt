@@ -75,9 +75,16 @@ class ReaderRules private constructor(
     fun operationStamp(text: String): String? =
         operationStampRegex?.find(text)?.value?.lowercase()?.replace(Regex("[\\s.]+"), "")
 
-    /** `null` si el texto no es un pago reconocible. */
-    fun parse(text: String): ParseResult? {
-        val provider = provider(text) ?: return null
+    /** Paquetes de las apps cuyas notificaciones se leen. */
+    val apps: Set<String> = strings(rules.getJSONArray("apps")).toSet()
+
+    /**
+     * `null` si el texto no es un pago reconocible. [app] es el paquete que publicó la
+     * notificación: da la fuente cuando el texto no la nombra (un yape con código de
+     * seguridad no dice «Yape» y Google Wallet nunca lo dice).
+     */
+    fun parse(text: String, app: String? = null): ParseResult? {
+        val provider = provider(text) ?: providerByApp(app) ?: return null
         val match = amountRegex.find(text) ?: return null
         val amount = parseAmount(match.groupValues[1]) ?: return null
         if (amount <= 0.0) return null
@@ -105,6 +112,9 @@ class ReaderRules private constructor(
         }
         return null
     }
+
+    private fun providerByApp(app: String?): String? =
+        app?.let { rules.optJSONObject("providerByApp")?.optString(it) }?.takeIf { it.isNotEmpty() }
 
     /** true ingreso, false gasto, null si no se puede saber. */
     private fun direction(text: String, provider: String): Boolean? {

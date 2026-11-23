@@ -1,6 +1,29 @@
 {
   "version": 1,
   "_nota": "Reglas del lector de pagos. Las leen Kotlin (notificaciones) y Dart (capturas y pruebas). Los patrones no distinguen mayúsculas y usan solo sintaxis común a Java y Dart.",
+  "apps": [
+    "com.bcp.innovacxion.yapeapp",
+    "com.google.android.apps.walletnfcrel",
+    "com.bcp.bank.bcp",
+    "com.bbva.nxt_peru",
+    "pe.com.interbank.mobilebanking",
+    "pe.com.scotiabank.blpm.android.client",
+    "pe.com.banbif.pnappmobile",
+    "pe.com.bn.app.bancodelanacion",
+    "pe.com.tarjetasperuanasprepago.tppapp",
+    "com.applemoncash",
+    "com.pdp.bim",
+    "com.cmac.cajamovilaqp",
+    "com.cajahuancayo.cajahuancayo.appcajahuancayo",
+    "com.cmacica.prd",
+    "pe.cajapiura.bancamovil",
+    "com.alfinbanco.appclientes"
+  ],
+  "_notaApps": "Apps cuyas notificaciones se leen (nombre de paquete en Google Play, Perú). providerByApp da la fuente cuando el texto no la nombra: Yape no siempre dice «Yape» y Google Wallet nunca.",
+  "providerByApp": {
+    "com.bcp.innovacxion.yapeapp": "yape",
+    "com.google.android.apps.walletnfcrel": "googlePay"
+  },
   "providers": [
     {
       "id": "yape",

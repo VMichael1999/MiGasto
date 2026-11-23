@@ -54,8 +54,12 @@ class PaymentReader {
       .toList();
 
   /// `null` si el texto no es un pago reconocible (no se inventa un gasto).
-  ParsedPayment? parse(String text) {
-    final provider = _provider(text);
+  ///
+  /// [app] es el paquete de Android que publicó la notificación: da la fuente
+  /// cuando el texto no la nombra (un yape con código de seguridad no dice
+  /// «Yape» y Google Wallet nunca lo dice).
+  ParsedPayment? parse(String text, {String? app}) {
+    final provider = _provider(text) ?? _providerByApp(app);
     if (provider == null) return null;
 
     final match = _amount.firstMatch(text);
@@ -90,6 +94,9 @@ class PaymentReader {
     }
     return null;
   }
+
+  String? _providerByApp(String? app) =>
+      app == null ? null : (_rules['providerByApp'] as Map<String, dynamic>?)?[app] as String?;
 
   /// `true` ingreso, `false` gasto, `null` si no se puede saber.
   bool? _direction(String text, String provider) {

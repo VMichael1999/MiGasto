@@ -142,6 +142,45 @@ void main() {
     });
   });
 
+  // Textos reales capturados en teléfonos (ver docs/investigacion-notificaciones-pagos.md).
+  group('la app que avisa da la fuente', () {
+    const yapeApp = 'com.bcp.innovacxion.yapeapp';
+
+    test('yape recibido con código de seguridad, que no dice «Yape»', () {
+      const text = 'Confirmación de Pago Sasha Sal* te envió un pago por S/ 5.5. El cód. de seguridad es: 667';
+      final p = reader.parse(text, app: yapeApp)!;
+      expect(p.isIncome, isTrue);
+      expect(p.amount, 5.5);
+      expect(p.peer, 'Sasha Sal');
+      expect(p.provider, 'yape');
+      // Sin saber de qué app vino no se adivina la fuente.
+      expect(reader.parse(text), isNull);
+    });
+
+    test('la publicidad de Yape no es un pago', () {
+      expect(reader.parse('¡Suerte asegurada!🍀 Gana hasta S/3,000 afiliándote a Dinero Más Seguro🔒¡Todos ganan!',
+          app: yapeApp), isNull);
+      expect(reader.parse('Tu dinero seguro a S/ 4.99 al mes💜 Protege tus cuentas Yape y BCP y participa por S/5,000. T&C.',
+          app: yapeApp), isNull);
+    });
+
+    test('una app de banco no impone fuente: el texto decide', () {
+      expect(reader.parse('Interbank Ingresaste a tu Banca por Internet.', app: 'pe.com.interbank.mobilebanking'),
+          isNull);
+    });
+
+    test('las apps escuchadas son paquetes de Perú, sin los equivocados', () {
+      final rules = jsonDecode(File('assets/reader_rules.json').readAsStringSync()) as Map<String, dynamic>;
+      final apps = (rules['apps'] as List).cast<String>();
+      expect(apps, containsAll(['com.bcp.innovacxion.yapeapp', 'com.bcp.bank.bcp', 'com.bbva.nxt_peru',
+          'pe.com.interbank.mobilebanking', 'pe.com.scotiabank.blpm.android.client', 'pe.com.banbif.pnappmobile']));
+      // com.bbva.bbvacontigo es BBVA España y com.banbif.plin no existe.
+      expect(apps, isNot(contains('com.bbva.bbvacontigo')));
+      expect(apps, isNot(contains('com.banbif.plin')));
+      expect((rules['providerByApp'] as Map).keys, everyElement(isIn(apps)));
+    });
+  });
+
   group('número de operación', () {
     final rules = jsonDecode(File('assets/reader_rules.json').readAsStringSync()) as Map<String, dynamic>;
     final regex = RegExp(rules['operationId'] as String, caseSensitive: false);

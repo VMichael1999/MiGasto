@@ -15,7 +15,10 @@ import android.util.Log
 class PaymentNotificationListener : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
-        if (sbn == null || sbn.packageName !in PACKAGES) return
+        if (sbn == null) return
+        // Las apps que se escuchan están en assets/reader_rules.json ("apps").
+        val apps = ReaderRules.get(applicationContext)?.apps ?: return
+        if (sbn.packageName !in apps) return
         // Al reiniciar el servicio o reinstalar la app el sistema vuelve a entregar
         // las notificaciones que siguen en la barra: no son pagos nuevos.
         val age = System.currentTimeMillis() - sbn.postTime
@@ -36,21 +39,12 @@ class PaymentNotificationListener : NotificationListenerService() {
             applicationContext,
             "$title $text $bigText".trim(),
             MyAccessibilityService.ORIGIN_LISTENER,
+            sbn.packageName,
         )
     }
 
     companion object {
         private const val TAG = "PaymentNotifListener"
         private const val STALE_MS = 3 * 60 * 1000L
-
-        // Las mismas apps que escucha accessibility_service_config.xml.
-        private val PACKAGES = setOf(
-            "com.bcp.innovacxion.yapeapp",
-            "com.google.android.apps.walletnfcrel",
-            "com.bbva.nxt_peru",
-            "pe.com.interbank.mobilebanking",
-            "pe.com.scotiabank.blpm.android.client",
-            "pe.com.banbif.pnappmobile",
-        )
     }
 }

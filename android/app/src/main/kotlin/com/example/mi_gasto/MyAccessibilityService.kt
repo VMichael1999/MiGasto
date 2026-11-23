@@ -45,13 +45,13 @@ class MyAccessibilityService : AccessibilityService() {
         }
 
         /** Lee un texto (notificación o pantalla) y, si es un pago, lo entrega. */
-        fun handleText(context: Context, text: String, origin: String = ORIGIN_ACCESS) {
+        fun handleText(context: Context, text: String, origin: String = ORIGIN_ACCESS, app: String? = null) {
             val rules = ReaderRules.get(context)
             if (rules == null) { Log.d(TAG, "reglas no cargadas"); return }
             // De una pantalla solo cuenta la constancia: el inicio de Yape (saldo, movimientos)
             // no es un pago, aunque cambie cada vez que se toca "ver saldo".
             if (origin == ORIGIN_SCREEN && !rules.isScreenReceipt(text)) return
-            val result = rules.parse(text)
+            val result = rules.parse(text, app)
             if (result == null) { Log.d(TAG, "texto sin pago (largo=${text.length})"); return }
             if (!NativeQueue.isProviderEnabled(context, result.provider)) {
                 Log.d(TAG, "descartado: ${result.provider} está apagado en Ajustes")
@@ -156,7 +156,11 @@ class MyAccessibilityService : AccessibilityService() {
                     val title = extras.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString() ?: ""
                     val text = extras.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString() ?: ""
                     val bigText = extras.getCharSequence(android.app.Notification.EXTRA_BIG_TEXT)?.toString() ?: ""
-                    handleText(applicationContext, "$title $text $bigText".trim())
+                    handleText(
+                        applicationContext,
+                        "$title $text $bigText".trim(),
+                        app = event.packageName?.toString(),
+                    )
                 }
             }
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
@@ -180,11 +184,12 @@ class MyAccessibilityService : AccessibilityService() {
      */
     private fun inspectActiveWindow() {
         val root = rootInActiveWindow ?: return
+        val app = root.packageName?.toString()
         val builder = StringBuilder()
         collectText(root, builder)
         @Suppress("DEPRECATION")
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) root.recycle()
-        if (builder.isNotEmpty()) handleText(applicationContext, builder.toString(), ORIGIN_SCREEN)
+        if (builder.isNotEmpty()) handleText(applicationContext, builder.toString(), ORIGIN_SCREEN, app)
     }
 
     private fun collectText(node: AccessibilityNodeInfo?, out: StringBuilder) {
