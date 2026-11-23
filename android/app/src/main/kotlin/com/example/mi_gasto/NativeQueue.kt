@@ -15,6 +15,7 @@ object NativeQueue {
     private const val KEY_QUEUE = "flutter.migasto_native_queue"
     private const val KEY_PROVIDERS = "flutter.migasto_providers_enabled_v2"
     private const val KEY_AUTO_INCOME = "flutter.migasto_auto_save_income"
+    private const val KEY_CAPTURE = "flutter.migasto_capture_mode"
     private const val KEY_ALIASES = "flutter.migasto_aliases_v1"
     private const val KEY_OVERRIDES = "flutter.migasto_category_overrides_v2"
     private val lock = Any()
@@ -93,6 +94,10 @@ object NativeQueue {
             true
         }
     }
+
+    /** Modo captura (Ajustes; por defecto apagado): guarda los textos para mejorar la lectura. */
+    fun captureEnabled(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_CAPTURE, false)
 
     /** Si los ingresos se guardan solos (Ajustes; por defecto no). */
     fun autoSaveIncome(context: Context): Boolean =

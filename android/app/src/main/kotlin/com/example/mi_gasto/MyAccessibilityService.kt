@@ -48,8 +48,20 @@ class MyAccessibilityService : AccessibilityService() {
             if (rules == null) { Log.d(TAG, "reglas no cargadas"); return }
             // De una pantalla solo cuenta la constancia: el inicio de Yape (saldo, movimientos)
             // no es un pago, aunque cambie cada vez que se toca "ver saldo".
-            if (origin == ORIGIN_SCREEN && !rules.isScreenReceipt(text)) return
+            val isReceipt = origin != ORIGIN_SCREEN || rules.isScreenReceipt(text)
+            val capture = NativeQueue.captureEnabled(context)
+            if (!isReceipt && !capture) return
             val result = rules.parse(text, app)
+            // Modo captura (Ajustes): se guarda el texto y lo que entendió el lector.
+            if (capture) {
+                val reading = when {
+                    !isReceipt -> "pantalla sin constancia" + (result?.let { " (habría leído ${describe(it)})" } ?: "")
+                    result == null -> "sin pago"
+                    else -> describe(result)
+                }
+                CaptureLog.of(context).add(app, viaName(origin), text, reading)
+            }
+            if (!isReceipt) return
             if (result == null) { Log.d(TAG, "texto sin pago (largo=${text.length})"); return }
             if (!NativeQueue.isProviderEnabled(context, result.provider)) {
                 Log.d(TAG, "descartado: ${result.provider} está apagado en Ajustes")
@@ -83,6 +95,15 @@ class MyAccessibilityService : AccessibilityService() {
         }
 
         fun simulateNotification(text: String, context: Context) = handleText(context, text)
+
+        private fun describe(r: ParseResult) =
+            "${r.type} S/ ${"%.2f".format(java.util.Locale.ROOT, r.amount)} · ${r.provider} · «${r.peer}»"
+
+        private fun viaName(origin: String) = when (origin) {
+            ORIGIN_LISTENER -> "notificación"
+            ORIGIN_SCREEN -> "pantalla"
+            else -> "accesibilidad"
+        }
 
         private fun deliver(context: Context, result: ParseResult, rawText: String) {
             // Con el teléfono en uso y desbloqueado se muestra la ventana flotante.

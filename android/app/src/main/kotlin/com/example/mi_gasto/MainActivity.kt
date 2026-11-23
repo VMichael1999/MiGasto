@@ -87,6 +87,11 @@ class MainActivity : FlutterFragmentActivity() {
                         result.success(true)
                     }
                 }
+                "readCaptureLog" -> result.success(CaptureLog.of(this).read())
+                "clearCaptureLog" -> {
+                    CaptureLog.of(this).clear()
+                    result.success(true)
+                }
                 "takeNativeQueue" -> {
                     // Pagos que el código nativo detectó mientras la app estaba cerrada.
                     result.success(NativeQueue.take(this))
