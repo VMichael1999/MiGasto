@@ -72,12 +72,14 @@ class OverlayService : Service() {
         private val yape = if (night) 0xFF9B4FD6.toInt() else 0xFF742284.toInt()
         private val plin = if (night) 0xFF10BFAF.toInt() else 0xFF00857A.toInt()
         private val gpay = if (night) 0xFF5B9BF8.toInt() else 0xFF1A73E8.toInt()
+        private val card = if (night) 0xFFFF8A3D.toInt() else 0xFFD9661A.toInt()
         private val other = if (night) 0xFF8A8794.toInt() else 0xFF6B6876.toInt()
 
         fun source(provider: String) = when (provider) {
             "yape" -> yape
             "plin" -> plin
             "googlePay" -> gpay
+            "tarjeta" -> card
             else -> other
         }
     }
@@ -169,6 +171,7 @@ class OverlayService : Service() {
         "yape" -> "Yape"
         "plin" -> "Plin"
         "googlePay" -> "Google Wallet"
+        "tarjeta" -> "Tarjeta"
         else -> "Manual"
     }
 

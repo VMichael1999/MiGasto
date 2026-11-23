@@ -16,7 +16,7 @@ class ParsedPayment {
   /// Comercio (gastos) o persona/empresa (ingresos).
   final String peer;
 
-  /// `yape`, `plin` o `googlePay`.
+  /// `yape`, `plin`, `googlePay` o `tarjeta` (consumo que avisa un banco).
   final String provider;
   final bool isIncome;
 

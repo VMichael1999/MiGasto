@@ -246,6 +246,34 @@ void main() {
     });
   });
 
+  group('consumos con tarjeta que avisa el banco', () {
+    const interbank = 'pe.com.interbank.mobilebanking';
+
+    test('Interbank: consumo con tarjeta de crédito, con «S/.»', () {
+      final p = reader.parse(
+          'Interbank Realizaste un consumo de S/.50.00 en COMPA#IA OPERADORA DE L con tu Tarjeta de Crédito.',
+          app: interbank)!;
+      expect(p.isIncome, isFalse);
+      expect(p.amount, 50.0);
+      expect(p.peer, 'COMPA#IA OPERADORA DE L');
+      expect(p.provider, 'tarjeta');
+    });
+
+    test('Interbank: consumo con tarjeta de débito', () {
+      final p = reader.parse('Interbank Realizaste un consumo de S/.40.00 en VM*ELECTROVIBE con tu Tarjeta de Débito.',
+          app: interbank)!;
+      expect(p.peer, 'VM*ELECTROVIBE');
+      expect(p.provider, 'tarjeta');
+    });
+
+    test('un cargo en dólares no se anota como soles', () {
+      expect(
+          reader.parse(r'Interbank Se realizó un pago recurrente de $26.19 en HOSTINGER* HOSTINGER.C con tu Tarjeta de Débito.',
+              app: interbank),
+          isNull);
+    });
+  });
+
   group('número de operación', () {
     final rules = jsonDecode(File('assets/reader_rules.json').readAsStringSync()) as Map<String, dynamic>;
     final regex = RegExp(rules['operationId'] as String, caseSensitive: false);
