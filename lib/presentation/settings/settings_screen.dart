@@ -52,6 +52,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   final _simController = TextEditingController();
 
   bool get _isAndroid => defaultTargetPlatform == TargetPlatform.android;
+  bool get _isIOS => defaultTargetPlatform == TargetPlatform.iOS;
 
   @override
   void initState() {
@@ -351,6 +352,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     return _buildGroup(
       title: 'CUENTA',
       children: [
+        // iPhone no deja leer notificaciones: los pagos llegan por Atajos (Apple Pay, y
+        // correos, SMS o constancias en pantalla).
+        if (_isIOS) ...[
+          _buildRow(
+            icon: Icons.contactless_outlined,
+            title: 'Apple Pay',
+            onTap: () => context.push('/setup/apple-pay'),
+          ),
+          _buildDivider(),
+          _buildRow(
+            icon: Icons.mark_email_unread_outlined,
+            title: 'Correos, SMS y constancias',
+            onTap: () => context.push('/setup/avisos'),
+          ),
+          _buildDivider(),
+        ],
         // Yape, Plin y Google Wallet: solo se detectan en Android (lectura de notificaciones).
         if (_isAndroid) ...[
           _buildRow(
