@@ -144,9 +144,14 @@ class ReaderRules private constructor(
         fun fromAfter(): String {
             val m = Regex("^($prepositions)\\b(.*)", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
                 .find(after) ?: return ""
-            // «PEN35.00 con Visa Clasica …» (Google Wallet): lo que sigue a «con» es la
-            // tarjeta, no el comercio.
-            if (m.groupValues[1].equals("con", ignoreCase = true)) return ""
+            // Lo que sigue a «con» es la tarjeta, no el comercio: «PEN35.00 con Visa Clasica …»
+            // (Google Wallet). Si después viene «en», ahí está el comercio: «S/ 25.78 con tu
+            // Tarjeta de Débito BCP en WL *STEAM PURCHASE.» (correo del BCP).
+            if (m.groupValues[1].equals("con", ignoreCase = true)) {
+                val place = Regex("\\sen\\s+(.+)$", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+                    .find(m.groupValues[2]) ?: return ""
+                return clean(place.groupValues[1])
+            }
             return clean(m.groupValues[2])
         }
 

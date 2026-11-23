@@ -129,9 +129,14 @@ class PaymentReader {
     String fromAfter() {
       final m = RegExp('^($preps)\\b(.*)', caseSensitive: false, dotAll: true)
           .firstMatch(after);
-      // «PEN35.00 con Visa Clasica …» (Google Wallet): lo que sigue a «con» es la
-      // tarjeta, no el comercio.
-      if (m == null || m.group(1)!.toLowerCase() == 'con') return '';
+      if (m == null) return '';
+      // Lo que sigue a «con» es la tarjeta, no el comercio: «PEN35.00 con Visa Clasica …»
+      // (Google Wallet). Si después viene «en», ahí está el comercio: «S/ 25.78 con tu
+      // Tarjeta de Débito BCP en WL *STEAM PURCHASE.» (correo del BCP).
+      if (m.group(1)!.toLowerCase() == 'con') {
+        final place = RegExp(r'\sen\s+(.+)$', caseSensitive: false, dotAll: true).firstMatch(m.group(2)!);
+        return place == null ? '' : _clean(place.group(1)!);
+      }
       return _clean(m.group(2)!);
     }
 

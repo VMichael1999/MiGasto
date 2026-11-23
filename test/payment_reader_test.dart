@@ -266,6 +266,14 @@ void main() {
       expect(p.provider, 'tarjeta');
     });
 
+    test('correo del BCP: el comercio va después de la tarjeta', () {
+      final p = reader.parse('Realizaste un consumo de S/ 25.78 con tu Tarjeta de Débito BCP en WL *STEAM PURCHASE.')!;
+      expect(p.isIncome, isFalse);
+      expect(p.amount, 25.78);
+      expect(p.peer, 'WL *STEAM PURCHASE');
+      expect(p.provider, 'tarjeta');
+    });
+
     test('un cargo en dólares no se anota como soles', () {
       expect(
           reader.parse(r'Interbank Se realizó un pago recurrente de $26.19 en HOSTINGER* HOSTINGER.C con tu Tarjeta de Débito.',
