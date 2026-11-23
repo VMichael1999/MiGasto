@@ -31,6 +31,9 @@ class ReaderRules private constructor(
     private val cleanPhrases = strings(rules.getJSONArray("cleanPhrases")).sortedByDescending { it.length }
     private val stopWords = strings(rules.getJSONArray("peerStopWords"))
     private val unknownPeer = rules.getString("unknownPeer")
+    private val titlePrefixRegex = rules.optJSONArray("titlePrefixes")?.let(::strings)
+        ?.takeIf { it.isNotEmpty() }
+        ?.let { names -> Regex("^(?:" + names.joinToString("|") { Regex.escape(it) } + ")(?![\\p{L}\\p{N}])", options) }
 
     private val gastoGroups = categoryGroups(categories.getJSONArray("gasto"))
     private val ingresoGroups = categoryGroups(categories.getJSONArray("ingreso"))
@@ -136,7 +139,7 @@ class ReaderRules private constructor(
 
     private fun peer(text: String, amount: MatchResult, isIncome: Boolean): String {
         val after = text.substring(amount.range.last + 1).trim()
-        val before = text.substring(0, amount.range.first).trim()
+        val before = withoutTitlePrefix(text.substring(0, amount.range.first).trim())
 
         fun fromAfter(): String {
             val m = Regex("^($prepositions)\\b(.*)", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
@@ -151,6 +154,10 @@ class ReaderRules private constructor(
         if (second.isNotEmpty() || isIncome) return second
         return fromAfterWithoutPreposition(after)
     }
+
+    /** Quita el título que es solo el nombre del banco («Interbank Ana te ha plineado»). */
+    private fun withoutTitlePrefix(before: String): String =
+        titlePrefixRegex?.replaceFirst(before, "")?.trim() ?: before
 
     /**
      * Constancia de Yape al enviar: el nombre va justo después del monto, sin "a" ni "de"
@@ -177,6 +184,8 @@ class ReaderRules private constructor(
         }
         t = t.replace(Regex("^\\s*($prepositions)\\b", options), "")
         t = t.replace(Regex("\\b($prepositions)\\s*$", options), "")
+        // Emojis de los títulos («¡Recibiste un Plin! 💸»).
+        t = t.replace(Regex("\\p{So}"), " ")
         t = t.replace(Regex("\\s+"), " ")
         return t.replace(Regex("^[\\s:,\\-¡!.*_]+|[\\s:,\\-¡!.*_]+$"), "")
     }

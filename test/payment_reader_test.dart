@@ -181,6 +181,54 @@ void main() {
     });
   });
 
+  group('Plin en las apps de los bancos', () {
+    const bbva = 'com.bbva.nxt_peru';
+    const interbank = 'pe.com.interbank.mobilebanking';
+
+    test('BBVA: Plin recibido, con emoji y «S/1 .»', () {
+      final p = reader.parse('¡Recibiste un Plin! 💸 ADRIAN ISSAC MAMANI te plineó S/1 .', app: bbva)!;
+      expect(p.isIncome, isTrue);
+      expect(p.amount, 1.0);
+      expect(p.peer, 'ADRIAN ISSAC MAMANI');
+      expect(p.provider, 'plin');
+    });
+
+    test('BBVA: Plin enviado', () {
+      final p = reader.parse('¡Enviaste un Plin! Plineaste S/1 a Adrian I Mamani Q .', app: bbva)!;
+      expect(p.isIncome, isFalse);
+      expect(p.peer, 'Adrian I Mamani Q');
+      expect(p.provider, 'plin');
+    });
+
+    test('BBVA: cobro con QR', () {
+      final p = reader.parse('Cobro con QR VICTOR RAUL MAMANI QUEA te hizo un pago de S/ 20.0', app: bbva)!;
+      expect(p.isIncome, isTrue);
+      expect(p.amount, 20.0);
+      expect(p.peer, 'VICTOR RAUL MAMANI QUEA');
+      expect(p.provider, 'plin');
+    });
+
+    test('Interbank: «te ha plineado», también con el monto en otra línea', () {
+      final a = reader.parse('Interbank Persona Ejemplo te ha plineado\nS/ 1.00', app: interbank)!;
+      expect(a.isIncome, isTrue);
+      expect(a.amount, 1.0);
+      expect(a.peer, 'Persona Ejemplo');
+      expect(a.provider, 'plin');
+      final b = reader.parse('Interbank Celia Gutierrez Tafur te ha plineado S/\n0.50', app: interbank)!;
+      expect(b.amount, 0.5);
+    });
+
+    test('Interbank: «Te plinearon» sin nombre y «Plineaste»', () {
+      final a = reader.parse('Interbank Te plinearon S/ 1.00', app: interbank)!;
+      expect(a.isIncome, isTrue);
+      expect(a.peer, 'Desconocido');
+      expect(a.provider, 'plin');
+      final b = reader.parse('Interbank Plineaste S/ 1.00 a Ana R Torres P', app: interbank)!;
+      expect(b.isIncome, isFalse);
+      expect(b.peer, 'Ana R Torres P');
+    });
+  });
+
   group('número de operación', () {
     final rules = jsonDecode(File('assets/reader_rules.json').readAsStringSync()) as Map<String, dynamic>;
     final regex = RegExp(rules['operationId'] as String, caseSensitive: false);

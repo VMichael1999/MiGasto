@@ -38,7 +38,13 @@
     {
       "id": "plin",
       "keywords": [
-        "plin"
+        "plin",
+        "plineó",
+        "plineo",
+        "plineaste",
+        "plinearon",
+        "plineado",
+        "cobro con qr"
       ],
       "wordBoundary": true
     },
@@ -62,10 +68,11 @@
     "has recibido",
     "recibiste",
     "te (?:envió|envio|transfirió|transfirio|depositó|deposito|pagó|pago)(?![\\p{L}\\p{N}])",
-    "te (?:han|ha) (?:enviado|transferido|depositado)",
+    "te (?:han|ha) (?:enviado|transferido|depositado|plineado|yapeado)",
     "abono (?:en|a) tu cuenta",
     "depósito recibido",
-    "deposito recibido"
+    "deposito recibido",
+    "te (?:hizo|hicieron) un pago"
   ],
   "expense": [
     "yapeaste",
@@ -91,6 +98,14 @@
     "con"
   ],
   "cleanPhrases": [
+    "te plinearon",
+    "te han plineado",
+    "te ha plineado",
+    "te hizo un pago",
+    "te hizo un pago de",
+    "cobro con qr",
+    "enviaste un plin",
+    "recibiste un plin",
     "has recibido un yape de",
     "has recibido un plin de",
     "has recibido",
@@ -139,5 +154,11 @@
     " el dia ",
     " - "
   ],
+  "titlePrefixes": [
+    "interbank",
+    "bbva",
+    "scotiabank"
+  ],
+  "_notaTitlePrefixes": "Títulos que son el nombre del banco («Interbank»): se quitan del inicio del nombre en los ingresos, donde el nombre va antes del monto.",
   "unknownPeer": "Desconocido"
 }

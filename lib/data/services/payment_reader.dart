@@ -124,7 +124,7 @@ class PaymentReader {
   String _peer(String text, RegExpMatch amount, {required bool isIncome}) {
     final preps = (_rules['peerPrepositions'] as List).cast<String>().join('|');
     final after = text.substring(amount.end).trim();
-    final before = text.substring(0, amount.start).trim();
+    final before = _withoutTitlePrefix(text.substring(0, amount.start).trim());
 
     String fromAfter() {
       final m = RegExp('^($preps)\\b(.*)', caseSensitive: false, dotAll: true)
@@ -139,6 +139,16 @@ class PaymentReader {
     final second = isIncome ? fromAfter() : _clean(before);
     if (second.isNotEmpty || isIncome) return second;
     return _fromAfterWithoutPreposition(after);
+  }
+
+  /// Quita el título que es solo el nombre del banco («Interbank Ana te ha plineado»).
+  String _withoutTitlePrefix(String before) {
+    final names = ((_rules['titlePrefixes'] as List?) ?? const []).cast<String>();
+    if (names.isEmpty) return before;
+    return before
+        .replaceFirst(RegExp('^(?:${names.map(RegExp.escape).join('|')})(?![\\p{L}\\p{N}])',
+            caseSensitive: false, unicode: true), '')
+        .trim();
   }
 
   /// Constancia de Yape al enviar: el nombre va justo después del monto, sin "a" ni
@@ -169,6 +179,8 @@ class PaymentReader {
     final preps = (_rules['peerPrepositions'] as List).cast<String>().join('|');
     t = t.replaceAll(RegExp('^\\s*($preps)\\b', caseSensitive: false), '');
     t = t.replaceAll(RegExp('\\b($preps)\\s*\$', caseSensitive: false), '');
+    // Emojis de los títulos («¡Recibiste un Plin! 💸»).
+    t = t.replaceAll(RegExp(r'\p{So}', unicode: true), ' ');
     t = t.replaceAll(RegExp(r'\s+'), ' ');
     return t.replaceAll(RegExp(r'^[\s:,\-¡!.*_]+|[\s:,\-¡!.*_]+$'), '');
   }
