@@ -13,7 +13,7 @@ class DuplicateGuardTest {
     private val access = MyAccessibilityService.ORIGIN_ACCESS
     private val screen = MyAccessibilityService.ORIGIN_SCREEN
 
-    private fun dup(origin: String, k: String = key) = guard.isDuplicate(k, origin, listener)
+    private fun dup(origin: String, k: String = key, app: String? = null) = guard.isDuplicate(k, origin, listener, app)
 
     @Test fun primerPagoNoEsDuplicado() {
         assertFalse(dup(listener))
@@ -68,5 +68,24 @@ class DuplicateGuardTest {
         assertFalse(dup(screen))
         now += 20_000
         assertTrue(dup(screen))
+    }
+
+    @Test fun elMismoConsumoPorGoogleWalletYPorElBancoCuentaUnaVez() {
+        val wallet = DuplicateGuard.key("googlePay", "gasto", 35.0)
+        val banco = DuplicateGuard.key("tarjeta", "gasto", 35.0)
+        assertFalse(dup(listener, wallet, "com.google.android.apps.walletnfcrel"))
+        now += 4_000
+        assertTrue(dup(listener, banco, "pe.com.interbank.mobilebanking"))
+    }
+
+    @Test fun dosConsumosIgualesSeguidosDelMismoBancoValenLosDos() {
+        val banco = DuplicateGuard.key("tarjeta", "gasto", 12.5)
+        assertFalse(dup(listener, banco, "pe.com.interbank.mobilebanking"))
+        now += 30_000
+        assertFalse(dup(listener, banco, "pe.com.interbank.mobilebanking"))
+    }
+
+    @Test fun laClaveUsaPuntoDecimalSinImportarElIdioma() {
+        assertTrue(DuplicateGuard.key("yape", "ingreso", 1.0) == "yape|ingreso|1.00")
     }
 }

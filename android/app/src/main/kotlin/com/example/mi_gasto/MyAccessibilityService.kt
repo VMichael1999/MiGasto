@@ -39,10 +39,8 @@ class MyAccessibilityService : AccessibilityService() {
         fun getChannel(): MethodChannel? = channel
         fun getInstance(): MyAccessibilityService? = instance
 
-        private fun isDuplicate(result: ParseResult, origin: String): Boolean {
-            val key = "${result.provider}|${result.type}|${"%.2f".format(result.amount)}"
-            return duplicates.isDuplicate(key, origin, ORIGIN_LISTENER)
-        }
+        private fun isDuplicate(result: ParseResult, origin: String, app: String?): Boolean =
+            duplicates.isDuplicate(DuplicateGuard.key(result.provider, result.type, result.amount), origin, ORIGIN_LISTENER, app)
 
         /** Lee un texto (notificación o pantalla) y, si es un pago, lo entrega. */
         fun handleText(context: Context, text: String, origin: String = ORIGIN_ACCESS, app: String? = null) {
@@ -74,7 +72,7 @@ class MyAccessibilityService : AccessibilityService() {
                     return
                 }
             }
-            if (isDuplicate(result, origin)) {
+            if (isDuplicate(result, origin, app)) {
                 Log.d(TAG, "descartado: mismo monto, fuente y tipo hace menos de 2 minutos")
                 return
             }
