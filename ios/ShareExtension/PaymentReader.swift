@@ -4,7 +4,7 @@ import Foundation
 struct ParsedPayment {
     let amount: Double
     let peer: String
-    /// `yape`, `plin` o `googlePay`.
+    /// `yape`, `plin`, `googlePay` o `tarjeta`.
     let provider: String
     let isIncome: Bool
 }
@@ -125,19 +125,49 @@ final class PaymentReader {
     private func peer(in text: String, match: NSTextCheckingResult, isIncome: Bool) -> String {
         let ns = text as NSString
         let after = ns.substring(from: match.range.location + match.range.length).trimmingCharacters(in: .whitespacesAndNewlines)
-        let before = ns.substring(to: match.range.location).trimmingCharacters(in: .whitespacesAndNewlines)
+        let before = withoutTitlePrefix(ns.substring(to: match.range.location).trimmingCharacters(in: .whitespacesAndNewlines))
         let preps = (rules["peerPrepositions"] as? [String] ?? []).joined(separator: "|")
 
         func fromAfter() -> String {
             guard let re = try? NSRegularExpression(pattern: "^(\(preps))\\b(.*)", options: [.caseInsensitive, .dotMatchesLineSeparators]),
                   let m = re.firstMatch(in: after, range: fullRange(after)),
+                  let prep = Range(m.range(at: 1), in: after),
                   let r = Range(m.range(at: 2), in: after) else { return "" }
-            return clean(String(after[r]))
+            let rest = String(after[r])
+            // Lo que sigue a «con» es la tarjeta, no el comercio: «PEN35.00 con Visa Clasica …»
+            // (Google Wallet). Si después viene «en», ahí está el comercio (correo del BCP).
+            if after[prep].lowercased() == "con" {
+                guard let place = try? NSRegularExpression(pattern: "\\sen\\s+(.+)$", options: [.caseInsensitive, .dotMatchesLineSeparators]),
+                      let pm = place.firstMatch(in: rest, range: fullRange(rest)),
+                      let pr = Range(pm.range(at: 1), in: rest) else { return "" }
+                return clean(String(rest[pr]))
+            }
+            return clean(rest)
         }
 
+        // En ingresos el nombre suele ir antes; en gastos, después.
         let first = isIncome ? clean(before) : fromAfter()
         if !first.isEmpty { return first }
-        return isIncome ? fromAfter() : clean(before)
+        let second = isIncome ? fromAfter() : clean(before)
+        if !second.isEmpty || isIncome { return second }
+        return fromAfterWithoutPreposition(after)
+    }
+
+    /// Quita el título que es solo el nombre del banco («Interbank Ana te ha plineado»).
+    private func withoutTitlePrefix(_ before: String) -> String {
+        let names = rules["titlePrefixes"] as? [String] ?? []
+        guard !names.isEmpty else { return before }
+        let pattern = "^(?:" + names.map { NSRegularExpression.escapedPattern(for: $0) }.joined(separator: "|") + ")(?![\\p{L}\\p{N}])"
+        return before.replacingOccurrences(of: pattern, with: "", options: [.regularExpression, .caseInsensitive])
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Constancia de Yape al enviar: el nombre va justo después del monto, sin «a» ni «de».
+    /// Se toma hasta la primera cifra (la fecha) y se descarta si queda demasiado largo.
+    private func fromAfterWithoutPreposition(_ after: String) -> String {
+        let cut = after.firstIndex(where: { $0.isNumber }) ?? after.endIndex
+        let name = clean(String(after[..<cut]))
+        return (2...60).contains(name.count) ? name : ""
     }
 
     private func clean(_ input: String) -> String {
@@ -155,6 +185,8 @@ final class PaymentReader {
         let preps = (rules["peerPrepositions"] as? [String] ?? []).joined(separator: "|")
         t = t.replacingOccurrences(of: "^\\s*(\(preps))\\b", with: "", options: [.regularExpression, .caseInsensitive])
         t = t.replacingOccurrences(of: "\\b(\(preps))\\s*$", with: "", options: [.regularExpression, .caseInsensitive])
+        // Emojis de los títulos («¡Recibiste un Plin! 💸»).
+        t = t.replacingOccurrences(of: "\\p{So}", with: " ", options: .regularExpression)
         t = t.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
         return t.replacingOccurrences(of: "^[\\s:,\\-¡!.*_]+|[\\s:,\\-¡!.*_]+$", with: "", options: .regularExpression)
     }
