@@ -6,6 +6,7 @@ import '../../presentation/expenses/manual_entry_screen.dart';
 import '../../presentation/expenses/movement_detail_screen.dart';
 import '../../presentation/expenses/where_screen.dart';
 import '../../presentation/setup/apple_pay_setup_screen.dart';
+import '../../presentation/setup/avisos_setup_screen.dart';
 import '../../presentation/onboarding/onboarding_screen.dart';
 import '../../presentation/onboarding/permissions_screen.dart';
 import '../../presentation/onboarding/splash_screen.dart';
@@ -122,6 +123,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/setup/apple-pay',
         builder: (context, state) =>
             ApplePaySetupScreen(fromOnboarding: state.uri.queryParameters['onboarding'] == '1'),
+      ),
+      GoRoute(
+        path: '/setup/avisos',
+        builder: (context, state) => const AvisosSetupScreen(),
       ),
       GoRoute(
         path: '/setup/apple-pay/tutorial',
