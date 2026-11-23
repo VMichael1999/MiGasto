@@ -260,5 +260,11 @@ struct MiGastoShortcuts: AppShortcutsProvider {
             shortTitle: "Registrar pago de Wallet",
             systemImageName: "creditcard"
         )
+        AppShortcut(
+            intent: RegistrarAvisoIntent(),
+            phrases: ["Registrar un aviso de pago en \(.applicationName)"],
+            shortTitle: "Registrar aviso de pago",
+            systemImageName: "text.viewfinder"
+        )
     }
 }
