@@ -773,6 +773,23 @@ class PermissionsChecker {
     }
   }
 
+  /// Modo captura (Android): los textos que guardó el código nativo.
+  Future<String> readCaptureLog() async {
+    try {
+      return await _channel.invokeMethod<String>('readCaptureLog') ?? '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  Future<void> clearCaptureLog() async {
+    try {
+      await _channel.invokeMethod('clearCaptureLog');
+    } catch (_) {
+      // Ignore
+    }
+  }
+
   Future<void> simulateNotification(String text) async {
     try {
       await _channel.invokeMethod('simulateNotification', {'text': text});
@@ -982,4 +999,25 @@ class MerchantLogosNotifier extends StateNotifier<bool> {
 
 final merchantLogosProvider = StateNotifierProvider<MerchantLogosNotifier, bool>(
   (ref) => MerchantLogosNotifier(ref.read(sharedPreferencesProvider)),
+);
+
+/// Modo captura (Android): el código nativo guarda en el teléfono el texto de las
+/// notificaciones y pantallas de las apps de pago, con lo que entendió el lector, para
+/// escribir reglas con textos reales. Apagado por defecto; al apagarlo se borra lo guardado.
+const captureModeKey = 'migasto_capture_mode';
+
+class CaptureModeNotifier extends StateNotifier<bool> {
+  CaptureModeNotifier(this._prefs, this._permissions) : super(_prefs.getBool(captureModeKey) ?? false);
+  final SharedPreferences _prefs;
+  final PermissionsChecker _permissions;
+
+  Future<void> set(bool value) async {
+    await _prefs.setBool(captureModeKey, value);
+    if (!value) await _permissions.clearCaptureLog();
+    state = value;
+  }
+}
+
+final captureModeProvider = StateNotifierProvider<CaptureModeNotifier, bool>(
+  (ref) => CaptureModeNotifier(ref.read(sharedPreferencesProvider), ref.read(permissionsCheckerProvider)),
 );

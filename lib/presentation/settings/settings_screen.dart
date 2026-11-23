@@ -487,8 +487,48 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
           tag: _batteryOn ? 'Activo' : 'Activar',
           onTap: () => permissions.openBatterySettings(),
         ),
+        _buildDivider(),
+        _buildRow(
+          icon: Icons.science_outlined,
+          title: 'Modo captura',
+          subtitle: 'Guarda en este teléfono el texto de las notificaciones y pantallas de tus apps de pago, para mejorar la lectura de tu banco. Al apagarlo se borra.',
+          trailing: Switch(
+            value: ref.watch(captureModeProvider),
+            onChanged: (v) => ref.read(captureModeProvider.notifier).set(v),
+          ),
+        ),
+        if (ref.watch(captureModeProvider)) ...[
+          _buildDivider(),
+          _buildRow(
+            icon: Icons.ios_share_rounded,
+            title: 'Compartir textos guardados',
+            onTap: () => _shareCaptures(context),
+          ),
+        ],
       ],
     );
+  }
+
+  /// Comparte lo que guardó el modo captura como un archivo de texto.
+  Future<void> _shareCaptures(BuildContext context) async {
+    final text = await ref.read(permissionsCheckerProvider).readCaptureLog();
+    if (!context.mounted) return;
+    if (text.trim().isEmpty) {
+      MgToast.show(context, message: 'Aún no hay textos. Haz un pago o abre una constancia y vuelve.');
+      return;
+    }
+    final dir = await getTemporaryDirectory();
+    final stamp = DateFormat('yyyy-MM-dd_HHmm').format(DateTime.now());
+    final file = File('${dir.path}/MiGasto-textos-$stamp.txt');
+    await file.writeAsString(
+      'Textos guardados por el modo captura de MiGasto.\n'
+      'Antes de enviarlo, tapa nombres, números de cuenta y de tarjeta.\n\n$text',
+      flush: true,
+    );
+    await SharePlus.instance.share(ShareParams(
+      files: [XFile(file.path)],
+      subject: 'Textos del modo captura de MiGasto',
+    ));
   }
 
   /// Tarjeta de cerrar sesión al final de la pantalla
