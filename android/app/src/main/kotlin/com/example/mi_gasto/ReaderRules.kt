@@ -144,6 +144,9 @@ class ReaderRules private constructor(
         fun fromAfter(): String {
             val m = Regex("^($prepositions)\\b(.*)", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
                 .find(after) ?: return ""
+            // «PEN35.00 con Visa Clasica …» (Google Wallet): lo que sigue a «con» es la
+            // tarjeta, no el comercio.
+            if (m.groupValues[1].equals("con", ignoreCase = true)) return ""
             return clean(m.groupValues[2])
         }
 

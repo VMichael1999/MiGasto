@@ -229,6 +229,23 @@ void main() {
     });
   });
 
+  group('Google Wallet real', () {
+    const wallet = 'com.google.android.apps.walletnfcrel';
+
+    test('el título es el comercio y el monto va como PEN', () {
+      final p = reader.parse('OPENPAY*XIN FU        LIM PEN35.00 con Visa Clasica BCP Qore ••0771', app: wallet)!;
+      expect(p.isIncome, isFalse);
+      expect(p.amount, 35.0);
+      expect(p.peer, 'OPENPAY*XIN FU LIM');
+      expect(p.provider, 'googlePay');
+      expect(reader.parse('COLONIAL C31 CERCADO PEN1.50 con Visa Clasica BCP Qore ••0771', app: wallet)!.amount, 1.5);
+    });
+
+    test('«pen» dentro de una palabra no es un monto', () {
+      expect(reader.parse('Yapeaste a OPEN35 S/ 2.00')!.amount, 2.0);
+    });
+  });
+
   group('número de operación', () {
     final rules = jsonDecode(File('assets/reader_rules.json').readAsStringSync()) as Map<String, dynamic>;
     final regex = RegExp(rules['operationId'] as String, caseSensitive: false);

@@ -129,7 +129,10 @@ class PaymentReader {
     String fromAfter() {
       final m = RegExp('^($preps)\\b(.*)', caseSensitive: false, dotAll: true)
           .firstMatch(after);
-      return m == null ? '' : _clean(m.group(2)!);
+      // «PEN35.00 con Visa Clasica …» (Google Wallet): lo que sigue a «con» es la
+      // tarjeta, no el comercio.
+      if (m == null || m.group(1)!.toLowerCase() == 'con') return '';
+      return _clean(m.group(2)!);
     }
 
     // En ingresos el nombre suele ir antes ("Juan te yapeó S/ 15"); en gastos,
