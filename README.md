@@ -13,7 +13,7 @@
   <a href="https://flutter.dev"><img src="https://img.shields.io/badge/Flutter-3.47-02569B?logo=flutter&logoColor=white" alt="Flutter" /></a>
   <a href="https://dart.dev"><img src="https://img.shields.io/badge/Dart-3.13-0175C2?logo=dart&logoColor=white" alt="Dart" /></a>
   <a href="https://kotlinlang.org"><img src="https://img.shields.io/badge/Nativo_Android-Kotlin-7F52FF?logo=kotlin&logoColor=white" alt="Kotlin" /></a>
-  <img src="https://img.shields.io/badge/Tests-256%20Flutter%20%2B%2017%20nativas-brightgreen" alt="Tests" />
+  <img src="https://img.shields.io/badge/Tests-260%20Flutter%20%2B%2021%20nativas-brightgreen" alt="Tests" />
   <img src="https://img.shields.io/badge/Plataformas-Android%20%7C%20iPhone-black?logo=android" alt="Plataformas" />
   <img src="https://img.shields.io/badge/Cuentas-Firebase-FFCA28?logo=firebase&logoColor=white" alt="Firebase" />
   <img src="https://img.shields.io/badge/Datos-SQLite%20cifrada-2E7D32" alt="Datos cifrados" />
@@ -84,6 +84,7 @@
   - **Acceso a notificaciones** (`PaymentNotificationListener`): lo que recibes (por ejemplo, «te envió un pago por S/ 5»). Es la vía principal. Escucha Yape, Google Wallet, BCP, BBVA, Interbank, Scotiabank, BanBif, Banco de la Nación, Ligo, Lemon, Bim, Caja Arequipa, Caja Huancayo, Caja Ica, Caja Piura y Alfin (la lista está en `assets/reader_rules.json`). Plin no es una app: llega por la del banco. Un consumo con tarjeta que avisa el banco se anota como **Tarjeta** (se apaga en Ajustes > Pagos detectados).
   - **Accesibilidad** (`MyAccessibilityService`): la constancia de Yape cuando envías o pagas («¡Yapeaste!»), porque Yape no avisa al que paga. Es opcional; se activa en Ajustes > «Pagos que envías». De la pantalla **solo** se lee la constancia (la que trae «DATOS DE LA TRANSACCIÓN»): el inicio de Yape, con el saldo y los últimos movimientos, se ignora.
   - Ambas pasan por el mismo lector de reglas y la misma protección contra duplicados.
+  - **Modo captura** (Ajustes, apagado por defecto): guarda en el teléfono el texto de las notificaciones y pantallas de las apps de pago, con lo que entendió el lector, y lo comparte como archivo de texto. Sirve para escribir reglas con textos reales (por ejemplo, las constancias de BCP, BBVA o Interbank). Guarda las últimas 100 entradas y, al apagarlo, las borra.
 - **🎈 Ventana flotante.** Aparece sobre cualquier app con el monto, el comercio, la fuente y la categoría. El botón **Guardar** es la cuenta regresiva: se vacía de color fuerte a tenue en 4 segundos y guarda al terminar; tocar la ventana la pausa; deslizarla hacia arriba la descarta. Un ingreso espera tu confirmación, salvo que hayas activado el guardado automático.
 - **🔔 Notificación de cada pago.** Cuando la ventana flotante no se puede ver (pantalla apagada o bloqueada, o sin el permiso «Mostrar sobre otras apps») MiGasto guarda el pago según las reglas de siempre y te avisa con una notificación local (no hay servidor ni *push*):
   - un gasto queda guardado y avisa en silencio («Gasto guardado: S/ 3.00 · a Michael · Yape»);
@@ -261,11 +262,11 @@ flutter analyze
 flutter test
 ```
 
-Hay 256 pruebas: cuentas (invitado, vincular, crear, recuperar), carga y errores de acceso, MiGastoIA y su conversación, logos de comercios, teclado, modo horizontal de las pantallas, mapa, Apple Pay y la acción de Atajos, la guía de correos, SMS y constancias, además de cifrado de la base, lector (gasto o ingreso, montos, textos que no son pagos, y los textos reales de Yape, Plin en BBVA e Interbank, consumos con tarjeta de Interbank y Google Wallet), categorías y categorías propias, duplicados, migración de datos antiguos, cola nativa (incluidos los botones del aviso), ventana de pago, guardado automático de ingresos, registro manual, ocultar montos, respaldo, ubicación y bloqueo.
+Hay 260 pruebas: cuentas (invitado, vincular, crear, recuperar), carga y errores de acceso, MiGastoIA y su conversación, logos de comercios, teclado, modo horizontal de las pantallas, mapa, Apple Pay y la acción de Atajos, la guía de correos, SMS y constancias, el modo captura, además de cifrado de la base, lector (gasto o ingreso, montos, textos que no son pagos, y los textos reales de Yape, Plin en BBVA e Interbank, consumos con tarjeta de Interbank y Google Wallet), categorías y categorías propias, duplicados, migración de datos antiguos, cola nativa (incluidos los botones del aviso), ventana de pago, guardado automático de ingresos, registro manual, ocultar montos, respaldo, ubicación y bloqueo.
 
 ### 2. Pruebas nativas de Android (JUnit)
 
-12 pruebas del freno de duplicados (`DuplicateGuard`): dos yapes seguidos del mismo monto, notificación más constancia en ambos órdenes, accesibilidad más notificación, la ventana de tiempo, otro monto, tipo o fuente, y el mismo consumo avisado por Google Wallet y por el banco.
+16 pruebas: 12 del freno de duplicados (`DuplicateGuard`: dos yapes seguidos del mismo monto, notificación más constancia en ambos órdenes, accesibilidad más notificación, la ventana de tiempo, otro monto, tipo o fuente, y el mismo consumo avisado por Google Wallet y por el banco) y 4 del modo captura (`CaptureLog`: qué guarda, la misma pantalla seguida una vez, el límite de entradas y el borrado).
 
 ```bash
 cd android && ./gradlew :app:testDebugUnitTest
@@ -287,8 +288,8 @@ El resto de lo nativo (lector de reglas, servicio de notificaciones, accesibilid
 ### Estado de las pruebas
 
 ```text
-Flutter:  256 passed, 0 failed
-JUnit:     12 passed, 0 failed
+Flutter:  260 passed, 0 failed
+JUnit:     16 passed, 0 failed
 XCTest:     5 passed, 0 failed
 Análisis: sin problemas
 ```
