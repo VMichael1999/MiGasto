@@ -47,10 +47,10 @@ class PaymentNotificationListener : NotificationListenerService() {
         private val PACKAGES = setOf(
             "com.bcp.innovacxion.yapeapp",
             "com.google.android.apps.walletnfcrel",
-            "com.bbva.bbvacontigo",
+            "com.bbva.nxt_peru",
             "pe.com.interbank.mobilebanking",
             "pe.com.scotiabank.blpm.android.client",
-            "com.banbif.plin",
+            "pe.com.banbif.pnappmobile",
         )
     }
 }
