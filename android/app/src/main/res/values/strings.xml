@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="accessibility_service_description">MiGasto lee las notificaciones y la pantalla de Yape, Plin y Google Wallet solo para detectar el monto, el comercio y si el dinero entra o sale, y así registrar tus gastos e ingresos. No lee tus mensajes, fotos ni contactos, y todo se guarda solo en tu teléfono.</string>
+    <string name="accessibility_service_description">MiGasto lee las notificaciones y la pantalla de Yape, Google Wallet y las apps de tu banco o billetera (donde usas Plin) solo para detectar el monto, el comercio y si el dinero entra o sale, y así registrar tus gastos e ingresos. No lee tus mensajes, fotos ni contactos, y todo se guarda solo en tu teléfono.</string>
 </resources>

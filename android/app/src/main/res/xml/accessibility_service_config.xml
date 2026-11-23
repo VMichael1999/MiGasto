@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Las mismas apps que "apps" en assets/reader_rules.json (lo comprueba test/payment_reader_test.dart). -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeNotificationStateChanged|typeWindowStateChanged|typeWindowContentChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
     android:accessibilityFlags="flagDefault|flagRetrieveInteractiveWindows"
-    android:packageNames="com.bcp.innovacxion.yapeapp,com.google.android.apps.walletnfcrel,com.bbva.nxt_peru,pe.com.interbank.mobilebanking,pe.com.scotiabank.blpm.android.client,pe.com.banbif.pnappmobile"
+    android:packageNames="com.bcp.innovacxion.yapeapp,com.google.android.apps.walletnfcrel,com.bcp.bank.bcp,com.bbva.nxt_peru,pe.com.interbank.mobilebanking,pe.com.scotiabank.blpm.android.client,pe.com.banbif.pnappmobile,pe.com.bn.app.bancodelanacion,pe.com.tarjetasperuanasprepago.tppapp,com.applemoncash,com.pdp.bim,com.cmac.cajamovilaqp,com.cajahuancayo.cajahuancayo.appcajahuancayo,com.cmacica.prd,pe.cajapiura.bancamovil,com.alfinbanco.appclientes"
     android:canRetrieveWindowContent="true"
     android:canRequestFilterKeyEvents="false"
     android:notificationTimeout="100"

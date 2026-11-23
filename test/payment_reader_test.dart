@@ -179,6 +179,13 @@ void main() {
       expect(apps, isNot(contains('com.banbif.plin')));
       expect((rules['providerByApp'] as Map).keys, everyElement(isIn(apps)));
     });
+
+    test('la lectura de pantalla mira las mismas apps que las notificaciones', () {
+      final rules = jsonDecode(File('assets/reader_rules.json').readAsStringSync()) as Map<String, dynamic>;
+      final xml = File('android/app/src/main/res/xml/accessibility_service_config.xml').readAsStringSync();
+      final listed = RegExp(r'android:packageNames="([^"]*)"').firstMatch(xml)!.group(1)!.split(',');
+      expect(listed, unorderedEquals((rules['apps'] as List).cast<String>()));
+    });
   });
 
   group('Plin en las apps de los bancos', () {
