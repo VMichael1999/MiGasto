@@ -117,25 +117,25 @@ class ExpenseRepositoryImpl implements ExpenseRepository {
     await _prefs.setString(_keyProvidersEnabled, jsonEncode(providers));
   }
 
+  /// Medios que se detectan solos, encendidos por defecto. `tarjeta` son los
+  /// consumos que avisa la app del banco.
+  static const _defaultProviders = {
+    'yape': true,
+    'plin': true,
+    'googlePay': true,
+    'tarjeta': true,
+  };
+
   @override
   Map<String, bool> getProviders() {
     final raw = _prefs.getString(_keyProvidersEnabled);
-    if (raw == null) {
-      return {
-        'yape': true,
-        'plin': true,
-        'googlePay': true,
-      };
-    }
+    if (raw == null) return {..._defaultProviders};
     try {
       final Map<String, dynamic> decoded = jsonDecode(raw);
-      return decoded.map((k, v) => MapEntry(k, v as bool));
+      // Lo guardado antes de que existiera un medio nuevo no lo trae: va encendido.
+      return {..._defaultProviders, ...decoded.map((k, v) => MapEntry(k, v as bool))};
     } catch (_) {
-      return {
-        'yape': true,
-        'plin': true,
-        'googlePay': true,
-      };
+      return {..._defaultProviders};
     }
   }
 }

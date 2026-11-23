@@ -6,7 +6,7 @@ import '../../../core/widgets/mg_sheet.dart';
 import '../../providers.dart';
 
 /// Qué pagos detecta la app. Las claves son las que manda el código nativo
-/// (`yape`, `plin`, `googlePay`) y el interruptor se guarda en el dispositivo:
+/// (`yape`, `plin`, `googlePay`, `tarjeta`) y el interruptor se guarda en el dispositivo:
 /// un pago de un medio apagado se ignora.
 class ConnectedAccountsSheet extends ConsumerWidget {
   const ConnectedAccountsSheet({super.key});
@@ -22,6 +22,7 @@ class ConnectedAccountsSheet extends ConsumerWidget {
     'yape': ('Yape', 'Notificaciones de Yape'),
     'plin': ('Plin', 'Notificaciones de Plin'),
     'googlePay': ('Google Wallet', 'Pagos con tarjeta desde Google Wallet'),
+    'tarjeta': ('Tarjetas de bancos', 'Consumos que avisa la app de tu banco'),
   };
 
   @override
