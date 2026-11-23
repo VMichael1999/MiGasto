@@ -52,7 +52,6 @@ class ConnectedAccountsSheet extends ConsumerWidget {
         for (final entry in providers.entries)
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            activeThumbColor: MgColors.acc,
             title: Text(
               _labels[entry.key]?.$1 ?? entry.key,
               style: const TextStyle(

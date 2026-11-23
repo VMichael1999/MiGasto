@@ -1139,8 +1139,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                 ),
               ),
               const SizedBox(width: 8),
+              // Sin color propio: el del tema (bolita blanca sobre violeta) se distingue
+              // encendido de apagado; con la bolita violeta no se veía.
               Switch(
-                activeThumbColor: MgColors.acc,
                 value: debugMockEnabled(ref.read(sharedPreferencesProvider), runningUnderTest: false),
                 onChanged: (on) async {
                   await ref.read(sharedPreferencesProvider).setBool(keyDebugMockData, on);
@@ -1170,7 +1171,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
             decoration: const InputDecoration(hintText: 'Ej.: Yapeaste S/ 18.50 a una tienda'),
           ),
           const SizedBox(height: 10),
-          ElevatedButton(onPressed: _runSimulation, child: const Text('Probar')),
+          FilledButton(onPressed: _runSimulation, child: const Text('Probar')),
         ],
       ),
     );

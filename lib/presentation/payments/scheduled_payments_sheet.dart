@@ -268,7 +268,6 @@ Future<void> showScheduledPaymentForm(
                         style: TextStyle(color: MgColors.ink2, fontSize: 13)),
                   ),
                   Switch(
-                    activeThumbColor: MgColors.acc,
                     value: monthly,
                     onChanged: (v) => setState(() => monthly = v),
                   ),
