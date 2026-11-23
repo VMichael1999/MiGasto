@@ -75,10 +75,12 @@ class _MyAppState extends ConsumerState<MyApp> {
     return MaterialApp.router(
       title: 'MiGasto',
       debugShowCheckedModeBanner: false,
-      // Claro u oscuro según el sistema.
-      theme: widget.themeOverride ?? AppTheme.lightTheme,
+      // La app es oscura siempre: las pantallas usan los colores oscuros de MgColors, así que
+      // campos, botones e interruptores también deben usar el tema oscuro aunque el teléfono
+      // esté en modo claro (si no, salen campos blancos con letras casi blancas).
+      theme: widget.themeOverride ?? AppTheme.darkTheme,
       darkTheme: widget.themeOverride ?? AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
+      themeMode: ThemeMode.dark,
       routerConfig: router,
       builder: (context, child) {
         // La app es oscura aunque el teléfono esté en modo claro: la barra de estado debe verse clara.
