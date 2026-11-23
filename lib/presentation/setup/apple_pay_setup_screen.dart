@@ -8,6 +8,7 @@ import '../../domain/entities/movimiento.dart';
 import '../../shared/widgets/app_icons.dart';
 import '../../shared/widgets/brand_mark.dart';
 import '../providers.dart';
+import 'setup_step.dart';
 
 /// Guía para crear la automatización de Wallet (en inglés "Transaction") en Atajos.
 ///
@@ -113,19 +114,20 @@ class _ApplePaySetupScreenState extends ConsumerState<ApplePaySetupScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    _step(context, 1, 'MiGasto ya agregó la acción a Atajos',
-                        'Se llama "Registrar pago de Wallet"', true),
+                    SetupStep(number: 1, title: 'MiGasto ya agregó la acción a Atajos',
+                        hint: 'Se llama "Registrar pago de Wallet"', done: true),
                     const SizedBox(height: 14),
-                    _step(context, 2, 'Crea la automatización de Wallet',
-                        'En Atajos, Automatización, +, elige "Wallet" (al realizar un pago sin contacto). Agrega la acción "Registrar pago de Wallet" de MiGasto y, en el campo Pago, elige "Entrada de atajo"',
-                        verified),
+                    SetupStep(number: 2, title: 'Crea la automatización de Wallet',
+                        hint: 'En Atajos, Automatización, +, elige "Wallet" (al realizar un pago sin contacto). Agrega la acción "Registrar pago de Wallet" de MiGasto y, en el campo Pago, elige "Entrada de atajo"',
+                        done: verified),
                     const SizedBox(height: 14),
-                    _step(context, 3, 'Actívala sin confirmación',
-                        'Deja "Automatización" activada y "Notificar" apagado. Así se registra aunque no abras la app', verified),
+                    SetupStep(number: 3, title: 'Actívala sin confirmación',
+                        hint: 'Deja "Automatización" activada y "Notificar" apagado. Así se registra aunque no abras la app',
+                        done: verified),
                     const SizedBox(height: 14),
-                    _step(context, 4, 'Opcional: guarda dónde pagaste',
-                        'En el atajo, antes de "Registrar pago de Wallet" agrega "Obtener ubicación actual" y ponla en el campo Ubicación. Así el pago aparece en el mapa de "Dónde gasto"',
-                        last?.tieneUbicacion ?? false),
+                    SetupStep(number: 4, title: 'Opcional: guarda dónde pagaste',
+                        hint: 'En el atajo, antes de "Registrar pago de Wallet" agrega "Obtener ubicación actual" y ponla en el campo Ubicación. Así el pago aparece en el mapa de "Dónde gasto"',
+                        done: last?.tieneUbicacion ?? false),
                     const SizedBox(height: 20),
                     Container(
                       padding: const EdgeInsets.all(12),
@@ -193,46 +195,6 @@ class _ApplePaySetupScreenState extends ConsumerState<ApplePaySetupScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _step(BuildContext context, int n, String title, String hint, bool done) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    return Semantics(
-      label: 'Paso $n: $title. ${done ? 'Listo' : hint}',
-      excludeSemantics: true,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: done ? scheme.primary : Colors.transparent,
-              shape: BoxShape.circle,
-              border: Border.all(color: done ? scheme.primary : scheme.outline, width: 1.5),
-            ),
-            alignment: Alignment.center,
-            child: done
-                ? AppIcon(AppIcons.check, size: AppIconSize.small, color: scheme.onPrimary)
-                : Text('$n',
-                    style: theme.textTheme.bodyMedium!
-                        .copyWith(fontSize: 13, fontWeight: FontWeight.w600)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: theme.textTheme.titleSmall!.copyWith(fontSize: 14)),
-                Text(done ? 'Listo' : hint,
-                    style: theme.textTheme.bodySmall!.copyWith(fontSize: 12.5)),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
