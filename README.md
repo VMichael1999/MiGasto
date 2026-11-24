@@ -73,6 +73,7 @@
 - **🎯 Plan.** Límites por categoría (con aviso al pasarte) y una meta de ahorro.
 - **📈 Stats.** Gastos por categoría (dona o anillos), saldo proyectado a 30 días, comparación con el período anterior y detalle de cada categoría por quincena, mes, trimestre o semestre.
 - **🏪 Logos de comercios.** El ícono de cada movimiento es el logo de Rappi, Uber, Spotify, Netflix, etc. Se pide por internet **solo con el sitio web del comercio** (nunca montos ni datos tuyos), se guarda en caché y se puede apagar en Perfil > «Logos de comercios». Sin logo, se usa el ícono de la categoría.
+- **🧩 Widgets (iPhone y Android).** Tres widgets para la pantalla de inicio, con los colores de la app: **Resumen del mes** (la tarjeta violeta de Inicio: disponible, barra del mes, ingresos y gastos), **Últimos movimientos** (3 o 6 según el tamaño, con cuántos esperan confirmación; cada fila abre su detalle) y **Registrar** (botones Gasto e Ingreso). Flutter les pasa un resumen ya calculado (`lib/shared/widget_snapshot.dart`) cada vez que cambian los movimientos, así muestran las mismas cifras que Inicio. En iPhone también hay versiones para la pantalla bloqueada y el control del Centro de control.
 - **🗺️ Dónde gasto.** Mapa con los pagos que tienen ubicación y un botón para centrarlo en dónde estás.
 - **📱 Modo horizontal.** Inicio, Stats, Buscar, Plan, Perfil, MiGastoIA, el detalle de un movimiento, la bienvenida y el acceso se reorganizan en zonas; las hojas se vuelven paneles laterales o menús compactos.
 - **⌨️ Teclado.** Tocar un espacio vacío lo baja, aparece un botón para ocultarlo, y en MiGastoIA se esconde la barra de navegación al escribir y la conversación baja al último mensaje.
@@ -160,7 +161,7 @@ MiGasto/
 ├── ios/
 │   ├── Runner/                        # Atajos (Registrar pago de Wallet) y cola por App Group
 │   ├── ShareExtension/                # Compartir capturas de Yape y Plin (lectura con Vision)
-│   └── WidgetExtension/               # Widget y control del Centro de control
+│   └── WidgetExtension/               # Widgets (Resumen, Movimientos, Registrar) y control del Centro de control
 ├── test/                              # Pruebas de Flutter
 └── docs/                              # Política de privacidad, notas de publicación y capturas
 ```
@@ -261,7 +262,7 @@ El APK *release* no trae datos de ejemplo y lleva el permiso de internet (cuenta
 flutter build ios --release --no-codesign
 ```
 
-Para instalarla en un iPhone físico se firma desde Xcode con tu equipo (`ios/Runner.xcworkspace`, *Signing & Capabilities*). Con una cuenta gratuita de Apple no se pueden firmar el widget, la extensión de compartir ni el grupo de app; hace falta una cuenta de Apple Developer de pago para la versión completa y para «Iniciar sesión con Apple».
+Para instalarla en un iPhone físico se firma desde Xcode con tu equipo (`ios/Runner.xcworkspace`, *Signing & Capabilities*). Con una cuenta gratuita de Apple se puede, pero cada parte que usa el grupo de app (`group.com.migasto.co`: la app, la extensión de compartir y los widgets) necesita que en Xcode se marque ese grupo en su *target* para que Apple lo agregue a su perfil, y la instalación vence a los 7 días. «Iniciar sesión con Apple» y publicar en la App Store requieren una cuenta de Apple Developer de pago.
 
 ---
 
@@ -274,7 +275,7 @@ flutter analyze
 flutter test
 ```
 
-Hay 300 pruebas: cuentas (invitado, vincular, crear, recuperar), carga y errores de acceso, MiGastoIA y su conversación, logos de comercios, teclado, modo horizontal de las pantallas, mapa, Apple Pay y la acción de Atajos, la guía de correos, SMS y constancias, el modo captura, además de cifrado de la base, lector (gasto o ingreso, montos, textos que no son pagos, compras rechazadas, códigos y recordatorios, y los textos reales de Yape, Plin en BBVA e Interbank, consumos con tarjeta de Interbank y Google Wallet), categorías y categorías propias, duplicados, migración de datos antiguos, cola nativa (incluidos los botones del aviso, los pagos recuperados, los cargos en dólares y las transferencias entre cuentas propias), tipo de cambio, migración de la base al esquema 2, aviso destacado de las lecturas, aviso de avisos ocultos, inicio automático y ajustes restringidos, ventana de pago, guardado automático de ingresos, registro manual, ocultar montos, respaldo, ubicación y bloqueo.
+Hay 308 pruebas: cuentas (invitado, vincular, crear, recuperar), carga y errores de acceso, MiGastoIA y su conversación, logos de comercios, teclado, modo horizontal de las pantallas, mapa, Apple Pay y la acción de Atajos, la guía de correos, SMS y constancias, el modo captura, además de cifrado de la base, lector (gasto o ingreso, montos, textos que no son pagos, compras rechazadas, códigos y recordatorios, y los textos reales de Yape, Plin en BBVA e Interbank, consumos con tarjeta de Interbank y Google Wallet), categorías y categorías propias, duplicados, migración de datos antiguos, cola nativa (incluidos los botones del aviso, los pagos recuperados, los cargos en dólares y las transferencias entre cuentas propias), tipo de cambio, migración de la base al esquema 2, aviso destacado de las lecturas, aviso de avisos ocultos, inicio automático y ajustes restringidos, ventana de pago, guardado automático de ingresos, registro manual, ocultar montos, respaldo, ubicación, bloqueo y los widgets (el resumen que reciben, que solo se envía si cambió algo, y sus enlaces).
 
 ### 2. Pruebas nativas de Android (JUnit)
 
@@ -300,7 +301,7 @@ El resto de lo nativo (lector de reglas, servicio de notificaciones, accesibilid
 ### Estado de las pruebas
 
 ```text
-Flutter:  300 passed, 0 failed
+Flutter:  308 passed, 0 failed
 JUnit:     41 passed, 0 failed
 XCTest:    15 passed, 0 failed
 Análisis: sin problemas
@@ -336,7 +337,7 @@ Para ver el flujo completo sin hacer un pago real, en una versión de **depuraci
 
 ## 🚧 Lo que todavía no hace
 
-- **iPhone:** iOS no deja leer las notificaciones de otras apps, así que Yape, Plin y los bancos no se detectan como en Android. Se registran con «Registrar aviso de pago» (correo o SMS del banco, o dos toques atrás sobre la constancia), compartiendo la captura de la constancia a MiGasto o con el botón +. La automatización de Correo solo ve las cuentas agregadas a la app Mail, y hay reportes de que a veces no se dispara; aún no se probó con correos ni SMS reales de bancos peruanos. Los pagos con Apple Pay en el POS se registran con una automatización de **Wallet** en Atajos (la guía de la app y su video explican cómo crearla). Hay un widget y un control del Centro de control que abren el registro (`migasto://new`).
+- **iPhone:** iOS no deja leer las notificaciones de otras apps, así que Yape, Plin y los bancos no se detectan como en Android. Se registran con «Registrar aviso de pago» (correo o SMS del banco, o dos toques atrás sobre la constancia), compartiendo la captura de la constancia a MiGasto o con el botón +. La automatización de Correo solo ve las cuentas agregadas a la app Mail, y hay reportes de que a veces no se dispara; aún no se probó con correos ni SMS reales de bancos peruanos. Los pagos con Apple Pay en el POS se registran con una automatización de **Wallet** en Atajos (la guía de la app y su video explican cómo crearla). Los widgets de la pantalla de inicio (Resumen del mes, Últimos movimientos y Registrar) y el control del Centro de control abren la app con enlaces `migasto://` (`new`, `new?type=ingreso`, `movement/<id>`, `movements`).
 - **Validado con un teléfono real (Samsung, Yape):** pago recibido (notificación), yape enviado y pago de un servicio (constancia: la empresa es el nombre y cae en la categoría Servicios). Los paquetes de todas las apps se comprobaron en Google Play, y los textos de Plin en BBVA e Interbank, de consumos de Interbank y de Google Wallet salen de capturas reales publicadas por otros proyectos. **Sin validar en un teléfono propio:** esos textos; y no hay ninguna muestra de BCP, Scotiabank, BanBif, Banco de la Nación, Ligo, Lemon, Bim ni de las cajas (fase 0 del plan). Aún no se leen: transferencias de Interbank («TRAN S/ 10.00 A ****534», no dice a quién) ni abonos de sueldo.
 - **Android:** en algunos teléfonos Samsung el servicio de Accesibilidad no recibe los avisos de notificación; por eso se usa el acceso a notificaciones.
 - **Respaldo:** es manual; no hay copia automática ni en la nube. Hay que acordarse de crearlo. En Android la copia automática de Google y la transferencia entre teléfonos están desactivadas a propósito (`allowBackup="false"`): la clave de la base no viaja, así que una copia restaurada no se podría abrir. Para pasar tus datos a otro teléfono usa el respaldo cifrado.
