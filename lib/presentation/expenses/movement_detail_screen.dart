@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/navigation/close_or_home.dart';
 import '../../core/config/env.dart';
 import '../../core/theme/mg_colors.dart';
 import '../../core/theme/app_tokens.dart';
@@ -58,7 +59,7 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
     if (onClose != null) {
       onClose();
     } else {
-      context.pop();
+      closeOrHome(context);
     }
   }
 

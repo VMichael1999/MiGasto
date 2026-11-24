@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/layout/adaptive.dart';
 import '../../core/layout/landscape_pane.dart';
+import '../../core/navigation/close_or_home.dart';
 import '../../core/theme/mg_colors.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/widgets.dart';
@@ -138,7 +138,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
       });
       MgToast.show(context, message: toastMsg);
     } else {
-      context.pop();
+      closeOrHome(context);
       MgToast.show(context, message: toastMsg);
     }
   }
@@ -425,7 +425,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
             shape: const CircleBorder(),
             child: InkWell(
               customBorder: const CircleBorder(),
-              onTap: () => context.pop(),
+              onTap: () => closeOrHome(context),
               child: const SizedBox(
                 width: 34,
                 height: 34,

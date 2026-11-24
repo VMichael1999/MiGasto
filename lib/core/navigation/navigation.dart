@@ -29,6 +29,20 @@ import '../widgets/mg_tab_bar.dart';
 import '../widgets/register_sheet.dart';
 import '../layout/adaptive.dart';
 
+/// A dónde lleva un enlace `migasto://` de los widgets y del Centro de control:
+/// `migasto://new` (registrar gasto), `migasto://new?type=ingreso`, `migasto://movement/<id>`
+/// y `migasto://movements`. Cualquier otro abre Inicio.
+String deepLinkLocation(Uri uri) {
+  final segments = [uri.host, ...uri.pathSegments].where((s) => s.isNotEmpty).toList();
+  final query = uri.query.isNotEmpty ? '?${uri.query}' : '';
+  return switch (segments) {
+    ['new'] => '/new$query',
+    ['movement', final id] => '/movement/${Uri.encodeComponent(id)}',
+    ['movements'] => '/expenses',
+    _ => '/dashboard',
+  };
+}
+
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
 
@@ -36,12 +50,10 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/splash',
-    // Enlaces migasto://new (widget y Centro de control) abren el registro manual.
+    // Enlaces migasto:// de los widgets y del Centro de control (ver [deepLinkLocation]).
     redirect: (context, state) {
       final uri = state.uri;
-      if (uri.scheme == 'migasto') {
-        return uri.host == 'new' ? '/new' : '/dashboard';
-      }
+      if (uri.scheme == 'migasto') return deepLinkLocation(uri);
 
       final location = state.matchedLocation;
 
