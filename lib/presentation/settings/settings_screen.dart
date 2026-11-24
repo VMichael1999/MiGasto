@@ -1227,12 +1227,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
         'card': 'Visa BBVA ···4821',
         'rawText': text,
         'confirmed': parsed.type == 'gasto',
+        if (parsed.currency != 'PEN') 'currency': parsed.currency,
         'at': DateTime.now().millisecondsSinceEpoch,
       });
       await notifier.drainNativeQueue();
     }
     if (mounted) {
-      MgToast.show(context, message: 'Leído: ${parsed.type} de ${formatSoles(parsed.amount)}');
+      final monto = parsed.currency == 'PEN' ? formatSoles(parsed.amount) : formatMoneda(parsed.currency, parsed.amount);
+      MgToast.show(context, message: 'Leído: ${parsed.type} de $monto');
     }
   }
 }
