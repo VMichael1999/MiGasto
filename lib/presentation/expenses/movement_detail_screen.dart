@@ -96,7 +96,7 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
       );
     }
 
-    final kind = m.esIngreso ? 'Ingreso' : 'Gasto';
+    final kind = m.entreMisCuentas ? 'Entre mis cuentas' : (m.esIngreso ? 'Ingreso' : 'Gasto');
     final isPending = m.estado == EstadoMovimiento.pendiente;
     final catColor = CategoryIcon.colorForCategory(m.category);
     final catLabel = categoryLabel(m.category);
@@ -107,7 +107,7 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
     final spentInCat = all
         .where((e) =>
             e.category == m.category &&
-            e.esGasto &&
+            e.esGastoReal &&
             e.date.year == now.year &&
             e.date.month == now.month)
         .fold<double>(0.0, (sum, e) => sum + e.amount);
@@ -196,18 +196,18 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
                               style: AppText.money(
                                 size: 36,
                                 weight: FontWeight.w800,
-                                color: m.esIngreso ? MgColors.up : MgColors.ink,
+                                color: m.esIngresoReal ? MgColors.up : MgColors.ink,
                               ).copyWith(letterSpacing: 2.0),
                             )
                           else
                             MoneyText(
                               amount: m.amount,
-                              isIncome: m.esIngreso,
-                              isExpense: m.esGasto,
+                              isIncome: m.esIngresoReal,
+                              isExpense: m.esGastoReal,
                               style: AppText.money(
                                 size: 36,
                                 weight: FontWeight.w800,
-                                color: m.esIngreso ? MgColors.up : MgColors.ink,
+                                color: m.esIngresoReal ? MgColors.up : MgColors.ink,
                               ),
                             ),
                           const SizedBox(height: 6),
@@ -329,6 +329,7 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
                             label: 'Registrado',
                             value: _channelText(m),
                           ),
+                          _buildOwnTransferRow(m),
                           if (m.notes.isNotEmpty && m.notes != 'Registro manual')
                             _buildKvRow(
                               icon: Icons.sticky_note_2_outlined,
@@ -604,6 +605,41 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// «Entre mis cuentas»: una transferencia a otra cuenta tuya no suma a gastos ni ingresos.
+  Widget _buildOwnTransferRow(Movimiento m) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          const Icon(Icons.swap_horiz_rounded, size: 17, color: MgColors.ink3),
+          const SizedBox(width: 11),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Entre mis cuentas',
+                  style: TextStyle(fontFamily: AppText.fontFamily, fontSize: 12.5, color: MgColors.ink2),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'No suma a gastos ni ingresos',
+                  style: TextStyle(fontFamily: AppText.fontFamily, fontSize: 11, color: MgColors.ink3),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: m.entreMisCuentas,
+            onChanged: (v) => ref
+                .read(expensesStateProvider.notifier)
+                .updateExpense(m.copyWith(entreMisCuentas: v)),
+          ),
+        ],
       ),
     );
   }

@@ -41,7 +41,7 @@ BalanceProjection? projectBalance({
 
   final net = window.fold<double>(
     0.0,
-    (sum, m) => sum + (m.esIngreso ? m.amount : (m.esGasto ? -m.amount : 0.0)),
+    (sum, m) => sum + (m.esIngresoReal ? m.amount : (m.esGastoReal ? -m.amount : 0.0)),
   );
   final first = window.map((m) => m.date).reduce((a, b) => a.isBefore(b) ? a : b);
   final elapsed = DateTime(now.year, now.month, now.day)
@@ -72,7 +72,7 @@ List<double> balanceHistory({
   for (final m in movements) {
     if (!m.isConfirmed || m.date.isAfter(now)) continue;
     final day = DateTime(m.date.year, m.date.month, m.date.day);
-    final net = m.esIngreso ? m.amount : (m.esGasto ? -m.amount : 0.0);
+    final net = m.esIngresoReal ? m.amount : (m.esGastoReal ? -m.amount : 0.0);
     netByDay[day] = (netByDay[day] ?? 0) + net;
   }
   final out = List<double>.filled(days, currentBalance);

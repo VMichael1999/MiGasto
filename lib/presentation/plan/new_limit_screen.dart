@@ -97,7 +97,7 @@ class _NewLimitScreenState extends ConsumerState<NewLimitScreen> {
             m.category == _category &&
             m.date.year == now.year &&
             m.date.month == now.month &&
-            m.esGasto)
+            m.esGastoReal)
         .fold(0.0, (sum, m) => sum + m.amount);
 
     final catColor = CategoryIcon.colorForCategory(_category);

@@ -30,8 +30,8 @@ BalanceSummary computeBalanceSummary(List<Movimiento> all, DateTime now) {
 
   return BalanceSummary(
     prevBalance:
-        sum(prevMonth.where((m) => m.esIngreso)) - sum(prevMonth.where((m) => m.esGasto)),
-    income: sum(thisMonth.where((m) => m.esIngreso)),
-    spent: sum(thisMonth.where((m) => m.esGasto)),
+        sum(prevMonth.where((m) => m.esIngresoReal)) - sum(prevMonth.where((m) => m.esGastoReal)),
+    income: sum(thisMonth.where((m) => m.esIngresoReal)),
+    spent: sum(thisMonth.where((m) => m.esGastoReal)),
   );
 }

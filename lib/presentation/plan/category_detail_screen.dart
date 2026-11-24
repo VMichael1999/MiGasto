@@ -84,9 +84,9 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
 
     final movementsThisMonth = inRange.where((m) => m.category == category).toList()
       ..sort((a, b) => b.date.compareTo(a.date));
-    final gastosCategoria = movementsThisMonth.where((m) => m.esGasto).toList();
+    final gastosCategoria = movementsThisMonth.where((m) => m.esGastoReal).toList();
     final totalSpent = gastosCategoria.fold(0.0, (sum, m) => sum + m.amount);
-    final totalAll = inRange.where((m) => m.esGasto).fold(0.0, (sum, m) => sum + m.amount);
+    final totalAll = inRange.where((m) => m.esGastoReal).fold(0.0, (sum, m) => sum + m.amount);
     final share = categoryShare(totalSpent, totalAll);
     final buckets = evolutionBuckets(gastosCategoria, range, _period);
 

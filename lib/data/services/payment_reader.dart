@@ -35,7 +35,8 @@ class PaymentReader {
             RegExp(_rules['amount'] as String, caseSensitive: false, unicode: true),
         _income = _compileAll(_rules['income']),
         _expense = _compileAll(_rules['expense']),
-        _ignore = _compileAll(_rules['ignore'] ?? const []);
+        _ignore = _compileAll(_rules['ignore'] ?? const []),
+        _ownTransfer = _compileAll(_rules['ownTransfer'] ?? const []);
 
   factory PaymentReader.fromJson(String json) =>
       PaymentReader._(jsonDecode(json) as Map<String, dynamic>);
@@ -53,6 +54,11 @@ class PaymentReader {
   /// Avisos con monto que no son un pago hecho (compra rechazada, código para
   /// confirmar una compra, recordatorio de un pago por vencer).
   final List<RegExp> _ignore;
+  final List<RegExp> _ownTransfer;
+
+  /// Si el texto dice que el dinero fue a otra cuenta del mismo usuario («Yapeaste S/ 100 a
+  /// tu cuenta BCP»). Esas transferencias no son gastos ni ingresos de verdad.
+  bool isOwnTransfer(String text) => _ownTransfer.any((r) => r.hasMatch(text));
 
   static List<RegExp> _compileAll(dynamic list) => (list as List)
       .map((p) => RegExp(p as String, caseSensitive: false, unicode: true))

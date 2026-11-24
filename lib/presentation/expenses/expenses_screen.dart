@@ -91,9 +91,9 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         case _MovementFilter.todo:
           break;
         case _MovementFilter.gastos:
-          if (!m.esGasto) return false;
+          if (!m.esGastoReal) return false;
         case _MovementFilter.ingresos:
-          if (!m.esIngreso) return false;
+          if (!m.esIngresoReal) return false;
         case _MovementFilter.pendientes:
           if (m.estado != EstadoMovimiento.pendiente) return false;
       }
@@ -144,7 +144,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     // Suma consolidada de los movimientos visibles
     final totalAmount = results.fold<double>(
       0.0,
-      (sum, m) => sum + (m.esIngreso ? m.amount : -m.amount),
+      (sum, m) => sum + (m.esIngresoReal ? m.amount : (m.esGastoReal ? -m.amount : 0.0)),
     );
 
     // Agrupación por día
@@ -334,7 +334,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                             final dayTotal = dayList.fold<double>(
                               0.0,
                               (sum, m) =>
-                                  sum + (m.esIngreso ? m.amount : -m.amount),
+                                  sum +
+                                  (m.esIngresoReal ? m.amount : (m.esGastoReal ? -m.amount : 0.0)),
                             );
 
                             return Column(
@@ -985,7 +986,7 @@ class _MovementItemRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      catName,
+                      movement.entreMisCuentas ? 'Entre mis cuentas' : catName,
                       style: const TextStyle(
                         fontFamily: AppText.fontFamily,
                         fontSize: 11.5,
@@ -1002,8 +1003,8 @@ class _MovementItemRow extends StatelessWidget {
               // Monto (.amt)
               MoneyText(
                 amount: movement.amount,
-                isIncome: movement.esIngreso,
-                isExpense: movement.esGasto,
+                isIncome: movement.esIngresoReal,
+                isExpense: movement.esGastoReal,
                 hidden: hidden,
                 style: AppText.money(
                   size: 14.5,
@@ -1031,8 +1032,8 @@ class _ResultsInsights extends StatelessWidget {
   Widget build(BuildContext context) {
     if (results.isEmpty) return const SizedBox.shrink();
     final income =
-        results.where((m) => m.esIngreso).fold(0.0, (s, m) => s + m.amount);
-    final expenses = results.where((m) => m.esGasto).toList();
+        results.where((m) => m.esIngresoReal).fold(0.0, (s, m) => s + m.amount);
+    final expenses = results.where((m) => m.esGastoReal).toList();
     final spent = expenses.fold(0.0, (s, m) => s + m.amount);
     final byCategory = <Categoria, double>{};
     for (final m in expenses) {

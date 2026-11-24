@@ -18,6 +18,8 @@ import '../data/services/nlp_classifier_service.dart';
 import '../data/services/location_service.dart';
 import '../domain/aliases.dart';
 import '../domain/categoria_propia.dart';
+import '../domain/cuentas_propias.dart';
+import '../data/services/payment_reader.dart';
 import '../domain/duplicate_rule.dart';
 import '../domain/setup_issues.dart';
 
@@ -345,10 +347,23 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
       precision: (item['accuracy'] as num?)?.toDouble(),
       lugar: item['place'] as String?,
       textoOriginal: rawText,
+      entreMisCuentas: await _entreMisCuentas(rawText, peer),
     );
     await _repo.saveExpense(movimiento);
     if (!mounted) return;
     state = [movimiento, ...state]..sort((a, b) => b.date.compareTo(a.date));
+  }
+
+  /// Lector de reglas para reconocer transferencias entre cuentas propias (se carga una vez).
+  static Future<PaymentReader?>? _reader;
+
+  /// Si un pago es entre cuentas del propio usuario: lo dice el texto («a tu cuenta») o el
+  /// nombre del pago es el del perfil.
+  Future<bool> _entreMisCuentas(String rawText, String peer) async {
+    if (esMismoTitular(peer, _ref.read(profileNameProvider))) return true;
+    if (rawText.isEmpty) return false;
+    final reader = await (_reader ??= PaymentReader.fromAsset().then<PaymentReader?>((r) => r).catchError((_) => null));
+    return reader?.isOwnTransfer(rawText) ?? false;
   }
 
   Future<Categoria> _categoryFor(TipoMovimiento tipo, String rawText, String peer) async {
@@ -446,6 +461,7 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
       canal: canal,
       estado: EstadoMovimiento.pendiente,
       textoOriginal: rawText,
+      entreMisCuentas: await _entreMisCuentas(rawText, merchant),
     );
 
     if (tipo == TipoMovimiento.ingreso) {

@@ -96,6 +96,13 @@
     "vence (?:hoy|mañana|manana|pronto)"
   ],
   "_notaIgnore": "Avisos que traen un monto pero no son un pago hecho: compras rechazadas, códigos para confirmar una compra (luego llega el aviso real) y recordatorios de pagos por vencer. Si el texto coincide con alguno, no se registra nada.",
+  "ownTransfer": [
+    "(?:yapeaste|plineaste|transferiste|enviaste|pasaste)[^.!]{0,40}? a (?:tu|tus) (?:propia |otra )?(?:cuenta|yape|tarjeta)",
+    "entre (?:tus|mis) cuentas",
+    "cuentas? propias?",
+    "transferencia propia"
+  ],
+  "_notaOwnTransfer": "Transferencias entre cuentas del propio usuario (del BCP a su Yape, por ejemplo): se guardan marcadas «Entre mis cuentas» y no suman a gastos ni ingresos. También se marcan si el nombre del pago es el del perfil.",
   "expense": [
     "yapeaste",
     "pagaste",

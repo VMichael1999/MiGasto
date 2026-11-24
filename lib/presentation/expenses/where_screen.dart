@@ -19,7 +19,7 @@ class _Zone {
   final String name;
   final List<Movimiento> items = [];
 
-  double get total => items.where((m) => m.esGasto).fold(0.0, (s, m) => s + m.amount);
+  double get total => items.where((m) => m.esGastoReal).fold(0.0, (s, m) => s + m.amount);
 
   LatLng get center {
     final lat = items.fold(0.0, (s, m) => s + m.latitud!) / items.length;

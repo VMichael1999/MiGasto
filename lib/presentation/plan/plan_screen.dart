@@ -39,7 +39,7 @@ class PlanScreen extends ConsumerWidget {
             m.isConfirmed &&
             m.date.year == now.year &&
             m.date.month == now.month &&
-            m.esGasto)
+            m.esGastoReal)
         .toList();
 
     final header = _buildHeader(context, ref, hidden);

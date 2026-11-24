@@ -388,6 +388,59 @@ void main() {
       expect(list.single.estado, EstadoMovimiento.confirmado);
     });
 
+    test('un yape a tu propia cuenta se guarda «Entre mis cuentas»', () async {
+      final c = await containerWithQueue(jsonEncode([
+        {
+          'amount': 100,
+          'peer': 'tu cuenta BCP',
+          'provider': 'yape',
+          'type': 'gasto',
+          'rawText': 'Yapeaste S/ 100 a tu cuenta BCP',
+          'confirmed': true,
+          'origin': 'android',
+          'at': DateTime.now().millisecondsSinceEpoch,
+        },
+      ]));
+      addTearDown(c.dispose);
+
+      final m = c.read(expensesStateProvider).single;
+      expect(m.entreMisCuentas, isTrue);
+      expect(m.esGastoReal, isFalse);
+    });
+
+    test('un ingreso a tu nombre (el del perfil) se guarda «Entre mis cuentas»', () async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+        if (call.method == 'takeNativeQueue') {
+          return jsonEncode([
+            {
+              'amount': 50,
+              'peer': 'MICHAEL ANTHONY VALDIVIEZO MAZA',
+              'provider': 'yape',
+              'type': 'ingreso',
+              'rawText': 'Yape! MICHAEL ANTHONY VALDIVIEZO MAZA te envió un pago por S/ 50',
+              'confirmed': false,
+              'origin': 'android',
+              'at': DateTime.now().millisecondsSinceEpoch,
+            },
+          ]);
+        }
+        return null;
+      });
+      SharedPreferences.setMockInitialValues({'profile_name': 'Michael Valdiviezo'});
+      final prefs = await SharedPreferences.getInstance();
+      final c = ProviderContainer(overrides: [sharedPreferencesProvider.overrideWithValue(prefs)]);
+      addTearDown(c.dispose);
+      await c.read(localDatabaseProvider).init();
+      c.read(expensesStateProvider.notifier);
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      final m = c.read(expensesStateProvider).single;
+      expect(m.entreMisCuentas, isTrue);
+      expect(m.esIngresoReal, isFalse);
+    });
+
     Map<String, dynamic> pendingIncome(String id, int at) => {
           'id': id,
           'amount': 15,

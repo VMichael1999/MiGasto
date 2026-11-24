@@ -172,7 +172,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     // Teléfono girado: tres columnas con scroll propio.
     if (context.isLandscapePhone) {
-      final monthExpenses = confirmedMonth.where((m) => m.esGasto).toList();
+      final monthExpenses = confirmedMonth.where((m) => m.esGastoReal).toList();
       final limits = ref.watch(categoryLimitsProvider);
       final projection = projectBalance(
         movements: expenses,
@@ -1154,7 +1154,7 @@ class _MovementsGroupedList extends ConsumerWidget {
               final dayDate = dayList.first.date;
               final dayTotal = dayList.fold(
                 0.0,
-                (sum, m) => sum + (m.esIngreso ? m.amount : -m.amount),
+                (sum, m) => sum + (m.esIngresoReal ? m.amount : (m.esGastoReal ? -m.amount : 0.0)),
               );
 
               return Padding(
@@ -1342,7 +1342,7 @@ class _MovementItemRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      catName,
+                      movement.entreMisCuentas ? 'Entre mis cuentas' : catName,
                       style: const TextStyle(
                         fontFamily: AppText.fontFamily,
                         fontSize: 11.5,
@@ -1359,8 +1359,8 @@ class _MovementItemRow extends StatelessWidget {
               // Monto (.amt)
               MoneyText(
                 amount: movement.amount,
-                isIncome: movement.esIngreso,
-                isExpense: movement.esGasto,
+                isIncome: movement.esIngresoReal,
+                isExpense: movement.esGastoReal,
                 hidden: hidden,
                 style: AppText.money(
                   size: 14.5,

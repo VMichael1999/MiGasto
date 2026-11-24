@@ -91,16 +91,16 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         m.date.month == prevMonthDate.month).toList();
 
     final currentGastos = monthMovs
-        .where((m) => m.tipo == TipoMovimiento.gasto)
+        .where((m) => m.esGastoReal)
         .fold<double>(0.0, (s, m) => s + m.amount);
 
     final prevGastos = prevMonthMovs
-        .where((m) => m.tipo == TipoMovimiento.gasto)
+        .where((m) => m.esGastoReal)
         .fold<double>(0.0, (s, m) => s + m.amount);
 
     // Día que más gastas
     final daySpending = <int, double>{};
-    for (final m in monthMovs.where((m) => m.tipo == TipoMovimiento.gasto)) {
+    for (final m in monthMovs.where((m) => m.esGastoReal)) {
       daySpending[m.date.weekday] = (daySpending[m.date.weekday] ?? 0.0) + m.amount;
     }
     String topDay = '—';
@@ -122,7 +122,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
     // Gastos por categoría
     final catMap = <Categoria, double>{};
-    for (final m in monthMovs.where((m) => m.tipo == TipoMovimiento.gasto)) {
+    for (final m in monthMovs.where((m) => m.esGastoReal)) {
       final cat = m.category;
       catMap[cat] = (catMap[cat] ?? 0.0) + m.amount;
     }
@@ -769,8 +769,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           m.isConfirmed && m.date.year == month.year && m.date.month == month.month);
       history.add(MonthBarItem(
         label: toBeginningOfSentenceCase(DateFormat('MMM', 'es').format(month))!,
-        income: inMonth.where((m) => m.esIngreso).fold(0.0, (s, m) => s + m.amount),
-        expense: inMonth.where((m) => m.esGasto).fold(0.0, (s, m) => s + m.amount),
+        income: inMonth.where((m) => m.esIngresoReal).fold(0.0, (s, m) => s + m.amount),
+        expense: inMonth.where((m) => m.esGastoReal).fold(0.0, (s, m) => s + m.amount),
       ));
     }
     final hasData = history.any((h) => h.income > 0 || h.expense > 0);
