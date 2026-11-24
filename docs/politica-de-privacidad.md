@@ -38,6 +38,10 @@ Cuando detecta un pago y no puede mostrar la ventana (por ejemplo, con la pantal
 
 iOS no permite leer las notificaciones de otras apps. En iPhone, MiGasto recibe los datos de un pago con Apple Pay desde la acción "Registrar movimiento" de Atajos, que tú configuras. Los datos pasan solo entre Atajos y MiGasto, dentro de tu teléfono.
 
+## Avisos que Android oculta
+
+En Android 15 o más, el sistema oculta a MiGasto el contenido de los avisos que parecen traer un código. MiGasto no puede leerlos por el acceso a notificaciones; si activaste la lectura de pantalla, la recibe por la Accesibilidad con el teléfono desbloqueado. Cuando no logra leerlos, solo anota cuántos fueron, a qué hora y de qué app, para avisarte.
+
 ## Tipo de cambio
 
 Si se detecta un cargo en dólares, MiGasto descarga una vez al día el precio del dólar en soles desde una fuente pública (currency-api, servida por jsDelivr o Cloudflare Pages). Es una descarga anónima: no se envía el monto, el comercio ni ningún dato tuyo; el servidor solo ve la dirección de internet de tu conexión, como al abrir cualquier página.
