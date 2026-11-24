@@ -1,13 +1,12 @@
 import AppIntents
 import CoreLocation
 import Foundation
-import UserNotifications
 
 /// Acción de Atajos "Registrar movimiento".
 ///
 /// Se usa desde la automatización "Transacción" de Wallet: cada vez que pagas con
 /// Apple Pay en un POS, Atajos pasa el monto, el comercio y la tarjeta, y esta
-/// acción los deja en la cola para que Flutter los guarde.
+/// acción los deja en la cola para que Flutter los guarde (ver `WalletPayment`).
 @available(iOS 16.0, *)
 struct RegistrarMovimientoIntent: AppIntent {
     static var title: LocalizedStringResource = "Registrar movimiento"
@@ -47,46 +46,20 @@ struct RegistrarMovimientoIntent: AppIntent {
         }
         let place = comercio.trimmingCharacters(in: .whitespacesAndNewlines)
         let name = place.isEmpty ? "Desconocido" : place
-        let card = tarjeta?.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        var item: [String: Any] = [
-            "amount": amount,
-            "peer": name,
-            "provider": "tarjeta",
-            "type": "gasto",
-            "channel": "wallet",
-            "rawText": "Apple Pay: S/ \(String(format: "%.2f", amount)) en \(name)",
-            // El gasto se guarda solo; se puede quitar o editar desde la app.
-            "confirmed": true,
-            "at": Int(Date().timeIntervalSince1970 * 1000),
-        ]
-        if let card = card, !card.isEmpty { item["card"] = card }
+        var item = WalletPayment.item(
+            amount: amount,
+            merchant: name,
+            card: tarjeta,
+            rawText: "Apple Pay: S/ \(String(format: "%.2f", amount)) en \(name)",
+            now: Date()
+        )
         if let lat = latitud, let lng = longitud {
             item["latitude"] = lat
             item["longitude"] = lng
         }
         SharedQueue.enqueue(item)
-
-        await notify(amount: amount, place: name, card: card)
+        await AvisoReader.notify(title: WalletPayment.title(for: item), body: WalletPayment.body(for: item))
         return .result()
-    }
-
-    /// "S/ 25.50 en Tambo, con Visa BBVA ···4821". Solo si el usuario permitió avisos.
-    private func notify(amount: Double, place: String, card: String?) async {
-        let center = UNUserNotificationCenter.current()
-        let settings = await center.notificationSettings()
-        guard settings.authorizationStatus == .authorized ||
-              settings.authorizationStatus == .provisional else { return }
-
-        let content = UNMutableNotificationContent()
-        content.title = "MiGasto"
-        var body = "S/ \(String(format: "%.2f", amount)) en \(place)"
-        if let card = card, !card.isEmpty { body += ", con \(card)" }
-        content.body = body
-        content.subtitle = "Registrado. Ábrelo para cambiar la categoría."
-        let request = UNNotificationRequest(
-            identifier: UUID().uuidString, content: content, trigger: nil)
-        try? await center.add(request)
     }
 }
 
@@ -103,7 +76,7 @@ enum RegistroError: Error, CustomLocalizedStringResourceConvertible {
 
 /// Acción de Atajos "Registrar pago de Wallet": un solo campo, la «Entrada de atajo» de la
 /// automatización de Wallet. Sirve cuando Atajos no deja elegir monto y comercio por separado:
-/// MiGasto interpreta el texto y, si no logra leerlo, guarda el pago como pendiente con el texto
+/// MiGasto interpreta el texto y, si no logra leer el monto, deja el pago pendiente con el texto
 /// original para que se complete a mano.
 @available(iOS 16.0, *)
 struct RegistrarPagoWalletIntent: AppIntent {
@@ -129,23 +102,14 @@ struct RegistrarPagoWalletIntent: AppIntent {
 
     func perform() async throws -> some IntentResult {
         let parsed = WalletTextParser.parse(pago)
-        let known = parsed.amount != nil && (parsed.amount ?? 0) > 0
-        let amount = parsed.amount ?? 0
-        let name = parsed.merchant ?? "Pago con Apple Pay"
         let original = String(pago.trimmingCharacters(in: .whitespacesAndNewlines).prefix(500))
-
-        var item: [String: Any] = [
-            "amount": amount,
-            "peer": name,
-            "provider": "tarjeta",
-            "type": "gasto",
-            "channel": "wallet",
-            "rawText": "Apple Pay: \(original)",
-            // Si no se pudo leer el monto queda pendiente, para que no se pierda.
-            "confirmed": known,
-            "at": Int(Date().timeIntervalSince1970 * 1000),
-        ]
-        if let card = parsed.card, !card.isEmpty { item["card"] = card }
+        var item = WalletPayment.item(
+            amount: parsed.amount,
+            merchant: parsed.merchant,
+            card: parsed.card,
+            rawText: "Apple Pay: \(original)",
+            now: Date()
+        )
         if let coordinate = ubicacion?.location?.coordinate, CLLocationCoordinate2DIsValid(coordinate) {
             item["latitude"] = coordinate.latitude
             item["longitude"] = coordinate.longitude
@@ -158,7 +122,54 @@ struct RegistrarPagoWalletIntent: AppIntent {
             if !place.isEmpty { item["place"] = place }
         }
         SharedQueue.enqueue(item)
+        await AvisoReader.notify(title: WalletPayment.title(for: item), body: WalletPayment.body(for: item))
         return .result()
+    }
+}
+
+/// Convierte un pago con Apple Pay en un gasto para la cola que vacía Flutter.
+///
+/// Como los avisos de correo, SMS y constancias, queda «Por confirmar» salvo que el usuario
+/// active «Guardar gastos solos» en Ajustes. Si no se pudo leer el monto, espera siempre: así
+/// no se pierde y se completa a mano.
+enum WalletPayment {
+    static func item(
+        amount: Double?,
+        merchant: String?,
+        card: String?,
+        rawText: String,
+        now: Date,
+        autoSaveExpense: Bool = AvisoReader.autoSaveSettings().expense
+    ) -> [String: Any] {
+        let known = (amount ?? 0) > 0
+        let name = merchant?.trimmingCharacters(in: .whitespacesAndNewlines)
+        var item: [String: Any] = [
+            "amount": known ? amount! : 0.0,
+            "peer": (name?.isEmpty ?? true) ? "Pago con Apple Pay" : name!,
+            "provider": "tarjeta",
+            "type": "gasto",
+            "channel": "wallet",
+            "rawText": rawText,
+            "confirmed": known && autoSaveExpense,
+            "at": Int(now.timeIntervalSince1970 * 1000),
+        ]
+        if let card = card?.trimmingCharacters(in: .whitespacesAndNewlines), !card.isEmpty {
+            item["card"] = card
+        }
+        return item
+    }
+
+    static func title(for item: [String: Any]) -> String {
+        if (item["amount"] as? Double ?? 0) <= 0 { return "Pago con Apple Pay por completar" }
+        return item["confirmed"] as? Bool == true ? "Gasto guardado" : "Gasto por confirmar"
+    }
+
+    /// «S/ 25.50 · Tambo · Visa BBVA ···4821».
+    static func body(for item: [String: Any]) -> String {
+        let amount = item["amount"] as? Double ?? 0
+        if amount <= 0 { return "No pude leer el monto. Ábrelo en MiGasto para completarlo." }
+        return [String(format: "S/ %.2f", amount), item["peer"] as? String ?? "", item["card"] as? String ?? ""]
+            .filter { !$0.isEmpty }.joined(separator: " · ")
     }
 }
 
