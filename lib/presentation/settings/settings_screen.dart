@@ -381,7 +381,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
           _buildRow(
             icon: Icons.check_circle_outline_rounded,
             title: 'Guardar gastos solos',
-            subtitle: 'Los gastos que registra Atajos (correo, SMS o constancia) quedan «Por confirmar». Encendido, se guardan sin preguntarte.',
+            subtitle: 'Los gastos que registra Atajos (Apple Pay, correo, SMS o constancia) quedan «Por confirmar». Encendido, se guardan sin preguntarte.',
             trailing: Switch(
               value: ref.watch(autoSaveExpenseProvider),
               onChanged: (v) => ref.read(autoSaveExpenseProvider.notifier).set(v),

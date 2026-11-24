@@ -97,7 +97,7 @@ class _ApplePaySetupScreenState extends ConsumerState<ApplePaySetupScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Cada vez que acerques el iPhone al POS, MiGasto guarda el monto y el comercio, y te avisa qué guardó.',
+                      'Cada vez que acerques el iPhone al POS, MiGasto anota el monto y el comercio, y te avisa para que lo confirmes (en Ajustes puedes guardarlos solos).',
                       style: theme.textTheme.bodyMedium!
                           .copyWith(fontSize: 14.5, color: scheme.onSurfaceVariant),
                     ),
