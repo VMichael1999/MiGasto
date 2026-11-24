@@ -986,7 +986,7 @@ class _MovementItemRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      movement.entreMisCuentas ? 'Entre mis cuentas' : catName,
+                      movementSubtitle(movement, catName, hidden: hidden),
                       style: const TextStyle(
                         fontFamily: AppText.fontFamily,
                         fontSize: 11.5,

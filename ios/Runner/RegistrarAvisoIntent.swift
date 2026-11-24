@@ -69,26 +69,35 @@ enum AvisoReader {
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
         guard let payment = reader.parse(lines: lines) else { return nil }
-        return [
+        let usd = payment.currency == "USD"
+        var item: [String: Any] = [
             "amount": payment.amount,
             "peer": payment.peer,
             "provider": payment.provider,
             "type": payment.isIncome ? "ingreso" : "gasto",
             "channel": "aviso",
             "rawText": String(lines.joined(separator: " ").prefix(500)),
-            // Igual que en Android: el gasto se guarda solo y el ingreso espera confirmación.
-            "confirmed": !payment.isIncome,
+            // El gasto se guarda solo y el ingreso espera confirmación. En dólares espera
+            // siempre: MiGasto lo pasa a soles con el tipo de cambio del día.
+            "confirmed": !payment.isIncome && !usd,
             "at": Int(now.timeIntervalSince1970 * 1000),
         ]
+        if usd { item["currency"] = "USD" }
+        return item
     }
 
     static func title(for item: [String: Any]) -> String {
-        item["type"] as? String == "ingreso" ? "Ingreso por confirmar" : "Gasto guardado"
+        let income = item["type"] as? String == "ingreso"
+        if item["currency"] as? String == "USD" {
+            return income ? "Ingreso en dólares por confirmar" : "Gasto en dólares por confirmar"
+        }
+        return income ? "Ingreso por confirmar" : "Gasto guardado"
     }
 
     /// «S/ 25.50 · Tambo · Yape».
     static func body(for item: [String: Any]) -> String {
-        let amount = String(format: "S/ %.2f", item["amount"] as? Double ?? 0)
+        let symbol = item["currency"] as? String == "USD" ? "US$" : "S/"
+        let amount = String(format: "\(symbol) %.2f", item["amount"] as? Double ?? 0)
         let source: String
         switch item["provider"] as? String {
         case "yape": source = "Yape"

@@ -9,6 +9,7 @@ class ParsedPayment {
     required this.peer,
     required this.provider,
     required this.isIncome,
+    this.currency = 'PEN',
   });
 
   final double amount;
@@ -20,10 +21,13 @@ class ParsedPayment {
   final String provider;
   final bool isIncome;
 
+  /// `PEN` (soles) o `USD` (dólares). [amount] está en esta moneda.
+  final String currency;
+
   String get type => isIncome ? 'ingreso' : 'gasto';
 
   @override
-  String toString() => 'ParsedPayment($type, $amount, $peer, $provider)';
+  String toString() => 'ParsedPayment($type, $amount $currency, $peer, $provider)';
 }
 
 /// Lector de pagos. Las reglas viven en `assets/reader_rules.json`, el mismo
@@ -33,6 +37,9 @@ class PaymentReader {
   PaymentReader._(this._rules)
       : _amount =
             RegExp(_rules['amount'] as String, caseSensitive: false, unicode: true),
+        _usdAmount = _rules['usdAmount'] == null
+            ? null
+            : RegExp(_rules['usdAmount'] as String, caseSensitive: false, unicode: true),
         _income = _compileAll(_rules['income']),
         _expense = _compileAll(_rules['expense']),
         _ignore = _compileAll(_rules['ignore'] ?? const []),
@@ -48,6 +55,9 @@ class PaymentReader {
 
   final Map<String, dynamic> _rules;
   final RegExp _amount;
+
+  /// Monto en dólares; solo se usa si el texto no trae uno en soles.
+  final RegExp? _usdAmount;
   final List<RegExp> _income;
   final List<RegExp> _expense;
 
@@ -74,7 +84,12 @@ class PaymentReader {
     final provider = _provider(text) ?? _providerByApp(app);
     if (provider == null) return null;
 
-    final match = _amount.firstMatch(text);
+    var currency = 'PEN';
+    var match = _amount.firstMatch(text);
+    if (match == null) {
+      match = _usdAmount?.firstMatch(text);
+      currency = 'USD';
+    }
     if (match == null) return null;
     final amount = _parseAmount(match.group(1)!);
     if (amount == null || amount <= 0) return null;
@@ -88,6 +103,7 @@ class PaymentReader {
       peer: peer.isEmpty ? (_rules['unknownPeer'] as String) : peer,
       provider: provider,
       isIncome: isIncome,
+      currency: currency,
     );
   }
 

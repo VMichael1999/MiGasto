@@ -42,9 +42,10 @@ class DuplicateGuard(
          * Clave de un pago. Google Wallet y la app del banco avisan el mismo consumo con tarjeta,
          * así que cuentan como la misma fuente.
          */
-        fun key(provider: String, type: String, amount: Double): String {
+        fun key(provider: String, type: String, amount: Double, currency: String = "PEN"): String {
             val source = if (provider == "googlePay") "tarjeta" else provider
-            return "$source|$type|${"%.2f".format(java.util.Locale.ROOT, amount)}"
+            val base = "$source|$type|${"%.2f".format(java.util.Locale.ROOT, amount)}"
+            return if (currency == "PEN") base else "$base|$currency"
         }
     }
 }

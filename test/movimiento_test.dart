@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mi_gasto/data/datasource/local_database.dart';
+import 'package:mi_gasto/data/services/exchange_rate_service.dart';
 import 'package:mi_gasto/domain/duplicate_rule.dart';
 import 'package:mi_gasto/data/services/nlp_classifier_service.dart';
 import 'package:mi_gasto/domain/entities/movimiento.dart';
@@ -439,6 +440,72 @@ void main() {
       final m = c.read(expensesStateProvider).single;
       expect(m.entreMisCuentas, isTrue);
       expect(m.esIngresoReal, isFalse);
+    });
+
+    Future<ProviderContainer> containerWithRate(String queueJson, Future<double?> Function() fetch) async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      var served = false;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+        if (call.method == 'takeNativeQueue') {
+          if (served) return '[]';
+          served = true;
+          return queueJson;
+        }
+        return null;
+      });
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final c = ProviderContainer(overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        exchangeRateServiceProvider.overrideWithValue(ExchangeRateService(prefs, fetcher: fetch)),
+      ]);
+      await c.read(localDatabaseProvider).init();
+      c.read(expensesStateProvider.notifier);
+      await Future.delayed(const Duration(milliseconds: 100));
+      return c;
+    }
+
+    final netflix = jsonEncode([
+      {
+        'amount': 20,
+        'peer': 'NETFLIX.COM',
+        'provider': 'tarjeta',
+        'type': 'gasto',
+        'currency': 'USD',
+        'rawText': 'Realizaste un consumo de US\$ 20.00 con tu tarjeta en NETFLIX.COM',
+        'confirmed': false,
+        'origin': 'android',
+        'at': DateTime.now().millisecondsSinceEpoch,
+      },
+    ]);
+
+    test('un cargo en dólares se pasa a soles con el tipo de cambio y queda por confirmar', () async {
+      final c = await containerWithRate(netflix, () async => 3.76);
+      addTearDown(c.dispose);
+
+      final m = c.read(expensesStateProvider).single;
+      expect(m.amount, 75.2);
+      expect(m.moneda, 'USD');
+      expect(m.montoOriginal, 20);
+      expect(m.tipoCambio, 3.76);
+      expect(m.estado, EstadoMovimiento.pendiente);
+    });
+
+    test('sin tipo de cambio queda en 0 y se completa al conseguirlo', () async {
+      double? rate;
+      final c = await containerWithRate(netflix, () async => rate);
+      addTearDown(c.dispose);
+
+      var m = c.read(expensesStateProvider).single;
+      expect(m.amount, 0);
+      expect(m.tipoCambio, isNull);
+
+      rate = 3.8;
+      await c.read(expensesStateProvider.notifier).drainNativeQueue();
+      m = c.read(expensesStateProvider).single;
+      expect(m.amount, 76);
+      expect(m.tipoCambio, 3.8);
     });
 
     Map<String, dynamic> pendingIncome(String id, int at) => {

@@ -10,6 +10,8 @@ data class ParseResult(
     val provider: String,
     /** "gasto" o "ingreso" */
     val type: String,
+    /** "PEN" (soles) o "USD" (dólares); [amount] está en esta moneda. */
+    val currency: String = "PEN",
 )
 
 /**
@@ -25,6 +27,8 @@ class ReaderRules private constructor(
 ) {
     private val options = setOf(RegexOption.IGNORE_CASE)
     private val amountRegex = Regex(rules.getString("amount"), options)
+    /** Monto en dólares: solo si el texto no trae uno en soles. */
+    private val usdAmountRegex = rules.optString("usdAmount").takeIf { it.isNotEmpty() }?.let { Regex(it, options) }
     private val incomeRegexes = compileAll(rules.getJSONArray("income"))
     private val expenseRegexes = compileAll(rules.getJSONArray("expense"))
     /** Avisos con monto que no son un pago hecho: compra rechazada, código para confirmar, recordatorio. */
@@ -91,7 +95,9 @@ class ReaderRules private constructor(
     fun parse(text: String, app: String? = null): ParseResult? {
         if (ignoreRegexes.any { it.containsMatchIn(text) }) return null
         val provider = provider(text) ?: providerByApp(app) ?: return null
-        val match = amountRegex.find(text) ?: return null
+        val solesMatch = amountRegex.find(text)
+        val match = solesMatch ?: usdAmountRegex?.find(text) ?: return null
+        val currency = if (solesMatch != null) "PEN" else "USD"
         val amount = parseAmount(match.groupValues[1]) ?: return null
         if (amount <= 0.0) return null
 
@@ -102,6 +108,7 @@ class ReaderRules private constructor(
             peer = if (peer.isEmpty()) unknownPeer else peer,
             provider = provider,
             type = if (isIncome) "ingreso" else "gasto",
+            currency = currency,
         )
     }
 

@@ -40,7 +40,9 @@ class MyAccessibilityService : AccessibilityService() {
         fun getInstance(): MyAccessibilityService? = instance
 
         private fun isDuplicate(result: ParseResult, origin: String, app: String?): Boolean =
-            duplicates.isDuplicate(DuplicateGuard.key(result.provider, result.type, result.amount), origin, ORIGIN_LISTENER, app)
+            duplicates.isDuplicate(
+                DuplicateGuard.key(result.provider, result.type, result.amount, result.currency), origin, ORIGIN_LISTENER, app,
+            )
 
         /** Lee un texto (notificación o pantalla) y, si es un pago, lo entrega. */
         fun handleText(
@@ -104,32 +106,40 @@ class MyAccessibilityService : AccessibilityService() {
 
             // No se registra el texto completo: puede traer datos personales.
             Log.d(TAG, "Pago detectado: ${result.type} ${result.provider}")
-            if (recoveredAt != null) {
-                deliverRecovered(context, result, text.take(MAX_SCREEN_TEXT), recoveredAt)
+            if (recoveredAt != null || result.currency != "PEN") {
+                deliverRecovered(context, result, text.take(MAX_SCREEN_TEXT), recoveredAt ?: System.currentTimeMillis())
                 return
             }
             deliver(context, result, text.take(MAX_SCREEN_TEXT))
         }
 
         /**
-         * Pago que llegó mientras el lector de notificaciones estaba desconectado: ya no es momento
-         * de la ventana flotante. Queda por confirmar, con la hora en que llegó, y se avisa.
+         * Sin ventana flotante, queda por confirmar y se avisa:
+         * - un pago que llegó mientras el lector de notificaciones estaba desconectado (ya no es
+         *   momento de la ventana), con la hora en que llegó;
+         * - un cargo en dólares: su monto en soles es una estimación que el usuario revisa.
          */
         private fun deliverRecovered(context: Context, result: ParseResult, rawText: String, at: Long) {
-            Log.d(TAG, "pago recuperado: queda por confirmar")
+            Log.d(TAG, "pago por confirmar sin ventana (${result.currency})")
             val ref = java.util.UUID.randomUUID().toString()
+            val recovered = System.currentTimeMillis() - at > 60_000L
             NativeQueue.enqueue(
                 context, result.amount, result.peer, result.provider, result.type, rawText,
-                confirmed = false, ref = ref, at = at, origin = NativeQueue.ORIGIN_RECOVERED,
+                confirmed = false, ref = ref, at = at,
+                origin = if (recovered) NativeQueue.ORIGIN_RECOVERED else NativeQueue.ORIGIN_ANDROID,
+                currency = result.currency,
             )
             notifyFlutterSaved()
-            PaymentNotifier.notify(context, result.amount, result.peer, result.provider, result.type, saved = false, ref = ref)
+            PaymentNotifier.notify(
+                context, result.amount, result.peer, result.provider, result.type,
+                saved = false, ref = ref, currency = result.currency,
+            )
         }
 
         fun simulateNotification(text: String, context: Context) = handleText(context, text)
 
         private fun describe(r: ParseResult) =
-            "${r.type} S/ ${"%.2f".format(java.util.Locale.ROOT, r.amount)} · ${r.provider} · «${r.peer}»"
+            "${r.type} ${if (r.currency == "USD") "US$" else "S/"} ${"%.2f".format(java.util.Locale.ROOT, r.amount)} · ${r.provider} · «${r.peer}»"
 
         private fun viaName(origin: String) = when (origin) {
             ORIGIN_LISTENER -> "notificación"

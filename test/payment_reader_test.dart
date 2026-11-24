@@ -281,11 +281,24 @@ void main() {
       expect(p.provider, 'tarjeta');
     });
 
-    test('un cargo en dólares no se anota como soles', () {
-      expect(
-          reader.parse(r'Interbank Se realizó un pago recurrente de $26.19 en HOSTINGER* HOSTINGER.C con tu Tarjeta de Débito.',
-              app: interbank),
-          isNull);
+    test('un cargo en dólares se lee en dólares, no como soles', () {
+      final p = reader.parse(
+          r'Interbank Se realizó un pago recurrente de $26.19 en HOSTINGER* HOSTINGER.C con tu Tarjeta de Débito.',
+          app: interbank)!;
+      expect(p.currency, 'USD');
+      expect(p.amount, 26.19);
+      expect(p.isIncome, isFalse);
+      expect(p.peer, 'HOSTINGER* HOSTINGER.C');
+    });
+
+    test('«US\$» y «USD» también son dólares; con soles en el texto manda el monto en soles', () {
+      final a = read(r'Realizaste un consumo de US$ 20.00 con tu Tarjeta de Crédito BCP en NETFLIX.COM')!;
+      expect(a.currency, 'USD');
+      expect(a.amount, 20.0);
+      expect(a.peer, 'NETFLIX.COM');
+      expect(read('Realizaste un consumo de USD 15.50 con tu tarjeta en STEAM')!.currency, 'USD');
+      expect(read(r'Realizaste un consumo de S/ 75.20 (US$ 20.00) con tu tarjeta en NETFLIX')!.currency, 'PEN');
+      expect(read('Yapeaste S/ 25 a Tambo')!.currency, 'PEN');
     });
   });
 

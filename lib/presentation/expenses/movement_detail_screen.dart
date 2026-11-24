@@ -324,6 +324,16 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
                             label: m.esIngreso ? 'Recibido por' : 'Pagado con',
                             value: [sourceLabel(m.source), if (m.tarjeta != null) m.tarjeta!].join(' · '),
                           ),
+                          if (m.esEnOtraMoneda)
+                            _buildKvRow(
+                              icon: Icons.currency_exchange_rounded,
+                              label: 'En dólares',
+                              value: hidden
+                                  ? hiddenAmount
+                                  : m.tipoCambio == null
+                                      ? '${formatMoneda(m.moneda!, m.montoOriginal!)} · falta el tipo de cambio'
+                                      : '${formatMoneda(m.moneda!, m.montoOriginal!)} · cambio ${m.tipoCambio!.toStringAsFixed(3)}',
+                            ),
                           _buildKvRow(
                             icon: Icons.history_rounded,
                             label: 'Registrado',

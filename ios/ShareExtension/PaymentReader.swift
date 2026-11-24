@@ -7,6 +7,8 @@ struct ParsedPayment {
     /// `yape`, `plin`, `googlePay` o `tarjeta`.
     let provider: String
     let isIncome: Bool
+    /// `PEN` (soles) o `USD` (dólares); `amount` está en esta moneda.
+    var currency: String = "PEN"
 }
 
 /// Lector de pagos. Lee las mismas reglas que Dart y Kotlin
@@ -14,6 +16,8 @@ struct ParsedPayment {
 final class PaymentReader {
     private let rules: [String: Any]
     private let amountRegex: NSRegularExpression
+    /// Monto en dólares: solo si el texto no trae uno en soles.
+    private let usdAmountRegex: NSRegularExpression?
     private let incomeRegexes: [NSRegularExpression]
     private let expenseRegexes: [NSRegularExpression]
     /// Avisos con monto que no son un pago hecho: compra rechazada, código para confirmar, recordatorio.
@@ -27,6 +31,9 @@ final class PaymentReader {
               let expense = obj["expense"] as? [String] else { return nil }
         rules = obj
         amountRegex = amountRe
+        usdAmountRegex = (obj["usdAmount"] as? String).flatMap {
+            try? NSRegularExpression(pattern: $0, options: [.caseInsensitive])
+        }
         incomeRegexes = income.compactMap { try? NSRegularExpression(pattern: $0, options: [.caseInsensitive]) }
         expenseRegexes = expense.compactMap { try? NSRegularExpression(pattern: $0, options: [.caseInsensitive]) }
         ignoreRegexes = (obj["ignore"] as? [String] ?? [])
@@ -38,8 +45,10 @@ final class PaymentReader {
     /// Lee un texto en una sola línea (notificación).
     func parse(_ text: String) -> ParsedPayment? {
         if ignoreRegexes.contains(where: { $0.firstMatch(in: text, range: fullRange(text)) != nil }) { return nil }
+        let solesMatch = amountRegex.firstMatch(in: text, range: fullRange(text))
+        let currency = solesMatch == nil ? "USD" : "PEN"
         guard let provider = provider(in: text),
-              let match = amountRegex.firstMatch(in: text, range: fullRange(text)),
+              let match = solesMatch ?? usdAmountRegex?.firstMatch(in: text, range: fullRange(text)),
               let amountRange = Range(match.range(at: 1), in: text),
               let amount = parseAmount(String(text[amountRange])), amount > 0,
               let isIncome = direction(in: text, provider: provider) else { return nil }
@@ -48,7 +57,7 @@ final class PaymentReader {
         return ParsedPayment(
             amount: amount,
             peer: peer.isEmpty ? (rules["unknownPeer"] as? String ?? "Desconocido") : peer,
-            provider: provider, isIncome: isIncome)
+            provider: provider, isIncome: isIncome, currency: currency)
     }
 
     /// Lee el texto de una captura, línea por línea. En la constancia de Yape o Plin el
@@ -64,7 +73,7 @@ final class PaymentReader {
             let candidates = lines.dropFirst(i + 1)
             if let next = candidates.first(where: { isPeerLine($0) }) {
                 return ParsedPayment(amount: base.amount, peer: next.trimmingCharacters(in: .whitespaces),
-                                     provider: base.provider, isIncome: base.isIncome)
+                                     provider: base.provider, isIncome: base.isIncome, currency: base.currency)
             }
         }
         return base

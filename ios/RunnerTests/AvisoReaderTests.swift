@@ -56,7 +56,6 @@ final class AvisoReaderTests: XCTestCase {
     func testLoQueNoEsUnPagoNoSeInventa() {
         XCTAssertNil(item("Ingresaste a tu Banca por Internet."))
         XCTAssertNil(item("¡Suerte asegurada! Gana hasta S/3,000 afiliándote a Dinero Más Seguro Yape"))
-        XCTAssertNil(item("Se realizó un pago recurrente de $26.19 en HOSTINGER con tu Tarjeta de Débito."))
         XCTAssertNil(item(""))
     }
 
@@ -64,5 +63,18 @@ final class AvisoReaderTests: XCTestCase {
         XCTAssertNil(item("Tu compra por S/ 250.00 con tu Tarjeta de Débito BCP en FALABELLA fue rechazada"))
         XCTAssertNil(item("Usa el código 482913 para confirmar tu compra por S/ 250.00 con tu tarjeta en AMAZON"))
         XCTAssertNil(item("Recuerda: tu pago de S/ 120.00 con Yape vence mañana"))
+    }
+
+    func testUnConsumoEnDolaresEsperaConfirmacion() throws {
+        let i = try XCTUnwrap(item("Realizaste un consumo de US$ 20.00 con tu Tarjeta de Crédito BCP en NETFLIX.COM"))
+        XCTAssertEqual(i["amount"] as? Double, 20)
+        XCTAssertEqual(i["currency"] as? String, "USD")
+        XCTAssertEqual(i["confirmed"] as? Bool, false)
+        XCTAssertEqual(AvisoReader.title(for: i), "Gasto en dólares por confirmar")
+        XCTAssertEqual(AvisoReader.body(for: i), "US$ 20.00 · NETFLIX.COM · Tarjeta")
+
+        let recurrente = try XCTUnwrap(item("Se realizó un pago recurrente de $26.19 en HOSTINGER con tu Tarjeta de Débito."))
+        XCTAssertEqual(recurrente["currency"] as? String, "USD")
+        XCTAssertEqual(recurrente["amount"] as? Double, 26.19)
     }
 }

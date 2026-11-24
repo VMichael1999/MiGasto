@@ -118,6 +118,11 @@ class DuplicateGuardTest {
         assertTrue(dup(listener, banco, "pe.com.interbank.mobilebanking"))
     }
 
+    @Test fun unCargoEnDolaresNoSeConfundeConUnoEnSolesDelMismoNumero() {
+        assertTrue(DuplicateGuard.key("tarjeta", "gasto", 20.0) == "tarjeta|gasto|20.00")
+        assertTrue(DuplicateGuard.key("tarjeta", "gasto", 20.0, "USD") == "tarjeta|gasto|20.00|USD")
+    }
+
     @Test fun laClaveUsaPuntoDecimalSinImportarElIdioma() {
         assertTrue(DuplicateGuard.key("yape", "ingreso", 1.0) == "yape|ingreso|1.00")
     }

@@ -42,6 +42,7 @@ object NativeQueue {
         ref: String? = null,
         at: Long = System.currentTimeMillis(),
         origin: String = ORIGIN_ANDROID,
+        currency: String = "PEN",
     ) {
         val item = JSONObject().apply {
             // Con `ref`, Flutter usa ese id para el movimiento y la notificación puede referirse a él.
@@ -55,6 +56,8 @@ object NativeQueue {
             // Lo que llega de Android ya pasó por los frenos de duplicados nativos.
             put("origin", origin)
             put("at", at)
+            // En dólares, Flutter lo convierte a soles con el tipo de cambio del día.
+            if (currency != "PEN") put("currency", currency)
         }
         synchronized(lock) {
             val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

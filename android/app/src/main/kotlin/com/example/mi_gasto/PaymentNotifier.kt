@@ -89,7 +89,16 @@ object PaymentNotifier {
      * Avisa de un pago detectado. [saved] indica si ya quedó guardado o espera confirmación.
      * Con [ref] (el id del movimiento pendiente) el aviso trae los botones «Guardar» e «Ignorar».
      */
-    fun notify(context: Context, amount: Double, peer: String, provider: String, type: String, saved: Boolean, ref: String? = null) {
+    fun notify(
+        context: Context,
+        amount: Double,
+        peer: String,
+        provider: String,
+        type: String,
+        saved: Boolean,
+        ref: String? = null,
+        currency: String = "PEN",
+    ) {
         if (!canNotify(context)) {
             Log.w(TAG, "sin permiso para publicar notificaciones")
             return
@@ -97,8 +106,10 @@ object PaymentNotifier {
         ensureChannels(context)
 
         val isIncome = type == "ingreso"
-        val money = String.format(Locale.US, "S/ %,.2f", amount)
+        val usd = currency == "USD"
+        val money = String.format(Locale.US, if (usd) "US$ %,.2f" else "S/ %,.2f", amount)
         val title = when {
+            usd && !saved -> "${if (isIncome) "Ingreso" else "Gasto"} en dólares por confirmar: $money"
             isIncome && saved -> "Ingreso guardado: $money"
             isIncome -> "Ingreso por confirmar: $money"
             saved -> "Gasto guardado: $money"

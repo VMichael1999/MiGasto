@@ -65,6 +65,8 @@
     }
   ],
   "amount": "(?:s/\\.?|(?<![\\p{L}])pen)\\s*(\\d{1,3}(?:,\\d{3})+(?:\\.\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?)",
+  "usdAmount": "(?:us\\$|usd|(?<![\\p{L}/])\\$)\\s*(\\d{1,3}(?:,\\d{3})+(?:\\.\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?)",
+  "_notaUsdAmount": "Monto en dólares (US$ 20.00, USD 20, $26.19). Solo se usa si el texto no trae un monto en soles; el pago queda por confirmar y se convierte con el tipo de cambio del día.",
   "screenReceipt": "datos de la transacci[oó]n",
   "operationStamp": "\\d{1,2}\\s+\\p{L}{3,5}\\.?\\s+\\d{4}\\s+\\d{1,2}:\\d{2}\\s*[ap]\\.?\\s*m\\.?",
   "operationId": "(?:n(?:ro|º|°|o)\\.?|número|numero)\\s+de\\s+operaci[oó]n\\s*:?\\s*(\\d{5,})",
@@ -113,7 +115,9 @@
     "pago (?:de|con|en)",
     "consumo",
     "¡yapeaste!",
-    "pago exitoso"
+    "pago exitoso",
+    "pago recurrente",
+    "se realiz[oó] un (?:pago|consumo|cargo)"
   ],
   "defaultTypeByProvider": {
     "googlePay": "gasto"

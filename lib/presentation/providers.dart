@@ -20,6 +20,7 @@ import '../domain/aliases.dart';
 import '../domain/categoria_propia.dart';
 import '../domain/cuentas_propias.dart';
 import '../data/services/payment_reader.dart';
+import '../data/services/exchange_rate_service.dart';
 import '../domain/duplicate_rule.dart';
 import '../domain/setup_issues.dart';
 
@@ -90,6 +91,11 @@ class AutoSaveIncomeNotifier extends StateNotifier<bool> {
     state = value;
   }
 }
+
+/// Tipo de cambio del día para los cargos en dólares.
+final exchangeRateServiceProvider = Provider<ExchangeRateService>((ref) {
+  return ExchangeRateService(ref.read(sharedPreferencesProvider));
+});
 
 /// "Guardar gastos solos" (Ajustes, Android). Apagado por defecto: un gasto detectado
 /// cuando no se puede mostrar la ventana flotante (pantalla bloqueada o apagada) queda
@@ -261,8 +267,14 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
     super.dispose();
   }
 
-  /// Guarda los pagos que el código nativo detectó (incluso con la app cerrada).
+  /// Guarda los pagos que el código nativo detectó (incluso con la app cerrada) y completa
+  /// los cargos en dólares que esperaban el tipo de cambio.
   Future<void> drainNativeQueue() async {
+    await _drainQueue();
+    if (mounted) await _fillMissingRates();
+  }
+
+  Future<void> _drainQueue() async {
     String? raw;
     try {
       raw = await _channel.invokeMethod<String>('takeNativeQueue');
@@ -296,12 +308,16 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
       return;
     }
 
-    final amount = (item['amount'] as num).toDouble();
+    final rawAmount = (item['amount'] as num).toDouble();
     final peer = (item['peer'] as String?) ?? 'Desconocido';
+    // Un cargo en dólares se pasa a soles con el tipo de cambio del día y queda por confirmar.
+    final moneda = item['currency'] is String && item['currency'] != 'PEN' ? item['currency'] as String : null;
+    final tipoCambio = moneda == null ? null : await _ref.read(exchangeRateServiceProvider).usdToPen();
+    final amount = moneda == null ? rawAmount : (tipoCambio == null ? 0.0 : _round2(rawAmount * tipoCambio));
     final providerStr = (item['provider'] as String?) ?? 'otro';
     final rawText = (item['rawText'] as String?) ?? '';
     final tipo = item['type'] == 'ingreso' ? TipoMovimiento.ingreso : TipoMovimiento.gasto;
-    final confirmed = item['confirmed'] == true;
+    final confirmed = item['confirmed'] == true && moneda == null;
     final at = DateTime.fromMillisecondsSinceEpoch(
         (item['at'] as num?)?.toInt() ?? DateTime.now().millisecondsSinceEpoch);
     final source = PaymentSource.values.firstWhere(
@@ -315,9 +331,16 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
     // recuperó al reconectarse el lector ('android_recuperado') sí se compara: pudo llegar
     // antes por accesibilidad.
     final fromAndroid = item['origin'] == 'android';
-    if (!fromAndroid &&
-        isDuplicateMovement(state, amount: amount, source: source, date: at, tipo: tipo)) {
-      return;
+    if (!fromAndroid) {
+      final repeated = moneda == null
+          ? isDuplicateMovement(state, amount: amount, source: source, date: at, tipo: tipo)
+          : state.any((m) =>
+              m.moneda == moneda &&
+              m.source == source &&
+              m.tipo == tipo &&
+              ((m.montoOriginal ?? -1) - rawAmount).abs() < 0.005 &&
+              m.date.difference(at).abs() <= duplicateWindow);
+      if (repeated) return;
     }
 
     final canal = switch (item['channel']) {
@@ -348,10 +371,27 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
       lugar: item['place'] as String?,
       textoOriginal: rawText,
       entreMisCuentas: await _entreMisCuentas(rawText, peer),
+      moneda: moneda,
+      montoOriginal: moneda == null ? null : rawAmount,
+      tipoCambio: tipoCambio,
     );
     await _repo.saveExpense(movimiento);
     if (!mounted) return;
     state = [movimiento, ...state]..sort((a, b) => b.date.compareTo(a.date));
+  }
+
+  static double _round2(double v) => (v * 100).roundToDouble() / 100;
+
+  /// Cargos en dólares guardados sin tipo de cambio (no había internet): se completan apenas
+  /// se consigue uno.
+  Future<void> _fillMissingRates() async {
+    final missing = state.where((m) => m.moneda != null && m.montoOriginal != null && m.tipoCambio == null).toList();
+    if (missing.isEmpty) return;
+    final rate = await _ref.read(exchangeRateServiceProvider).usdToPen();
+    if (rate == null || !mounted) return;
+    for (final m in missing) {
+      await updateExpense(m.copyWith(amount: _round2(m.montoOriginal! * rate), tipoCambio: rate));
+    }
   }
 
   /// Lector de reglas para reconocer transferencias entre cuentas propias (se carga una vez).
