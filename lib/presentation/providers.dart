@@ -930,12 +930,34 @@ class SetupStatus {
     this.notificationsOn = true,
     this.batteryUnrestricted = true,
     this.alertsOn = true,
+    this.accessibilityOn = false,
+    this.hiddenCount = 0,
+    this.hiddenLastAt,
+    this.hiddenApp = '',
   });
 
   final bool notificationsOn;
   final bool batteryUnrestricted;
   final bool alertsOn;
+
+  /// «Lectura de pantalla» (Accesibilidad) activa.
+  final bool accessibilityOn;
+
+  /// Avisos que Android ocultó y que MiGasto no pudo leer (los anota el código nativo).
+  final int hiddenCount;
+  final DateTime? hiddenLastAt;
+  final String hiddenApp;
 }
+
+/// Lo que anota Android de los avisos ocultos: `{"count": n, "last": ms, "app": "Yape"}`.
+const keyHiddenNotifications = 'migasto_hidden_notifications';
+const keyHiddenBannerDismissed = 'migasto_hidden_banner_dismissed_at';
+
+/// Cuándo se tocó «Entendido» en el aviso de avisos ocultos.
+final hiddenBannerDismissedProvider = StateProvider<DateTime?>((ref) {
+  final raw = ref.read(sharedPreferencesProvider).getString(keyHiddenBannerDismissed);
+  return raw == null ? null : DateTime.tryParse(raw);
+});
 
 const keyBatteryBannerDismissed = 'migasto_battery_banner_dismissed_at';
 const keyAlertsBannerDismissed = 'migasto_alerts_banner_dismissed_at';
@@ -948,7 +970,7 @@ const keyShowAmountLocked = 'migasto_show_amount_locked';
 /// después de visitar los ajustes del teléfono). Arranca "todo bien" para no mostrar
 /// un aviso falso mientras llega la primera respuesta.
 class SetupStatusNotifier extends StateNotifier<SetupStatus> with WidgetsBindingObserver {
-  SetupStatusNotifier(this._permissions) : super(const SetupStatus()) {
+  SetupStatusNotifier(this._permissions, [this._prefs]) : super(const SetupStatus()) {
     refresh();
     try {
       WidgetsBinding.instance.addObserver(this);
@@ -958,17 +980,44 @@ class SetupStatusNotifier extends StateNotifier<SetupStatus> with WidgetsBinding
   }
 
   final PermissionsChecker _permissions;
+  final SharedPreferences? _prefs;
 
   Future<void> refresh() async {
     final notifications = await _permissions.isNotificationListenerEnabled();
     final battery = await _permissions.isBatteryUnrestricted();
     final alerts = await _permissions.isPostNotificationsGranted();
+    final accessibility = await _permissions.isAccessibilityEnabled();
+    final hidden = await _readHidden();
     if (!mounted) return;
     state = SetupStatus(
       notificationsOn: notifications,
       batteryUnrestricted: battery,
       alertsOn: alerts,
+      accessibilityOn: accessibility,
+      hiddenCount: hidden.count,
+      hiddenLastAt: hidden.last,
+      hiddenApp: hidden.app,
     );
+  }
+
+  /// Lo escribe el código nativo: se recarga para no leer una copia vieja.
+  Future<({int count, DateTime? last, String app})> _readHidden() async {
+    final prefs = _prefs;
+    if (prefs == null) return (count: 0, last: null, app: '');
+    try {
+      await prefs.reload();
+      final raw = prefs.getString(keyHiddenNotifications);
+      if (raw == null) return (count: 0, last: null, app: '');
+      final map = jsonDecode(raw) as Map<String, dynamic>;
+      final last = (map['last'] as num?)?.toInt();
+      return (
+        count: (map['count'] as num?)?.toInt() ?? 0,
+        last: last == null ? null : DateTime.fromMillisecondsSinceEpoch(last),
+        app: (map['app'] as String?) ?? '',
+      );
+    } catch (_) {
+      return (count: 0, last: null, app: '');
+    }
   }
 
   @override
@@ -986,7 +1035,7 @@ class SetupStatusNotifier extends StateNotifier<SetupStatus> with WidgetsBinding
 }
 
 final setupStatusProvider = StateNotifierProvider<SetupStatusNotifier, SetupStatus>((ref) {
-  return SetupStatusNotifier(ref.read(permissionsCheckerProvider));
+  return SetupStatusNotifier(ref.read(permissionsCheckerProvider), ref.read(sharedPreferencesProvider));
 });
 
 /// Cuándo se tocó "Ahora no" en el aviso de batería.
@@ -1026,6 +1075,8 @@ final setupIssuesProvider = Provider<List<SetupIssue>>((ref) {
     alertsOn: status.alertsOn,
     alertsDismissedAt: ref.watch(alertsBannerDismissedProvider),
     batteryDismissedAt: ref.watch(batteryBannerDismissedProvider),
+    hiddenLastAt: status.hiddenLastAt,
+    hiddenDismissedAt: ref.watch(hiddenBannerDismissedProvider),
   );
 });
 

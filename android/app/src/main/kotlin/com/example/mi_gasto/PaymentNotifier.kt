@@ -86,6 +86,42 @@ object PaymentNotifier {
     }
 
     /**
+     * Android ocultó el contenido de un aviso de [appLabel] (Android 15 o más, avisos que parecen
+     * traer un código) y MiGasto no pudo leerlo: puede ser un pago que no quedó registrado.
+     */
+    fun notifyHidden(context: Context, appLabel: String, accessibilityOn: Boolean) {
+        if (!canNotify(context)) return
+        ensureChannels(context)
+        val open = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+            flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val contentIntent = open?.let {
+            PendingIntent.getActivity(context, 0, it, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        }
+        val text = if (accessibilityOn) {
+            "Puede ser un pago. Revísalo en $appLabel y, si falta, regístralo con el botón +."
+        } else {
+            "Puede ser un pago. Con «Lectura de pantalla» activa, MiGasto lo lee aunque Android lo oculte."
+        }
+        val builder = NotificationCompat.Builder(context, CHANNEL_DETECTED)
+            .setSmallIcon(R.drawable.ic_stat_boleta)
+            .setContentTitle("Android ocultó un aviso de $appLabel")
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setContentIntent(contentIntent)
+            .setAutoCancel(true)
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+        try {
+            NotificationManagerCompat.from(context).notify(HIDDEN_NOTIFICATION_ID, builder.build())
+        } catch (e: SecurityException) {
+            Log.w(TAG, "el sistema rechazó la notificación", e)
+        }
+    }
+
+    private const val HIDDEN_NOTIFICATION_ID = 7_301
+
+    /**
      * Avisa de un pago detectado. [saved] indica si ya quedó guardado o espera confirmación.
      * Con [ref] (el id del movimiento pendiente) el aviso trae los botones «Guardar» e «Ignorar».
      */

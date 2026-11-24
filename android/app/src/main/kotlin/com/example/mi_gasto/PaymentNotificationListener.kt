@@ -72,6 +72,12 @@ class PaymentNotificationListener : NotificationListenerService() {
         val bigText = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString() ?: ""
         // Si la app vuelve a publicar la misma notificación con el mismo texto (una
         // actualización), la hora cambia pero el pago es el mismo.
+        // Android 15 o más pudo ocultar el aviso (parece traer un código). Si la Accesibilidad
+        // lo lee completo, no pasa nada; si no, se avisa al usuario.
+        if (HiddenNotification.isHidden(text)) {
+            onHidden(sbn.packageName, title.ifBlank { sbn.packageName })
+            return
+        }
         val content = "$title|$text|$bigText"
         if (!HandledStore.markRecent(applicationContext, "c|${sbn.key}|${content.hashCode()}", UPDATE_WINDOW_MS)) {
             Log.d(TAG, "ignorada: la misma notificación actualizada")
@@ -88,6 +94,28 @@ class PaymentNotificationListener : NotificationListenerService() {
         )
     }
 
+    /**
+     * Un aviso de [app] llegó oculto. Se espera unos segundos: con el teléfono desbloqueado la
+     * Accesibilidad recibe el aviso completo y lo registra. Si no llegó ningún pago de esa app,
+     * se anota (Flutter lo muestra en Resumen) y se avisa al usuario.
+     */
+    private fun onHidden(app: String, label: String) {
+        val at = System.currentTimeMillis()
+        Log.d(TAG, "aviso oculto por Android ($app)")
+        val context = applicationContext
+        if (NativeQueue.captureEnabled(context)) {
+            CaptureLog.of(context).add(app, "notificación", HiddenNotification.MARK, "oculto por Android")
+        }
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            if (MyAccessibilityService.lastPaymentFrom(app) >= at - HIDDEN_GRACE_MS) {
+                Log.d(TAG, "el aviso oculto se leyó por accesibilidad")
+                return@postDelayed
+            }
+            NativeQueue.recordHidden(context, label, at)
+            PaymentNotifier.notifyHidden(context, label, MyAccessibilityService.getInstance() != null)
+        }, HIDDEN_GRACE_MS)
+    }
+
     private fun state() = applicationContext.getSharedPreferences(STATE_PREFS, MODE_PRIVATE)
 
     private fun markListening(now: Long) {
@@ -98,6 +126,7 @@ class PaymentNotificationListener : NotificationListenerService() {
         private const val TAG = "PaymentNotifListener"
         private const val STALE_MS = 3 * 60 * 1000L
         private const val UPDATE_WINDOW_MS = 60 * 1000L
+        private const val HIDDEN_GRACE_MS = 6 * 1000L
         private const val STATE_PREFS = "migasto_native_state"
         private const val KEY_LAST_SEEN = "listener_last_seen"
 

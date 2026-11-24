@@ -24,6 +24,7 @@ import '../providers.dart';
 import '../../core/layout/landscape_pane.dart';
 import '../../core/layout/adaptive.dart';
 import '../../shared/widgets/merchant_icon.dart';
+import '../permissions/reading_disclosure.dart';
 
 /// Pantalla 1: Inicio (s-home en prototipo HTML y Sección 4.4 del prompt).
 /// - Cabecera: mark de 34, selector de espacio ("Personal ›") con mes debajo,
@@ -1407,6 +1408,15 @@ class _SetupBanner extends ConsumerWidget {
         body =
             'Entra a Batería y elige «No restringido». Si no, el teléfono puede dormir la app y se pierden pagos.';
         action = 'Ajustar';
+      case SetupIssue.avisosOcultos:
+        final status = ref.watch(setupStatusProvider);
+        final app = status.hiddenApp.isEmpty ? 'tus apps de pago' : status.hiddenApp;
+        final cuantos = status.hiddenCount == 1 ? 'Un aviso' : '${status.hiddenCount} avisos';
+        title = 'Android ocultó avisos de $app';
+        body = status.accessibilityOn
+            ? '$cuantos llegaron ocultos con el teléfono bloqueado (Android protege los que parecen traer un código) y MiGasto no pudo leerlos. Revisa en $app si falta registrar algún pago.'
+            : '$cuantos llegaron ocultos (Android protege los que parecen traer un código) y MiGasto no pudo leerlos. Activa «Lectura de pantalla»: así los lee con el teléfono desbloqueado.';
+        action = status.accessibilityOn ? 'Entendido' : 'Activar';
     }
 
     Future<void> dismiss() async {
@@ -1415,6 +1425,9 @@ class _SetupBanner extends ConsumerWidget {
       if (issue == SetupIssue.avisosApagados) {
         await prefs.setString(keyAlertsBannerDismissed, now.toIso8601String());
         ref.read(alertsBannerDismissedProvider.notifier).state = now;
+      } else if (issue == SetupIssue.avisosOcultos) {
+        await prefs.setString(keyHiddenBannerDismissed, now.toIso8601String());
+        ref.read(hiddenBannerDismissedProvider.notifier).state = now;
       } else {
         await prefs.setString(keyBatteryBannerDismissed, now.toIso8601String());
         ref.read(batteryBannerDismissedProvider.notifier).state = now;
@@ -1424,11 +1437,17 @@ class _SetupBanner extends ConsumerWidget {
     Future<void> act() async {
       switch (issue) {
         case SetupIssue.lecturaApagada:
-          await permissions.openNotificationListenerSettings();
+          await openReadingWithDisclosure(context, ref, ReadingKind.notificaciones);
         case SetupIssue.avisosApagados:
           await permissions.requestPostNotifications();
         case SetupIssue.bateriaRestringida:
           await permissions.openBatterySettings();
+        case SetupIssue.avisosOcultos:
+          if (ref.read(setupStatusProvider).accessibilityOn) {
+            await dismiss();
+          } else if (context.mounted) {
+            await openReadingWithDisclosure(context, ref, ReadingKind.pantalla);
+          }
       }
     }
 

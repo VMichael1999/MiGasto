@@ -19,6 +19,7 @@ object NativeQueue {
     private const val KEY_CAPTURE = "flutter.migasto_capture_mode"
     private const val KEY_ALIASES = "flutter.migasto_aliases_v1"
     private const val KEY_OVERRIDES = "flutter.migasto_category_overrides_v2"
+    private const val KEY_HIDDEN = "flutter.migasto_hidden_notifications"
     private val lock = Any()
 
     /** Pago leído al momento: ya pasó por los frenos de duplicados nativos. */
@@ -88,6 +89,27 @@ object NativeQueue {
             }
             array.put(item)
             prefs.edit().putString(KEY_QUEUE, array.toString()).commit()
+        }
+    }
+
+    /**
+     * Anota un aviso que Android ocultó y que MiGasto no pudo leer: `{"count": n, "last": ms,
+     * "app": "Yape"}`. Flutter lo muestra en Resumen.
+     */
+    fun recordHidden(context: Context, appLabel: String, at: Long) {
+        synchronized(lock) {
+            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val previous = try {
+                JSONObject(prefs.getString(KEY_HIDDEN, "{}") ?: "{}")
+            } catch (e: Exception) {
+                JSONObject()
+            }
+            val item = JSONObject().apply {
+                put("count", previous.optInt("count", 0) + 1)
+                put("last", at)
+                put("app", appLabel)
+            }
+            prefs.edit().putString(KEY_HIDDEN, item.toString()).commit()
         }
     }
 

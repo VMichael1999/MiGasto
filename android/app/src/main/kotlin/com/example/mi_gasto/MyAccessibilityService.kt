@@ -32,6 +32,11 @@ class MyAccessibilityService : AccessibilityService() {
 
         private val duplicates = DuplicateGuard(DUPLICATE_WINDOW_MS)
 
+        /** Última vez que se entregó un pago de cada app (para saber si un aviso oculto se leyó igual). */
+        private val lastPaymentAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+        fun lastPaymentFrom(app: String): Long = lastPaymentAt[app] ?: 0L
+
         fun registerChannel(methodChannel: MethodChannel) {
             channel = methodChannel
         }
@@ -106,6 +111,7 @@ class MyAccessibilityService : AccessibilityService() {
 
             // No se registra el texto completo: puede traer datos personales.
             Log.d(TAG, "Pago detectado: ${result.type} ${result.provider}")
+            if (app != null) lastPaymentAt[app] = System.currentTimeMillis()
             if (recoveredAt != null || result.currency != "PEN") {
                 deliverRecovered(context, result, text.take(MAX_SCREEN_TEXT), recoveredAt ?: System.currentTimeMillis())
                 return

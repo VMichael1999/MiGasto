@@ -72,4 +72,38 @@ void main() {
       [SetupIssue.bateriaRestringida],
     );
   });
+
+  group('avisos que Android ocultó', () {
+    List<SetupIssue> hidden({DateTime? last, DateTime? dismissedAt, bool notifications = true}) =>
+        computeSetupIssues(
+          isAndroid: true,
+          notificationsOn: notifications,
+          batteryUnrestricted: true,
+          hiddenLastAt: last,
+          hiddenDismissedAt: dismissedAt,
+          now: now,
+        );
+
+    test('sin avisos ocultos no hay nada', () {
+      expect(hidden(), isEmpty);
+    });
+
+    test('un aviso oculto reciente se muestra', () {
+      expect(hidden(last: now.subtract(const Duration(hours: 2))), [SetupIssue.avisosOcultos]);
+    });
+
+    test('«Entendido» lo esconde hasta que llegue otro', () {
+      final last = now.subtract(const Duration(hours: 2));
+      expect(hidden(last: last, dismissedAt: now.subtract(const Duration(hours: 1))), isEmpty);
+      expect(hidden(last: now, dismissedAt: now.subtract(const Duration(hours: 1))), [SetupIssue.avisosOcultos]);
+    });
+
+    test('después de una semana ya no se muestra', () {
+      expect(hidden(last: now.subtract(const Duration(days: 8))), isEmpty);
+    });
+
+    test('con la lectura apagada manda ese aviso, no este', () {
+      expect(hidden(last: now, notifications: false), [SetupIssue.lecturaApagada]);
+    });
+  });
 }
