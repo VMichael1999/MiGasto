@@ -2,6 +2,7 @@ import Flutter
 import GoogleMaps
 import UIKit
 import UserNotifications
+import WidgetKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -36,6 +37,16 @@ import UserNotifications
         // simular lo que deja la acción de Atajos.
         if let item = call.arguments as? [String: Any] {
           SharedQueue.enqueue(item)
+          result(true)
+        } else {
+          result(false)
+        }
+      case "updateHomeWidgets":
+        // Lo que muestran los widgets (`WidgetSnapshot` en Flutter), en el grupo de la app.
+        if let json = call.arguments as? String,
+           let defaults = UserDefaults(suiteName: SharedQueue.groupId) {
+          defaults.set(json, forKey: "widget_snapshot")
+          WidgetCenter.shared.reloadAllTimelines()
           result(true)
         } else {
           result(false)
