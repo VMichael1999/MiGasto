@@ -102,6 +102,20 @@ void main() {
       expect(hidden(last: now.subtract(const Duration(days: 8))), isEmpty);
     });
 
+    test('va antes que los avisos apagados y la batería (Resumen muestra solo el primero)', () {
+      expect(
+        computeSetupIssues(
+          isAndroid: true,
+          notificationsOn: true,
+          batteryUnrestricted: false,
+          alertsOn: false,
+          hiddenLastAt: now,
+          now: now,
+        ),
+        [SetupIssue.avisosOcultos, SetupIssue.avisosApagados, SetupIssue.bateriaRestringida],
+      );
+    });
+
     test('con la lectura apagada manda ese aviso, no este', () {
       expect(hidden(last: now, notifications: false), [SetupIssue.lecturaApagada]);
     });

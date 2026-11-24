@@ -20,7 +20,7 @@ const hiddenBannerWindow = Duration(days: 7);
 /// Cuánto tiempo se esconde el aviso de batería después de tocar "Ahora no".
 const batteryBannerSnooze = Duration(days: 7);
 
-/// Problemas a avisar, el más importante primero. Solo aplica a Android.
+/// Problemas a avisar, el más importante primero (Resumen muestra solo el primero). Solo aplica a Android.
 List<SetupIssue> computeSetupIssues({
   required bool isAndroid,
   required bool notificationsOn,
@@ -38,17 +38,18 @@ List<SetupIssue> computeSetupIssues({
   bool snoozed(DateTime? at) => at != null && clock.difference(at) < batteryBannerSnooze;
 
   if (!notificationsOn) issues.add(SetupIssue.lecturaApagada);
-  // Sin permiso de leer, avisar de las notificaciones propias no tiene sentido todavía.
-  if (notificationsOn && !alertsOn && !snoozed(alertsDismissedAt)) {
-    issues.add(SetupIssue.avisosApagados);
-  }
-  if (!batteryUnrestricted && !snoozed(batteryDismissedAt)) issues.add(SetupIssue.bateriaRestringida);
-  // Se muestra hasta tocar «Entendido»; vuelve si llega otro aviso oculto después.
+  // Pagos que se están perdiendo: va antes que los demás. Se muestra hasta tocar
+  // «Entendido» y vuelve si llega otro aviso oculto después.
   if (notificationsOn &&
       hiddenLastAt != null &&
       clock.difference(hiddenLastAt) < hiddenBannerWindow &&
       (hiddenDismissedAt == null || hiddenLastAt.isAfter(hiddenDismissedAt))) {
     issues.add(SetupIssue.avisosOcultos);
   }
+  // Sin permiso de leer, avisar de las notificaciones propias no tiene sentido todavía.
+  if (notificationsOn && !alertsOn && !snoozed(alertsDismissedAt)) {
+    issues.add(SetupIssue.avisosApagados);
+  }
+  if (!batteryUnrestricted && !snoozed(batteryDismissedAt)) issues.add(SetupIssue.bateriaRestringida);
   return issues;
 }
