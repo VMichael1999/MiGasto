@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,9 +14,9 @@ import '../dispose_later.dart';
 
 /// Aviso de "Pago detectado" dentro de la app, con el diseño oscuro unificado de MiGasto.
 ///
-/// - Gasto: cuenta regresiva de 4 s que se pausa al tocar; al llegar a 0 se guarda.
-/// - Ingreso: sin cuenta regresiva; nunca se guarda solo. Si se ignora, queda en
-///   "Por confirmar".
+/// No se cierra solo ni guarda nada por su cuenta: el usuario decide.
+/// - Gasto: Descartar, Editar o Guardar.
+/// - Ingreso: Ignorar (queda en "Por confirmar") o Guardar ingreso.
 class OverlayTimerWidget extends ConsumerStatefulWidget {
   final Widget child;
 
@@ -30,67 +28,33 @@ class OverlayTimerWidget extends ConsumerStatefulWidget {
 
 class _OverlayTimerWidgetState extends ConsumerState<OverlayTimerWidget>
     with SingleTickerProviderStateMixin {
-  static const _countdownMs = 4000;
-  static const _tickMs = 100;
-
   late final AnimationController _slide = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 320),
   );
-  Timer? _timer;
-  int _remainingMs = _countdownMs;
-  bool _paused = false;
-
   @override
   void dispose() {
-    _timer?.cancel();
     _slide.dispose();
     super.dispose();
   }
 
   void _start(Movimiento pending) {
-    _timer?.cancel();
-    _remainingMs = _countdownMs;
-    _paused = false;
-
     if (MediaQuery.disableAnimationsOf(context)) {
       _slide.value = 1;
     } else {
       _slide.forward(from: 0);
     }
-
-    // Un ingreso espera la confirmación del usuario.
-    if (pending.esIngreso) return;
-
-    _timer = Timer.periodic(const Duration(milliseconds: _tickMs), (timer) {
-      if (_paused || !mounted) return;
-      setState(() => _remainingMs -= _tickMs);
-      if (_remainingMs <= 0) {
-        timer.cancel();
-        _save();
-      }
-    });
   }
 
-  void _stop() {
-    _timer?.cancel();
-    _timer = null;
-    _slide.value = 0;
-  }
-
-  void _pause() {
-    if (!_paused) setState(() => _paused = true);
-  }
+  void _stop() => _slide.value = 0;
 
   void _save() {
     final pending = ref.read(pendingExpenseProvider);
     if (pending == null) return;
-    _timer?.cancel();
     ref.read(expensesStateProvider.notifier).confirmPendingExpense(pending.category, pending.notes);
   }
 
   void _dismiss() {
-    _timer?.cancel();
     ref.read(expensesStateProvider.notifier).discardPendingExpense();
   }
 
@@ -144,14 +108,8 @@ class _OverlayTimerWidgetState extends ConsumerState<OverlayTimerWidget>
   Widget _card(BuildContext context, Movimiento pending) {
     final isIncome = pending.esIngreso;
     final time = DateFormat('HH:mm').format(pending.date);
-    final seconds = ((_remainingMs + 999) ~/ 1000).clamp(0, 4);
 
-    return Listener(
-      // Tocar la ventana pausa la cuenta regresiva.
-      onPointerDown: (_) {
-        if (!isIncome) _pause();
-      },
-      child: Semantics(
+    return Semantics(
         container: true,
         label: isIncome ? 'Ingreso detectado' : 'Gasto detectado',
         child: Container(
@@ -168,7 +126,7 @@ class _OverlayTimerWidgetState extends ConsumerState<OverlayTimerWidget>
                 blurRadius: 36,
                 offset: const Offset(0, 16),
               ),
-              if (!isIncome && !_paused)
+              if (!isIncome)
                 BoxShadow(
                   color: MgColors.acc.withValues(alpha: 0.15),
                   blurRadius: 24,
@@ -181,33 +139,6 @@ class _OverlayTimerWidgetState extends ConsumerState<OverlayTimerWidget>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Barra timeline de cuenta regresiva
-              if (!isIncome)
-                SizedBox(
-                  height: 3.5,
-                  child: Stack(
-                    children: [
-                      Container(color: Colors.white.withValues(alpha: 0.06)),
-                      FractionallySizedBox(
-                        widthFactor: (_remainingMs / _countdownMs).clamp(0.0, 1.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: _paused
-                                ? null
-                                : const LinearGradient(
-                                    colors: [
-                                      Color(0xFFA78BFA),
-                                      Color(0xFF7C5CFF),
-                                    ],
-                                  ),
-                            color: _paused ? MgColors.ink3 : null,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
               Padding(
                 padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
                 child: Column(
@@ -241,31 +172,7 @@ class _OverlayTimerWidgetState extends ConsumerState<OverlayTimerWidget>
                             ),
                           ),
                         ),
-                        if (!isIncome)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
-                            decoration: BoxDecoration(
-                              color: _paused
-                                  ? MgColors.soft
-                                  : MgColors.accSoft,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: _paused
-                                    ? MgColors.line
-                                    : MgColors.accLine,
-                                width: 1,
-                              ),
-                            ),
-                            child: Text(
-                              _paused ? 'En pausa' : 'Se guarda en ${seconds}s',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: _paused ? MgColors.ink2 : MgColors.acc2,
-                                fontFeatures: const [FontFeature.tabularFigures()],
-                              ),
-                            ),
-                          ),
+                        _kindChip(isIncome),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -275,6 +182,7 @@ class _OverlayTimerWidgetState extends ConsumerState<OverlayTimerWidget>
                       amount: pending.amount,
                       style: AppText.money(size: 34, weight: FontWeight.w800),
                       isExpense: !isIncome,
+                      isIncome: isIncome,
                       color: isIncome ? MgColors.up : MgColors.ink,
                     ),
                     const SizedBox(height: 4),
@@ -312,40 +220,42 @@ class _OverlayTimerWidgetState extends ConsumerState<OverlayTimerWidget>
 
                     // Botones de acción
                     _actions(context, pending, isIncome),
-                    if (!isIncome) ...[
-                      const SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              _paused ? 'Toca cualquier botón para continuar' : 'Toca para pausar',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: MgColors.ink3,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'MiGasto · Detección',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: MgColors.ink3,
-                            ),
-                          ),
-                        ],
+                    const SizedBox(height: 10),
+                    const Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        'MiGasto · Detección',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: MgColors.ink3,
+                        ),
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ),
             ],
           ),
         ),
+    );
+  }
+
+  /// «Gasto» en violeta o «Ingreso» en verde, igual que la ventana flotante de Android.
+  Widget _kindChip(bool isIncome) {
+    final color = isIncome ? MgColors.up : MgColors.acc2;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+      decoration: BoxDecoration(
+        color: isIncome ? MgColors.up.withValues(alpha: 0.10) : MgColors.accSoft,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isIncome ? MgColors.up.withValues(alpha: 0.25) : MgColors.accLine,
+        ),
+      ),
+      child: Text(
+        isIncome ? 'Ingreso' : 'Gasto',
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
       ),
     );
   }
@@ -375,7 +285,6 @@ class _OverlayTimerWidgetState extends ConsumerState<OverlayTimerWidget>
       borderRadius: BorderRadius.circular(14),
       onTap: () {
         HapticFeedback.lightImpact();
-        _pause();
         _pickCategory(context, pending);
       },
       child: Container(
@@ -531,10 +440,7 @@ class _OverlayTimerWidgetState extends ConsumerState<OverlayTimerWidget>
           button(
             'Editar',
             10,
-            onTap: () {
-              _pause();
-              _edit(context, pending);
-            },
+            onTap: () => _edit(context, pending),
           ),
           button(
             'Guardar',

@@ -41,38 +41,43 @@ void main() {
     ));
   }
 
-  testWidgets('un gasto se guarda solo a los 4 segundos', (tester) async {
+  testWidgets('un gasto no se guarda solo: espera a que el usuario toque Guardar', (tester) async {
     await pumpApp(tester);
     container.read(pendingExpenseProvider.notifier).state = _pending(TipoMovimiento.gasto);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('Descartar'), findsOneWidget);
+    expect(find.text('Editar'), findsOneWidget);
     expect(find.text('Guardar'), findsOneWidget);
-    expect(find.textContaining('Se guarda en'), findsOneWidget);
+    expect(find.text('Gasto'), findsOneWidget);
+    expect(find.textContaining('Se guarda en'), findsNothing);
 
-    await tester.pump(const Duration(seconds: 4));
+    // Sin cuenta regresiva: pasa el tiempo y sigue esperando.
+    await tester.pump(const Duration(minutes: 1));
+    expect(container.read(expensesStateProvider), isEmpty);
+    expect(container.read(pendingExpenseProvider), isNotNull);
+
+    await tester.tap(find.text('Guardar'));
     await tester.pump();
-
+    await tester.pump(const Duration(milliseconds: 50));
     final saved = container.read(expensesStateProvider);
     expect(saved, hasLength(1));
     expect(saved.single.estado, EstadoMovimiento.confirmado);
     expect(container.read(pendingExpenseProvider), isNull);
   });
 
-  testWidgets('tocar la ventana pausa la cuenta regresiva', (tester) async {
+  testWidgets('Descartar cierra el aviso sin guardar el gasto', (tester) async {
     await pumpApp(tester);
     container.read(pendingExpenseProvider.notifier).state = _pending(TipoMovimiento.gasto);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    await tester.tapAt(const Offset(200, 120));
+    await tester.tap(find.text('Descartar'));
     await tester.pump();
-    await tester.pump(const Duration(seconds: 6));
 
-    expect(find.text('En pausa'), findsWidgets);
     expect(container.read(expensesStateProvider), isEmpty);
-    expect(container.read(pendingExpenseProvider), isNotNull);
+    expect(container.read(pendingExpenseProvider), isNull);
   });
 
   testWidgets('un ingreso no se guarda solo', (tester) async {
@@ -84,9 +89,9 @@ void main() {
     expect(find.text('Ignorar'), findsOneWidget);
     expect(find.text('Guardar ingreso'), findsOneWidget);
     expect(find.textContaining('No se guardará hasta que lo confirmes', findRichText: true), findsOneWidget);
-    expect(find.textContaining('Se guarda en'), findsNothing);
+    expect(find.text('Ingreso'), findsOneWidget);
 
-    await tester.pump(const Duration(seconds: 10));
+    await tester.pump(const Duration(minutes: 1));
     expect(container.read(expensesStateProvider), isEmpty);
     expect(container.read(pendingExpenseProvider), isNotNull);
 

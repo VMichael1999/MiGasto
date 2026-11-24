@@ -382,9 +382,9 @@ class ExpensesNotifier extends StateNotifier<List<Movimiento>>
     });
   }
 
-  /// Un pago detectado. Los gastos quedan como aviso para confirmar (se guardan
-  /// solos tras la cuenta regresiva). Los ingresos se guardan como pendientes y
-  /// esperan la confirmación del usuario.
+  /// Un pago detectado. Los gastos quedan como aviso hasta que el usuario toque
+  /// Guardar o Descartar. Los ingresos se guardan como pendientes y esperan la
+  /// confirmación del usuario.
   Future<void> triggerIncomingPayment({
     required double amount,
     required String merchant,
