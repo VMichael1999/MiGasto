@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Colores de la app (lib/core/theme/mg_colors.dart) para los widgets de la pantalla de inicio. -->
+<resources>
+    <color name="widget_card">#FF15151B</color>
+    <color name="widget_soft">#FF1F1F27</color>
+    <color name="widget_line">#FF26262F</color>
+    <color name="widget_ink">#FFF4F3F7</color>
+    <color name="widget_ink2">#FF8B8898</color>
+    <color name="widget_acc">#FF7C5CFF</color>
+    <color name="widget_acc2">#FF9B82FF</color>
+    <color name="widget_acc_soft">#FF1E1935</color>
+    <color name="widget_up">#FF2FD98A</color>
+    <color name="widget_down">#FFFF5C6E</color>
+    <color name="widget_warn">#FFF5A524</color>
+    <color name="widget_white_72">#B8FFFFFF</color>
+    <color name="widget_white_82">#D1FFFFFF</color>
+</resources>

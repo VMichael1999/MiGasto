@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_summary_name">Resumen del mes</string>
+    <string name="widget_summary_description">Tu saldo disponible, con lo que entró y salió este mes.</string>
+    <string name="widget_recent_name">Últimos movimientos</string>
+    <string name="widget_recent_description">Tus últimos gastos e ingresos, y cuántos esperan que los confirmes.</string>
+    <string name="widget_quick_add_name">Registrar</string>
+    <string name="widget_quick_add_description">Abre MiGasto para registrar un gasto o un ingreso en segundos.</string>
+</resources>

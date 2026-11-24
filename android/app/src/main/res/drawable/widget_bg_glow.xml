@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Resplandor de la esquina de la tarjeta de balance. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <gradient
+        android:type="radial"
+        android:gradientRadius="90dp"
+        android:startColor="#38FFFFFF"
+        android:endColor="#00FFFFFF" />
+</shape>

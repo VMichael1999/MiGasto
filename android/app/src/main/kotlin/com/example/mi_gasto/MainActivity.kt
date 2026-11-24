@@ -96,6 +96,12 @@ class MainActivity : FlutterFragmentActivity() {
                     CaptureLog.of(this).clear()
                     result.success(true)
                 }
+                "updateHomeWidgets" -> {
+                    // Lo que muestran los widgets (`WidgetSnapshot` en Flutter).
+                    val json = call.arguments as? String
+                    if (json != null) HomeWidgets.save(this, json)
+                    result.success(json != null)
+                }
                 "takeNativeQueue" -> {
                     // Pagos que el código nativo detectó mientras la app estaba cerrada.
                     result.success(NativeQueue.take(this))

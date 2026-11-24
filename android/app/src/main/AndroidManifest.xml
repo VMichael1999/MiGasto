@@ -45,6 +45,43 @@
             android:name=".PaymentActionReceiver"
             android:exported="false" />
 
+        <!-- Widgets de la pantalla de inicio (HomeWidgets.kt). -->
+        <receiver
+            android:name=".SummaryWidget"
+            android:exported="false"
+            android:label="@string/widget_summary_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_summary_info" />
+        </receiver>
+
+        <receiver
+            android:name=".RecentWidget"
+            android:exported="false"
+            android:label="@string/widget_recent_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_recent_info" />
+        </receiver>
+
+        <receiver
+            android:name=".QuickAddWidget"
+            android:exported="false"
+            android:label="@string/widget_quick_add_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_quick_add_info" />
+        </receiver>
+
         <service
             android:name=".OverlayService"
             android:enabled="true"
