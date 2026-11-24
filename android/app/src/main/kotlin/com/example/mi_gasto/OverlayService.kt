@@ -99,6 +99,9 @@ class OverlayService : Service() {
     private var category = "otros"
     private var rawText = ""
 
+    /** Id del movimiento pendiente que se guardó al abrir la ventana; los botones se refieren a él. */
+    private var ref = ""
+
     private val isIncome get() = type == "ingreso"
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -106,11 +109,9 @@ class OverlayService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent == null) return START_NOT_STICKY
 
-        // Si había otra ventana sin resolver, ese pago queda pendiente en vez de perderse.
-        if (overlayView != null) {
-            if (!closing) enqueue(confirmed = false)
-            removeOverlay()
-        }
+        // Si había otra ventana sin resolver, ese pago ya está guardado como pendiente: solo se
+        // cierra la ventana.
+        if (overlayView != null) removeOverlay()
 
         amount = intent.getDoubleExtra("amount", 0.0)
         merchant = intent.getStringExtra("merchant") ?: "Desconocido"
@@ -123,6 +124,12 @@ class OverlayService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
+
+        // El pago se guarda como pendiente apenas aparece la ventana, con la hora en que llegó:
+        // si el sistema cierra la ventana o se apaga el teléfono antes de que el usuario elija,
+        // queda en Movimientos > Por confirmar en vez de perderse.
+        ref = java.util.UUID.randomUUID().toString()
+        NativeQueue.enqueue(this, amount, merchant, provider, type, rawText, confirmed = false, ref = ref)
 
         showOverlay()
         return START_NOT_STICKY
@@ -414,9 +421,9 @@ class OverlayService : Service() {
         try {
             windowManager?.addView(root, params)
         } catch (e: Exception) {
-            // Sin permiso de superposición: el pago queda pendiente en la app.
+            // Sin permiso de superposición: el pago ya quedó pendiente en la app.
             overlayView = null
-            enqueue(confirmed = false)
+            MyAccessibilityService.notifyFlutterSaved()
             stopSelf()
             return
         }
@@ -458,26 +465,34 @@ class OverlayService : Service() {
 
     // ------------------------------------------------------------- acciones
 
-    /** Deja el pago en la cola para que Flutter lo guarde (confirmado o pendiente). */
-    private fun enqueue(confirmed: Boolean) {
-        if (amount <= 0.0) return
-        NativeQueue.enqueue(this, amount, merchant, provider, type, rawText, confirmed)
-        MyAccessibilityService.notifyFlutterSaved()
-    }
-
+    /**
+     * Cierra la ventana. `confirmed` true confirma el pago pendiente; false lo deja en
+     * Movimientos > Por confirmar, donde ya está.
+     */
     private fun finishWith(confirmed: Boolean) {
-        enqueue(confirmed)
+        if (confirmed) act("confirm") else MyAccessibilityService.notifyFlutterSaved()
         close()
     }
 
-    private fun discard() = close()
+    /** «Descartar»: borra el pago pendiente. */
+    private fun discard() {
+        act("discard")
+        close()
+    }
+
+    /** Pide a Flutter confirmar o descartar el pago pendiente de esta ventana. */
+    private fun act(action: String) {
+        if (ref.isEmpty()) return
+        NativeQueue.enqueueAction(this, action, ref)
+        MyAccessibilityService.notifyFlutterSaved()
+    }
 
     /**
      * "Editar" / "Cambiar": el pago queda pendiente y se abre la app para revisarlo en
      * Movimientos > Por confirmar.
      */
     private fun openEdit() {
-        enqueue(confirmed = false)
+        MyAccessibilityService.notifyFlutterSaved()
         val openIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
