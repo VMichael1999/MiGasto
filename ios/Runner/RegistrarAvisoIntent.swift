@@ -12,8 +12,9 @@ import UserNotifications
 /// - un atajo con «Tomar captura de pantalla» y «Extraer texto de la imagen», asignado a tocar
 ///   dos veces la parte de atrás del iPhone sobre la constancia de Yape, Plin o el banco.
 ///
-/// El texto se lee con las mismas reglas que Android (`reader_rules.json`). Un gasto se guarda
-/// solo; un ingreso espera la confirmación en la app.
+/// El texto se lee con las mismas reglas que Android (`reader_rules.json`). Como en Android, el
+/// pago queda «Por confirmar» en la app, salvo que el usuario active «Guardar gastos solos» o
+/// «Guardar ingresos solos» en Ajustes. Un cargo en dólares espera siempre.
 @available(iOS 16.0, *)
 struct RegistrarAvisoIntent: AppIntent {
     static var title: LocalizedStringResource = "Registrar aviso de pago"
@@ -63,8 +64,20 @@ enum AvisoReader {
         return PaymentReader(rulesJSON: data)
     }()
 
+    /// Interruptores de Ajustes «Guardar gastos solos» y «Guardar ingresos solos». Flutter los
+    /// guarda en `UserDefaults.standard` con el prefijo `flutter.`; la acción corre en la app.
+    static func autoSaveSettings(_ defaults: UserDefaults = .standard) -> (expense: Bool, income: Bool) {
+        (defaults.bool(forKey: "flutter.migasto_auto_save_expense"),
+         defaults.bool(forKey: "flutter.migasto_auto_save_income"))
+    }
+
     /// `nil` si el texto no es un pago reconocible (no se inventa un gasto).
-    static func item(from text: String, reader: PaymentReader, now: Date) -> [String: Any]? {
+    static func item(
+        from text: String,
+        reader: PaymentReader,
+        now: Date,
+        autoSave: (expense: Bool, income: Bool) = autoSaveSettings()
+    ) -> [String: Any]? {
         let lines = text.components(separatedBy: .newlines)
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
@@ -77,9 +90,9 @@ enum AvisoReader {
             "type": payment.isIncome ? "ingreso" : "gasto",
             "channel": "aviso",
             "rawText": String(lines.joined(separator: " ").prefix(500)),
-            // El gasto se guarda solo y el ingreso espera confirmación. En dólares espera
-            // siempre: MiGasto lo pasa a soles con el tipo de cambio del día.
-            "confirmed": !payment.isIncome && !usd,
+            // Queda por confirmar salvo que el usuario pidiera guardarlos solos. En dólares
+            // espera siempre: MiGasto lo pasa a soles con el tipo de cambio del día.
+            "confirmed": !usd && (payment.isIncome ? autoSave.income : autoSave.expense),
             "at": Int(now.timeIntervalSince1970 * 1000),
         ]
         if usd { item["currency"] = "USD" }
@@ -91,7 +104,13 @@ enum AvisoReader {
         if item["currency"] as? String == "USD" {
             return income ? "Ingreso en dólares por confirmar" : "Gasto en dólares por confirmar"
         }
-        return income ? "Ingreso por confirmar" : "Gasto guardado"
+        let saved = item["confirmed"] as? Bool == true
+        switch (income, saved) {
+        case (true, true): return "Ingreso guardado"
+        case (true, false): return "Ingreso por confirmar"
+        case (false, true): return "Gasto guardado"
+        case (false, false): return "Gasto por confirmar"
+        }
     }
 
     /// «S/ 25.50 · Tambo · Yape».

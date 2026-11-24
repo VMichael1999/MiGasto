@@ -137,7 +137,7 @@ class _AvisosSetupScreenState extends ConsumerState<AvisosSetupScreen> {
                                         ? 'Último aviso registrado: ${DateFormat("d MMM, HH:mm", 'es').format(last.date)}. '
                                         : 'Cuando llegue tu primer aviso, lo verás en Inicio. ',
                                   ),
-                                  const TextSpan(text: 'Los gastos se guardan solos; los ingresos esperan tu confirmación. '),
+                                  const TextSpan(text: 'Cada pago queda «Por confirmar» hasta que lo revises (en Ajustes puedes guardarlos solos). '),
                                   const TextSpan(text: 'Yape: ', style: TextStyle(fontWeight: FontWeight.w600)),
                                   const TextSpan(
                                       text: 'te manda un correo al pagar un servicio, y en sus Ajustes puedes pedir un correo por cada yapeo que envías.'),

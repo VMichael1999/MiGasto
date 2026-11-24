@@ -378,6 +378,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
             onTap: () => context.push('/setup/avisos'),
           ),
           _buildDivider(),
+          _buildRow(
+            icon: Icons.check_circle_outline_rounded,
+            title: 'Guardar gastos solos',
+            subtitle: 'Los gastos que registra Atajos (correo, SMS o constancia) quedan «Por confirmar». Encendido, se guardan sin preguntarte.',
+            trailing: Switch(
+              value: ref.watch(autoSaveExpenseProvider),
+              onChanged: (v) => ref.read(autoSaveExpenseProvider.notifier).set(v),
+            ),
+          ),
+          _buildDivider(),
+          _buildRow(
+            icon: Icons.south_west_rounded,
+            title: 'Guardar ingresos solos',
+            subtitle: 'Apagado, cada ingreso que registra Atajos espera que lo confirmes.',
+            trailing: Switch(
+              value: ref.watch(autoSaveIncomeProvider),
+              onChanged: (v) => ref.read(autoSaveIncomeProvider.notifier).set(v),
+            ),
+          ),
+          _buildDivider(),
         ],
         // Yape, Plin y Google Wallet: solo se detectan en Android (lectura de notificaciones).
         if (_isAndroid) ...[

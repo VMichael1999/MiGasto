@@ -117,7 +117,7 @@
 - **👁️ Ocultar y ver los montos.** El ojo de Resumen oculta el saldo, Ingresos, Gastos, el presupuesto y los montos de Movimientos, Reportes y el detalle (`S/ ••••`). Al volver a mostrarlos, el saldo sube contando desde 0. Se recuerda entre aperturas.
 - **📊 Resumen, Movimientos y Reportes.** Saldo del mes, presupuesto de gastos con estado en texto (empieza sin definir; lo eliges en Ajustes), filtros por tipo, fuente, categoría y monto, e ingresos frente a gastos por mes.
 - **📍 Ubicación opcional.** Se pide solo al tocar «Agregar ubicación» y con la app en uso. Muestra la dirección y un mapa de Google Maps; puedes quitarla de un movimiento o borrar todas.
-- **🍎 iPhone.** Acción de Atajos **«Registrar pago de Wallet»** con un solo campo (la *Entrada de atajo* de la automatización de Wallet): MiGasto interpreta monto, comercio y tarjeta, y si no logra leer el monto guarda el pago como pendiente con el texto original. Acepta una **ubicación opcional** (la acción «Obtener ubicación actual») para ver el pago en el mapa. La guía dentro de la app trae un **tutorial en video** de 42 segundos. Además, extensión para compartir capturas de Yape y Plin, con lectura de texto en el teléfono (Vision). Para lo que pagas con Yape, Plin o tu banco, la acción **«Registrar aviso de pago»** lee el texto que le pasa Atajos con las mismas reglas de Android: desde la automatización **Correo** (por ejemplo, los avisos del BCP), la automatización **Mensaje** (los SMS del banco) o un atajo con «Tomar captura de pantalla» y «Extraer texto de la imagen» asignado a **tocar dos veces atrás** con la constancia en pantalla. Ajustes > «Correos, SMS y constancias» explica cómo crearlas.
+- **🍎 iPhone.** Acción de Atajos **«Registrar pago de Wallet»** con un solo campo (la *Entrada de atajo* de la automatización de Wallet): MiGasto interpreta monto, comercio y tarjeta, y si no logra leer el monto guarda el pago como pendiente con el texto original. Acepta una **ubicación opcional** (la acción «Obtener ubicación actual») para ver el pago en el mapa. La guía dentro de la app trae un **tutorial en video** de 42 segundos. Además, extensión para compartir capturas de Yape y Plin, con lectura de texto en el teléfono (Vision). Para lo que pagas con Yape, Plin o tu banco, la acción **«Registrar aviso de pago»** lee el texto que le pasa Atajos con las mismas reglas de Android: desde la automatización **Correo** (por ejemplo, los avisos del BCP), la automatización **Mensaje** (los SMS del banco) o un atajo con «Tomar captura de pantalla» y «Extraer texto de la imagen» asignado a **tocar dos veces atrás** con la constancia en pantalla. Ajustes > «Correos, SMS y constancias» explica cómo crearlas. Como en Android, cada pago que llega así queda **«Por confirmar»**, salvo que actives en Ajustes «Guardar gastos solos» o «Guardar ingresos solos» (un cargo en dólares espera siempre).
 - **🔐 Datos cifrados.** SQLite con cifrado (SQLite3MultipleCiphers). La clave se genera en el teléfono y vive en el almacén seguro del sistema (Keychain en iPhone, Keystore en Android). Huella, rostro o PIN del teléfono para el bloqueo.
 - **💾 Respaldo cifrado.** Ajustes > Respaldo cifrado crea un archivo `.mgb` con tus movimientos (con ubicaciones y texto original), tu presupuesto, las categorías aprendidas, los nombres guardados y tus categorías propias, cifrado con **AES-256-GCM** y una clave derivada de tu contraseña con PBKDF2-SHA256 (210 000 vueltas). Lo compartes donde quieras (Drive, correo, tu computadora). MiGasto no guarda la contraseña: si la olvidas, el respaldo no se puede abrir. Ajustes > Restaurar un respaldo lo abre y **agrega lo que falta sin borrar nada** (los movimientos que ya están, por id, no se duplican). Una contraseña equivocada o un archivo alterado se detectan.
 - **📤 Exportar a CSV** (sin ubicaciones).
@@ -288,7 +288,7 @@ cd android && ./gradlew :app:testDebugUnitTest
 
 ### 3. Pruebas nativas de iPhone (XCTest)
 
-7 pruebas de «Registrar aviso de pago» (`ios/RunnerTests/AvisoReaderTests.swift`): correo del BCP con consumo de tarjeta, constancia de Yape leída de la pantalla en varias líneas, Plin enviado desde BBVA, ingreso que espera confirmación, textos que no son pagos, avisos con monto que no son un pago hecho y consumos en dólares.
+11 pruebas de «Registrar aviso de pago» (`ios/RunnerTests/AvisoReaderTests.swift`): correo del BCP con consumo de tarjeta que queda por confirmar, constancia de Yape leída de la pantalla en varias líneas, Plin enviado desde BBVA, ingreso que espera confirmación, textos que no son pagos, avisos con monto que no son un pago hecho, consumos en dólares, y los interruptores «Guardar gastos solos» y «Guardar ingresos solos» (qué guardan, que los dólares esperan igual y de dónde se leen).
 
 ```bash
 flutter build ios --simulator --debug
@@ -302,7 +302,7 @@ El resto de lo nativo (lector de reglas, servicio de notificaciones, accesibilid
 ```text
 Flutter:  300 passed, 0 failed
 JUnit:     41 passed, 0 failed
-XCTest:     7 passed, 0 failed
+XCTest:    11 passed, 0 failed
 Análisis: sin problemas
 ```
 

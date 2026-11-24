@@ -72,7 +72,7 @@ class ProvidersEnabledNotifier extends StateNotifier<Map<String, bool>> {
   }
 }
 
-/// "Guardar ingresos automáticamente" (Ajustes). Apagado por defecto: el código
+/// "Guardar ingresos solos" (Ajustes). Apagado por defecto: el código
 /// nativo lee la misma clave (`flutter.migasto_auto_save_income`).
 const keyAutoSaveIncome = 'migasto_auto_save_income';
 
@@ -97,9 +97,10 @@ final exchangeRateServiceProvider = Provider<ExchangeRateService>((ref) {
   return ExchangeRateService(ref.read(sharedPreferencesProvider));
 });
 
-/// "Guardar gastos solos" (Ajustes, Android). Apagado por defecto: un gasto detectado
-/// cuando no se puede mostrar la ventana flotante (pantalla bloqueada o apagada) queda
-/// «Por confirmar». El código nativo lee la misma clave (`flutter.migasto_auto_save_expense`).
+/// "Guardar gastos solos" (Ajustes). Apagado por defecto: un gasto detectado queda «Por
+/// confirmar» cuando en Android no se puede mostrar la ventana flotante (pantalla bloqueada o
+/// apagada) y siempre que llega por Atajos en iPhone («Registrar aviso de pago»). El código
+/// nativo lee la misma clave (`flutter.migasto_auto_save_expense`).
 const keyAutoSaveExpense = 'migasto_auto_save_expense';
 
 final autoSaveExpenseProvider = StateNotifierProvider<AutoSaveExpenseNotifier, bool>((ref) {

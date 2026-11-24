@@ -11,15 +11,19 @@ final class AvisoReaderTests: XCTestCase {
         reader = try XCTUnwrap(AvisoReader.shared, "reader_rules.json debe estar en la app")
     }
 
-    private func item(_ text: String) -> [String: Any]? { AvisoReader.item(from: text, reader: reader, now: now) }
+    /// Como recién instalada: «Guardar gastos solos» y «Guardar ingresos solos» apagados.
+    private func item(_ text: String, autoSave: (expense: Bool, income: Bool) = (false, false)) -> [String: Any]? {
+        AvisoReader.item(from: text, reader: reader, now: now, autoSave: autoSave)
+    }
 
-    func testCorreoDelBcpConsumoConTarjetaSeGuardaComoGasto() throws {
+    func testCorreoDelBcpConsumoConTarjetaQuedaPorConfirmar() throws {
         let i = try XCTUnwrap(item("Realizaste un consumo de S/ 25.78 con tu Tarjeta de Débito BCP en WL *STEAM PURCHASE."))
         XCTAssertEqual(i["amount"] as? Double, 25.78)
         XCTAssertEqual(i["peer"] as? String, "WL *STEAM PURCHASE")
         XCTAssertEqual(i["provider"] as? String, "tarjeta")
         XCTAssertEqual(i["type"] as? String, "gasto")
-        XCTAssertEqual(i["confirmed"] as? Bool, true)
+        XCTAssertEqual(i["confirmed"] as? Bool, false)
+        XCTAssertEqual(AvisoReader.title(for: i), "Gasto por confirmar")
         XCTAssertEqual(i["channel"] as? String, "aviso")
         XCTAssertEqual(i["at"] as? Int, 1_800_000_000_000)
     }
@@ -76,5 +80,35 @@ final class AvisoReaderTests: XCTestCase {
         let recurrente = try XCTUnwrap(item("Se realizó un pago recurrente de $26.19 en HOSTINGER con tu Tarjeta de Débito."))
         XCTAssertEqual(recurrente["currency"] as? String, "USD")
         XCTAssertEqual(recurrente["amount"] as? Double, 26.19)
+    }
+
+    func testConGuardarGastosSolosElGastoQuedaGuardado() throws {
+        let i = try XCTUnwrap(item("Realizaste un consumo de S/ 25.78 con tu Tarjeta de Débito BCP en WL *STEAM PURCHASE.",
+                                   autoSave: (true, false)))
+        XCTAssertEqual(i["confirmed"] as? Bool, true)
+        XCTAssertEqual(AvisoReader.title(for: i), "Gasto guardado")
+        // El interruptor de gastos no toca los ingresos.
+        let ingreso = try XCTUnwrap(item("Yape! ADRIAN MAMANI te envió un pago por S/ 1", autoSave: (true, false)))
+        XCTAssertEqual(ingreso["confirmed"] as? Bool, false)
+    }
+
+    func testConGuardarIngresosSolosElIngresoQuedaGuardado() throws {
+        let i = try XCTUnwrap(item("Yape! ADRIAN MAMANI te envió un pago por S/ 1", autoSave: (false, true)))
+        XCTAssertEqual(i["confirmed"] as? Bool, true)
+        XCTAssertEqual(AvisoReader.title(for: i), "Ingreso guardado")
+    }
+
+    func testUnCargoEnDolaresEsperaAunqueSeGuardenSolos() throws {
+        let i = try XCTUnwrap(item("Realizaste un consumo de US$ 20.00 con tu tarjeta en NETFLIX.COM", autoSave: (true, true)))
+        XCTAssertEqual(i["confirmed"] as? Bool, false)
+    }
+
+    func testLosInterruptoresSeLeenDeLoQueGuardaFlutter() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "migasto-tests-ajustes"))
+        defaults.removePersistentDomain(forName: "migasto-tests-ajustes")
+        XCTAssertTrue(AvisoReader.autoSaveSettings(defaults) == (false, false))
+        defaults.set(true, forKey: "flutter.migasto_auto_save_expense")
+        XCTAssertTrue(AvisoReader.autoSaveSettings(defaults) == (true, false))
+        defaults.removePersistentDomain(forName: "migasto-tests-ajustes")
     }
 }
