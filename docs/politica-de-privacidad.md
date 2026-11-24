@@ -36,7 +36,7 @@ Cuando detecta un pago y no puede mostrar la ventana (por ejemplo, con la pantal
 
 ## iPhone
 
-iOS no permite leer las notificaciones de otras apps. En iPhone, MiGasto recibe los datos de un pago con Apple Pay desde la acción "Registrar movimiento" de Atajos, que tú configuras. Los datos pasan solo entre Atajos y MiGasto, dentro de tu teléfono.
+iOS no permite leer las notificaciones de otras apps. En iPhone, MiGasto recibe los datos de un pago con Apple Pay desde las acciones "Registrar pago de Wallet" o "Registrar movimiento" de Atajos, que tú configuras. El pago queda por confirmar en la app, salvo que actives "Guardar gastos solos". Los datos pasan solo entre Atajos y MiGasto, dentro de tu teléfono.
 
 ## Avisos que Android oculta
 
