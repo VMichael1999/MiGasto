@@ -19,6 +19,12 @@ class PaymentNotificationListener : NotificationListenerService() {
         // Las apps que se escuchan están en assets/reader_rules.json ("apps").
         val apps = ReaderRules.get(applicationContext)?.apps ?: return
         if (sbn.packageName !in apps) return
+        val notification = sbn.notification ?: return
+        // El resumen de un grupo repite el último aviso del grupo: no es otro pago.
+        if (isGroupSummary(notification)) {
+            Log.d(TAG, "ignorada: resumen de grupo")
+            return
+        }
         // Al reiniciar el servicio o reinstalar la app el sistema vuelve a entregar
         // las notificaciones que siguen en la barra: no son pagos nuevos.
         val age = System.currentTimeMillis() - sbn.postTime
@@ -30,10 +36,17 @@ class PaymentNotificationListener : NotificationListenerService() {
             Log.d(TAG, "ignorada: esta notificación ya se leyó")
             return
         }
-        val extras = sbn.notification?.extras ?: return
+        val extras = notification.extras ?: return
         val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
         val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
         val bigText = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString() ?: ""
+        // Si la app vuelve a publicar la misma notificación con el mismo texto (una
+        // actualización), la hora cambia pero el pago es el mismo.
+        val content = "$title|$text|$bigText"
+        if (!HandledStore.markRecent(applicationContext, "c|${sbn.key}|${content.hashCode()}", UPDATE_WINDOW_MS)) {
+            Log.d(TAG, "ignorada: la misma notificación actualizada")
+            return
+        }
         Log.d(TAG, "notificación de ${sbn.packageName}, llegó ${System.currentTimeMillis() - sbn.postTime} ms después de publicarse")
         MyAccessibilityService.handleText(
             applicationContext,
@@ -46,5 +59,9 @@ class PaymentNotificationListener : NotificationListenerService() {
     companion object {
         private const val TAG = "PaymentNotifListener"
         private const val STALE_MS = 3 * 60 * 1000L
+        private const val UPDATE_WINDOW_MS = 60 * 1000L
+
+        fun isGroupSummary(notification: Notification): Boolean =
+            notification.flags and Notification.FLAG_GROUP_SUMMARY != 0
     }
 }

@@ -176,7 +176,9 @@ class MyAccessibilityService : AccessibilityService() {
         when (event.eventType) {
             AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED -> {
                 val parcelableData = event.parcelableData
-                if (parcelableData is android.app.Notification) {
+                if (parcelableData is android.app.Notification &&
+                    !PaymentNotificationListener.isGroupSummary(parcelableData)
+                ) {
                     val extras = parcelableData.extras
                     val title = extras.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString() ?: ""
                     val text = extras.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString() ?: ""
