@@ -3,27 +3,23 @@ package com.example.mi_gasto
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.res.Configuration
-import android.graphics.Canvas
-import android.graphics.ColorFilter
-import android.graphics.Paint
-import android.graphics.Path
+import android.content.res.ColorStateList
 import android.graphics.PixelFormat
-import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.RippleDrawable
 import android.os.Build
-import android.os.Handler
 import android.os.IBinder
-import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.provider.Settings
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.TextUtils
-import android.text.style.StyleSpan
+import android.text.style.ForegroundColorSpan
+import android.text.style.RelativeSizeSpan
+import android.text.style.TypefaceSpan
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.MotionEvent
@@ -38,63 +34,63 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Ventana flotante "Pago detectado".
+ * Ventana flotante "Pago detectado", con el mismo diseño oscuro y violeta que el aviso dentro
+ * de la app (`OverlayTimerWidget`).
  *
- * - Gasto: cuenta regresiva de 4 s dentro del botón "Guardar" (se vacía de color fuerte
- *   a tenue); se pausa al tocar la ventana y, al llegar a 0, se guarda.
- * - Deslizar la ventana hacia arriba hace lo mismo que su primer botón (Descartar / Ignorar).
- * - Ingreso: sin cuenta regresiva. Por defecto no se guarda solo: espera "Guardar
- *   ingreso"; si se ignora, queda en "Por confirmar" dentro de la app. Si en Ajustes
- *   está activado "Guardar ingresos automáticamente", sigue la misma cuenta regresiva
- *   que un gasto.
+ * No se cierra sola ni guarda nada por su cuenta: el usuario decide.
+ * - Gasto: Descartar, Editar o Guardar.
+ * - Ingreso: Ignorar (queda en "Por confirmar") o Guardar ingreso.
+ * - Deslizarla hacia arriba la quita de la pantalla y el pago queda en "Por confirmar".
+ * - Si llega otro pago con la ventana abierta, el anterior también queda en "Por confirmar".
  *
  * No escribe en la base de datos: deja el pago en [NativeQueue] y Flutter lo guarda.
  */
 class OverlayService : Service() {
 
-    private class Palette(night: Boolean) {
-        val bg = if (night) 0xFF0F0E13.toInt() else 0xFFF4F3F6.toInt()
-        val surface = if (night) 0xFF1B1922.toInt() else 0xFFFFFFFF.toInt()
-        val ink = if (night) 0xFFF2F0F5.toInt() else 0xFF16141B.toInt()
-        val muted = if (night) 0xFFA5A1B0.toInt() else 0xFF5B5866.toInt()
-        val line = if (night) 0xFF2A2733.toInt() else 0xFFE1DFE6.toInt()
-        val brand = 0xFF8CE885.toInt()
-        val onBrand = 0xFF0F0E13.toInt()
-        val brandInk = if (night) 0xFF8CE885.toInt() else 0xFF1E7A36.toInt()
-        val income = if (night) 0xFF7FB6FF.toInt() else 0xFF2458C6.toInt()
-        val incomeSoft = if (night) 0xFF18233A.toInt() else 0xFFE3EBFA.toInt()
-        // Botón "Guardar": color fuerte que se vacía hasta el tenue durante la cuenta regresiva.
-        val saveStrong = if (night) 0xFF8CE885.toInt() else 0xFF8CE885.toInt()
-        val saveSoft = if (night) 0xFF4F8A4C.toInt() else 0xFFD7F3D4.toInt()
-        val incomeStrong = if (night) 0xFF7FB6FF.toInt() else 0xFF86B4F5.toInt()
-        val incomeFaint = if (night) 0xFF4A7DB8.toInt() else 0xFFD5E4FB.toInt()
-        val onSave = 0xFF0F0E13.toInt()
-        private val yape = if (night) 0xFF9B4FD6.toInt() else 0xFF742284.toInt()
-        private val plin = if (night) 0xFF10BFAF.toInt() else 0xFF00857A.toInt()
-        private val gpay = if (night) 0xFF5B9BF8.toInt() else 0xFF1A73E8.toInt()
-        private val card = if (night) 0xFFFF8A3D.toInt() else 0xFFD9661A.toInt()
-        private val other = if (night) 0xFF8A8794.toInt() else 0xFF6B6876.toInt()
+    /** Colores de `MgColors` (lib/core/theme/mg_colors.dart). La app es oscura siempre. */
+    private object Mg {
+        const val CARD = 0xFF15151B.toInt() // opaca: sobre otras apps el texto de atrás estorba
+        const val SOFT = 0xFF1F1F27.toInt()
+        const val LINE = 0xFF26262F.toInt()
+        const val BORDER = 0x14FFFFFF // blanco al 8 %
+        const val INK = 0xFFF4F3F7.toInt()
+        const val INK2 = 0xFF8B8898.toInt()
+        const val INK3 = 0xFF585666.toInt()
+        const val ACC = 0xFF7C5CFF.toInt()
+        const val ACC2 = 0xFF9B82FF.toInt()
+        const val ACC_SOFT = 0xFF1E1935.toInt()
+        const val ACC_LINE = 0xFF3A2F6B.toInt()
+        const val UP = 0xFF2FD98A.toInt()
+        const val WHITE = 0xFFFFFFFF.toInt()
+        const val BLACK = 0xFF000000.toInt()
 
         fun source(provider: String) = when (provider) {
-            "yape" -> yape
-            "plin" -> plin
-            "googlePay" -> gpay
-            "tarjeta" -> card
-            else -> other
+            "yape" -> 0xFF7C5CFF.toInt()
+            "plin" -> 0xFF00D1FF.toInt()
+            "googlePay" -> 0xFF4285F4.toInt()
+            "tarjeta" -> 0xFFFF8A3D.toInt()
+            else -> ACC2
         }
+
+        fun category(id: String) = when (id) {
+            "alimentacion" -> 0xFFFF5C8A.toInt()
+            "transporte" -> 0xFF22D3EE.toInt()
+            "compras" -> 0xFFF5A524.toInt()
+            "servicios" -> 0xFF7C5CFF.toInt()
+            "entretenimiento" -> 0xFFFF8A3D.toInt()
+            "sueldo" -> 0xFF2FD98A.toInt()
+            "transferenciaRecibida" -> 0xFF34D399.toInt()
+            "venta" -> 0xFF60A5FA.toInt()
+            else -> 0xFF94A3B8.toInt()
+        }
+
+        /** [color] con la opacidad [alpha] (0–1). */
+        fun alpha(color: Int, alpha: Float) = (color and 0x00FFFFFF) or ((alpha * 255).toInt() shl 24)
     }
 
-    private lateinit var palette: Palette
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
-    private val handler = Handler(Looper.getMainLooper())
-    private var tick: Runnable? = null
-    private var dismissIncome: Runnable? = null
-    private var paused = false
     private var closing = false
-    private var remainingMs = COUNTDOWN_MS
-    private var fill: FillDrawable? = null
-    private var timeLabel: TextView? = null
 
     private var amount = 0.0
     private var merchant = ""
@@ -104,9 +100,6 @@ class OverlayService : Service() {
     private var rawText = ""
 
     private val isIncome get() = type == "ingreso"
-
-    /** Hay cuenta regresiva y se guarda solo: siempre en gastos; en ingresos solo si el usuario lo activó. */
-    private val autoSave by lazy { !isIncome || NativeQueue.autoSaveIncome(this) }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -131,40 +124,53 @@ class OverlayService : Service() {
             return START_NOT_STICKY
         }
 
-        val night = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-            Configuration.UI_MODE_NIGHT_YES
-        palette = Palette(night)
         showOverlay()
         return START_NOT_STICKY
     }
 
     // ------------------------------------------------------------------ UI
 
-    private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
+    private fun dp(value: Float) = (value * resources.displayMetrics.density).toInt()
+    private fun dp(value: Int) = dp(value.toFloat())
 
-    private fun rounded(color: Int, radiusDp: Int, strokeColor: Int? = null, strokeDp: Float = 0f) =
+    private fun rounded(color: Int, radiusDp: Float, strokeColor: Int? = null) =
         GradientDrawable().apply {
             setColor(color)
             cornerRadius = dp(radiusDp).toFloat()
-            if (strokeColor != null) setStroke((strokeDp * resources.displayMetrics.density).toInt(), strokeColor)
+            if (strokeColor != null) setStroke(dp(1).coerceAtLeast(1), strokeColor)
         }
 
-    private fun label(
-        text: CharSequence,
-        sp: Float,
-        color: Int,
-        bold: Boolean = false,
-    ) = TextView(this).apply {
-        this.text = text
-        setTextSize(TypedValue.COMPLEX_UNIT_SP, sp)
-        setTextColor(color)
-        if (bold) setTypeface(null, Typeface.BOLD)
-        includeFontPadding = false
+    /** Fondo con onda al tocar, como los botones de la app. */
+    private fun pressable(fill: Drawable, rippleColor: Int = 0x33FFFFFF) =
+        RippleDrawable(ColorStateList.valueOf(rippleColor), fill, null)
+
+    /** Peso de letra como en la app (600 seminegrita, 700 negrita, 800 extra). */
+    private fun font(weight: Int): Typeface = when {
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.P -> Typeface.create(Typeface.DEFAULT, weight, false)
+        weight >= 700 -> Typeface.DEFAULT_BOLD
+        weight >= 500 -> Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        else -> Typeface.DEFAULT
     }
 
-    private fun withBold(prefix: String, bold: String): CharSequence =
-        SpannableStringBuilder(prefix + bold).apply {
-            setSpan(StyleSpan(Typeface.BOLD), prefix.length, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    private fun label(text: CharSequence, sp: Float, color: Int, weight: Int = 400) =
+        TextView(this).apply {
+            this.text = text
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, sp)
+            setTextColor(color)
+            typeface = font(weight)
+            includeFontPadding = false
+        }
+
+    /** «prefijo **resaltado** resto»: el resaltado va en [color] y negrita. */
+    private fun highlighted(prefix: String, bold: String, color: Int, suffix: String = ""): CharSequence =
+        SpannableStringBuilder(prefix + bold + suffix).apply {
+            val end = prefix.length + bold.length
+            setSpan(ForegroundColorSpan(color), prefix.length, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                setSpan(TypefaceSpan(font(700)), prefix.length, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            } else {
+                setSpan(android.text.style.StyleSpan(Typeface.BOLD), prefix.length, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
         }
 
     private fun sourceName() = when (provider) {
@@ -175,49 +181,25 @@ class OverlayService : Service() {
         else -> "Manual"
     }
 
-    /** Fondo del botón "Guardar": [strong] llena hasta [progress] y [soft] el resto. */
-    private class FillDrawable(
-        private val strong: Int,
-        private val soft: Int,
-        private val radius: Float,
-    ) : Drawable() {
-        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        private val clip = Path()
-        var progress = 1f
-            set(value) {
-                field = value.coerceIn(0f, 1f)
-                invalidateSelf()
-            }
-
-        override fun draw(canvas: Canvas) {
-            val r = RectF(bounds)
-            clip.reset()
-            clip.addRoundRect(r, radius, radius, Path.Direction.CW)
-            canvas.save()
-            canvas.clipPath(clip)
-            paint.color = soft
-            canvas.drawRect(r, paint)
-            paint.color = strong
-            canvas.drawRect(r.left, r.top, r.left + r.width() * progress, r.bottom, paint)
-            canvas.restore()
+    /** Monto como `MoneyText`: signo y «S/» al 68 %, cifras tabulares. */
+    private fun amountText(color: Int): CharSequence {
+        val sign = if (isIncome) "+ " else "− "
+        val number = String.format(Locale.US, "%,.2f", amount)
+        return SpannableStringBuilder().apply {
+            append(sign, RelativeSizeSpan(0.68f), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            append("S/ ", RelativeSizeSpan(0.68f), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            setSpan(ForegroundColorSpan(Mg.alpha(color, 0.85f)), sign.length, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            append(number)
         }
-
-        override fun setAlpha(alpha: Int) {}
-        override fun setColorFilter(colorFilter: ColorFilter?) {}
-        @Suppress("OVERRIDE_DEPRECATION")
-        override fun getOpacity() = android.graphics.PixelFormat.TRANSLUCENT
     }
 
-    /** Tarjeta que se descarta deslizándola hacia arriba y pausa la cuenta al tocarla. */
+    /** Tarjeta que se quita deslizándola hacia arriba (el pago queda por confirmar). */
     private inner class SwipeCard(context: Context) : LinearLayout(context) {
         private val slop = ViewConfiguration.get(context).scaledTouchSlop
         private var downY = 0f
 
         override fun dispatchTouchEvent(e: MotionEvent): Boolean {
-            if (e.actionMasked == MotionEvent.ACTION_DOWN) {
-                downY = e.rawY
-                pauseCountdown()
-            }
+            if (e.actionMasked == MotionEvent.ACTION_DOWN) downY = e.rawY
             return super.dispatchTouchEvent(e)
         }
 
@@ -228,168 +210,185 @@ class OverlayService : Service() {
             when (e.actionMasked) {
                 MotionEvent.ACTION_MOVE -> translationY = minOf(0f, e.rawY - downY)
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
-                    if (translationY < -dp(56)) onSwiped()
+                    if (translationY < -dp(56)) finishWith(confirmed = false)
                     else animate().translationY(0f).setDuration(150).start()
             }
             return true
         }
     }
 
-    private fun pauseCountdown() {
-        if (!autoSave || paused || closing) return
-        paused = true
-        timeLabel?.text = "En pausa"
-    }
-
-    private fun button(text: String, weight: Float, textColor: Int, onClick: () -> Unit) =
+    private fun button(text: String, weight: Float, fill: Int, textColor: Int, onClick: () -> Unit) =
         TextView(this).apply {
             this.text = text
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
             setTextColor(textColor)
-            setTypeface(null, Typeface.BOLD)
+            typeface = font(600)
             gravity = Gravity.CENTER
+            maxLines = 1
             isClickable = true
             isFocusable = true
             contentDescription = text
-            layoutParams = LinearLayout.LayoutParams(0, dp(52), weight).apply { marginStart = dp(3); marginEnd = dp(3) }
-            setOnClickListener { onClick() }
-        }
-
-    /** Botón principal: con cuenta regresiva se vacía de color fuerte a tenue. */
-    private fun primaryButton(text: String, strong: Int, soft: Int, countdown: Boolean, onClick: () -> Unit): View =
-        button(text, 1.7f, palette.onSave, onClick).apply {
-            if (countdown) {
-                val drawable = FillDrawable(strong, soft, dp(16).toFloat())
-                fill = drawable
-                background = drawable
-                contentDescription = "$text. Se guarda solo en unos segundos"
-            } else {
-                background = rounded(strong, 16)
+            background = pressable(rounded(fill, 13f), if (fill == Mg.SOFT) 0x22FFFFFF else 0x33000000)
+            layoutParams = LinearLayout.LayoutParams(0, dp(44), weight).apply {
+                marginStart = dp(3.5f)
+                marginEnd = dp(3.5f)
+            }
+            setOnClickListener {
+                performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+                onClick()
             }
         }
 
-    private fun quietButton(text: String, onClick: () -> Unit): View =
-        button(text, 1f, palette.muted, onClick).apply {
-            background = rounded(0x00000000, 16)
-        }
-
-    private fun chip(text: CharSequence, textColor: Int, fill: Int, onClick: (() -> Unit)? = null) =
-        TextView(this).apply {
-            this.text = text
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
-            setTextColor(textColor)
-            setTypeface(null, Typeface.BOLD)
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(10), dp(5), dp(10), dp(5))
-            background = rounded(fill, 20)
-            includeFontPadding = false
-            if (onClick != null) {
-                isClickable = true
-                minimumHeight = dp(32)
-                setOnClickListener { onClick() }
-            }
-        }
+    private fun row(gravity: Int = Gravity.CENTER_VERTICAL) = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        this.gravity = gravity
+    }
 
     private fun spacer(heightDp: Int) = View(this).apply {
         layoutParams = LinearLayout.LayoutParams(1, dp(heightDp))
     }
 
+    private fun flexible() = View(this).apply { layoutParams = LinearLayout.LayoutParams(0, 1, 1f) }
+
+    /** Fila «Categoría: X · Cambiar ›», igual que en la app. Abre la app para revisarlo. */
+    private fun categoryRow(): View {
+        val color = Mg.category(category)
+        val name = ReaderRules.categoryLabel(category)
+        return row().apply {
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            background = pressable(rounded(Mg.SOFT, 14f, Mg.LINE))
+            isClickable = true
+            contentDescription = "${if (isIncome) "Tipo" else "Categoría"}: $name. Cambiar"
+            setOnClickListener { openEdit() }
+
+            addView(FrameLayout(context).apply {
+                background = rounded(Mg.alpha(color, 0.16f), 9f)
+                addView(
+                    View(context).apply { background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(color) } },
+                    FrameLayout.LayoutParams(dp(10), dp(10), Gravity.CENTER),
+                )
+            }, LinearLayout.LayoutParams(dp(28), dp(28)))
+            addView(
+                label(highlighted(if (isIncome) "Tipo: " else "Categoría: ", name, Mg.INK), 13f, Mg.INK2).apply {
+                    maxLines = 1
+                    ellipsize = TextUtils.TruncateAt.END
+                },
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(10) },
+            )
+            addView(label("Cambiar ›", 12.5f, Mg.ACC2, 600))
+        }
+    }
+
+    /** Aviso verde de los ingresos: no se guardan hasta que el usuario lo confirme. */
+    private fun incomeNote() = label(
+        highlighted("Es dinero que ", "recibiste", Mg.UP, ". No se guardará hasta que lo confirmes."),
+        12.5f,
+        Mg.INK,
+    ).apply {
+        setLineSpacing(0f, 1.3f)
+        setPadding(dp(12), dp(10), dp(12), dp(10))
+        background = rounded(Mg.alpha(Mg.UP, 0.10f), 13f, Mg.alpha(Mg.UP, 0.20f))
+    }
+
+    /** Etiqueta pequeña del encabezado: «Gasto» en violeta o «Ingreso» en verde. */
+    private fun kindChip() = label(if (isIncome) "Ingreso" else "Gasto", 11f, if (isIncome) Mg.UP else Mg.ACC2, 700).apply {
+        setPadding(dp(8), dp(3.5f), dp(8), dp(3.5f))
+        background = if (isIncome) {
+            rounded(Mg.alpha(Mg.UP, 0.10f), 8f, Mg.alpha(Mg.UP, 0.25f))
+        } else {
+            rounded(Mg.ACC_SOFT, 8f, Mg.ACC_LINE)
+        }
+    }
+
     private fun showOverlay() {
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         closing = false
-        fill = null
 
         val card = SwipeCard(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = rounded(palette.surface, 28)
+            background = rounded(Mg.CARD, 22f, Mg.BORDER)
             elevation = dp(16).toFloat()
             clipToOutline = true
-            setPadding(dp(18), dp(16), dp(18), dp(14))
+            setPadding(dp(18), dp(14), dp(18), dp(14))
+            contentDescription = if (isIncome) "Ingreso detectado" else "Gasto detectado"
         }
 
-        // Fuente (etiqueta de su color) y hora / estado
-        val sourceColor = palette.source(provider)
-        val top = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        top.addView(
-            chip(sourceName(), sourceColor, (sourceColor and 0x00FFFFFF) or 0x24000000),
-        )
-        top.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(0, 1, 1f) })
+        // Encabezado: punto del color de la fuente, «Yape · 14:05» y el tipo.
+        val sourceColor = Mg.source(provider)
         val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-        timeLabel = label(time, 12.5f, palette.muted, bold = true)
-        top.addView(timeLabel)
-        card.addView(top)
-        card.addView(spacer(14))
+        card.addView(row().apply {
+            addView(View(context).apply {
+                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(sourceColor) }
+            }, LinearLayout.LayoutParams(dp(8), dp(8)))
+            addView(
+                label("${sourceName()} · $time", 12.5f, Mg.INK2, 600),
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(8) },
+            )
+            addView(kindChip())
+        })
+        card.addView(spacer(12))
 
-        // Monto
-        val amountColor = if (isIncome) palette.income else palette.ink
-        val amountRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.BOTTOM
-        }
-        amountRow.addView(
-            label(if (isIncome) "+ S/ " else "S/ ", 20f, amountColor, bold = true).apply {
-                setPadding(0, 0, 0, dp(5))
-            },
-        )
-        amountRow.addView(
-            label(String.format(Locale.US, "%,.2f", amount), 42f, amountColor, bold = true).apply {
-                contentDescription = String.format(Locale.US, "%,.2f soles", amount)
-            },
-        )
-        card.addView(amountRow)
+        // Monto grande
+        val amountColor = if (isIncome) Mg.UP else Mg.INK
+        card.addView(label(amountText(amountColor), 34f, amountColor, 800).apply {
+            letterSpacing = -0.03f
+            fontFeatureSettings = "tnum"
+            contentDescription = String.format(Locale.US, "%s%,.2f soles", if (isIncome) "más " else "", amount)
+        })
         card.addView(spacer(6))
 
-        // Comercio (una sola línea) y categoría
+        // Destinatario / comercio (una sola línea)
         card.addView(
-            label(withBold(if (isIncome) "de " else "a ", NativeQueue.displayName(this, merchant)), 16f, palette.ink).apply {
+            label(
+                highlighted(if (isIncome) "de " else "a ", NativeQueue.displayName(this, merchant), Mg.INK),
+                14.5f,
+                Mg.INK2,
+            ).apply {
                 maxLines = 1
                 ellipsize = TextUtils.TruncateAt.END
             },
         )
-        card.addView(spacer(12))
-        val chipRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        val categoryName = ReaderRules.categoryLabel(category)
-        chipRow.addView(
-            chip("$categoryName  ›", palette.ink, palette.bg) { openEdit() }.apply {
-                contentDescription = "${if (isIncome) "Tipo" else "Categoría"}: $categoryName. Cambiar"
-            },
-        )
-        card.addView(chipRow)
-        card.addView(spacer(16))
+        card.addView(spacer(14))
 
-        // Acciones
-        val actions = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-                .apply { marginStart = -dp(3); marginEnd = -dp(3) }
-        }
+        card.addView(categoryRow())
+        card.addView(spacer(12))
+
         if (isIncome) {
-            actions.addView(quietButton("Ignorar") { finishWith(confirmed = false) })
-            actions.addView(
-                primaryButton("Guardar ingreso", palette.incomeStrong, palette.incomeFaint, autoSave) {
-                    finishWith(confirmed = true)
-                },
-            )
-        } else {
-            actions.addView(quietButton("Descartar") { discard() })
-            actions.addView(quietButton("Editar") { openEdit() })
-            actions.addView(
-                primaryButton("Guardar", palette.saveStrong, palette.saveSoft, true) {
-                    finishWith(confirmed = true)
-                },
-            )
+            card.addView(incomeNote())
+            card.addView(spacer(12))
         }
-        card.addView(actions)
+
+        // Acciones: el usuario decide; nada se guarda solo.
+        card.addView(row().apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { marginStart = -dp(3.5f); marginEnd = -dp(3.5f) }
+            if (isIncome) {
+                addView(button("Ignorar", 10f, Mg.SOFT, Mg.INK) { finishWith(confirmed = false) })
+                addView(button("Guardar ingreso", 14f, Mg.UP, Mg.BLACK) { finishWith(confirmed = true) })
+            } else {
+                addView(button("Descartar", 10f, Mg.SOFT, Mg.INK) { discard() })
+                addView(button("Editar", 10f, Mg.SOFT, Mg.INK) { openEdit() })
+                addView(button("Guardar", 14f, Mg.ACC, Mg.WHITE) { finishWith(confirmed = true) })
+            }
+        })
+        card.addView(spacer(10))
+
+        // Pie: qué hace el gesto y la marca, como en la app.
+        card.addView(row().apply {
+            addView(
+                label("Desliza arriba para verlo luego", 11f, Mg.INK3).apply {
+                    maxLines = 1
+                    ellipsize = TextUtils.TruncateAt.END
+                },
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
+            )
+            addView(label("MiGasto · Detección", 11f, Mg.INK3, 500).apply { setPadding(dp(8), 0, 0, 0) })
+        })
 
         val root = FrameLayout(this).apply {
-            setPadding(dp(12), 0, dp(12), dp(12))
+            setPadding(dp(14), 0, dp(14), dp(16))
             clipChildren = false
             clipToPadding = false
             addView(card, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT))
@@ -409,7 +408,7 @@ class OverlayService : Service() {
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            y = statusBarHeight() + dp(6)
+            y = statusBarHeight() + dp(8)
         }
 
         try {
@@ -428,32 +427,8 @@ class OverlayService : Service() {
         if (animationsOn()) {
             card.translationY = -dp(140).toFloat()
             card.alpha = 0f
-            card.animate().translationY(0f).alpha(1f).setDuration(260)
-                .setInterpolator(android.view.animation.DecelerateInterpolator(1.6f)).start()
-        }
-
-        if (!autoSave) {
-            // Un ingreso sin respuesta queda pendiente después de un rato.
-            dismissIncome = Runnable { finishWith(confirmed = false) }
-            handler.postDelayed(dismissIncome!!, INCOME_TIMEOUT_MS)
-        } else {
-            paused = false
-            remainingMs = COUNTDOWN_MS
-            tick = object : Runnable {
-                override fun run() {
-                    if (!paused) {
-                        remainingMs -= TICK_MS
-                        if (remainingMs <= 0) {
-                            fill?.progress = 0f
-                            finishWith(confirmed = true)
-                            return
-                        }
-                        fill?.progress = remainingMs.toFloat() / COUNTDOWN_MS
-                    }
-                    handler.postDelayed(this, TICK_MS)
-                }
-            }
-            handler.postDelayed(tick!!, TICK_MS)
+            card.animate().translationY(0f).alpha(1f).setDuration(320)
+                .setInterpolator(android.view.animation.OvershootInterpolator(1.1f)).start()
         }
     }
 
@@ -474,11 +449,6 @@ class OverlayService : Service() {
         } catch (e: Exception) {
             // Sin vibración: no es esencial.
         }
-    }
-
-    /** Deslizar hacia arriba: igual que el primer botón (Descartar en gastos, Ignorar en ingresos). */
-    private fun onSwiped() {
-        if (isIncome) finishWith(confirmed = false) else discard()
     }
 
     private fun statusBarHeight(): Int {
@@ -503,8 +473,8 @@ class OverlayService : Service() {
     private fun discard() = close()
 
     /**
-     * "Editar" / "Cambiar": el pago queda pendiente (nada se guarda solo) y se abre
-     * la app para revisarlo en Movimientos > Por confirmar.
+     * "Editar" / "Cambiar": el pago queda pendiente y se abre la app para revisarlo en
+     * Movimientos > Por confirmar.
      */
     private fun openEdit() {
         enqueue(confirmed = false)
@@ -518,8 +488,6 @@ class OverlayService : Service() {
     private fun close() {
         if (closing) return
         closing = true
-        tick?.let { handler.removeCallbacks(it) }
-        dismissIncome?.let { handler.removeCallbacks(it) }
         val view = overlayView
         val card = (view as? FrameLayout)?.getChildAt(0)
         if (card != null && animationsOn()) {
@@ -538,10 +506,6 @@ class OverlayService : Service() {
     }
 
     private fun removeOverlay() {
-        tick?.let { handler.removeCallbacks(it) }
-        dismissIncome?.let { handler.removeCallbacks(it) }
-        tick = null
-        dismissIncome = null
         overlayView?.let {
             try {
                 windowManager?.removeView(it)
@@ -555,11 +519,5 @@ class OverlayService : Service() {
     override fun onDestroy() {
         removeOverlay()
         super.onDestroy()
-    }
-
-    companion object {
-        private const val COUNTDOWN_MS = 4000L
-        private const val TICK_MS = 100L
-        private const val INCOME_TIMEOUT_MS = 60_000L
     }
 }
