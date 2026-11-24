@@ -232,6 +232,10 @@ class BackupService {
         'precision': m.precision,
         'lugar': m.lugar,
         'textoOriginal': m.textoOriginal,
+        'entreMisCuentas': m.entreMisCuentas,
+        'moneda': m.moneda,
+        'montoOriginal': m.montoOriginal,
+        'tipoCambio': m.tipoCambio,
       };
 
   static T _byName<T extends Enum>(List<T> values, Object? name, T fallback) {
@@ -259,5 +263,9 @@ class BackupService {
         precision: (j['precision'] as num?)?.toDouble(),
         lugar: j['lugar'] as String?,
         textoOriginal: (j['textoOriginal'] as String?) ?? '',
+        entreMisCuentas: j['entreMisCuentas'] == true,
+        moneda: j['moneda'] as String?,
+        montoOriginal: (j['montoOriginal'] as num?)?.toDouble(),
+        tipoCambio: (j['tipoCambio'] as num?)?.toDouble(),
       );
 }

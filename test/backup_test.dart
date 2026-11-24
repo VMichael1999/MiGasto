@@ -42,6 +42,10 @@ void main() {
             date: DateTime.utc(2026, 10, 1, 10),
             tipo: TipoMovimiento.ingreso,
             canal: CanalMovimiento.notificacion,
+            entreMisCuentas: true,
+            moneda: 'USD',
+            montoOriginal: 0.8,
+            tipoCambio: 3.75,
           ),
         ],
       );
@@ -74,6 +78,12 @@ void main() {
     expect(b.merchant, 'ÑAÑO PÉREZ ñ ü 日本');
     expect(b.tipo, TipoMovimiento.ingreso);
     expect(b.latitud, isNull);
+    expect(b.entreMisCuentas, isTrue);
+    expect(b.moneda, 'USD');
+    expect(b.montoOriginal, 0.8);
+    expect(b.tipoCambio, 3.75);
+    expect(a.entreMisCuentas, isFalse);
+    expect(a.moneda, isNull);
   });
 
   test('el archivo no deja ver nada en claro', () async {

@@ -85,6 +85,21 @@ class Movimiento {
   /// [category] sigue siendo la de siempre (Otros / Otros ingresos) para los totales.
   final String? categoriaPropia;
 
+  /// Transferencia entre cuentas del propio usuario (del BCP a su Yape, por ejemplo): no es
+  /// un gasto ni un ingreso de verdad, así que no suma a los totales. [tipo] sigue diciendo
+  /// si el dinero salió o entró de esa cuenta.
+  final bool entreMisCuentas;
+
+  /// Moneda del cargo cuando no fue en soles (`USD`). `null` es soles.
+  final String? moneda;
+
+  /// Monto en [moneda] tal como lo avisó el banco. [amount] es su equivalente en soles.
+  final double? montoOriginal;
+
+  /// Soles por unidad de [moneda] usados para calcular [amount]. `null` si aún no se
+  /// conoce (sin internet y sin un valor guardado): [amount] queda en 0 hasta tenerlo.
+  final double? tipoCambio;
+
   Movimiento({
     required this.id,
     required this.amount,
@@ -103,12 +118,28 @@ class Movimiento {
     this.lugar,
     this.textoOriginal = '',
     this.categoriaPropia,
+    this.entreMisCuentas = false,
+    this.moneda,
+    this.montoOriginal,
+    this.tipoCambio,
   });
 
   bool get isConfirmed => estado == EstadoMovimiento.confirmado;
   bool get esIngreso => tipo == TipoMovimiento.ingreso;
   bool get esGasto => tipo == TipoMovimiento.gasto;
   bool get tieneUbicacion => latitud != null && longitud != null;
+
+  /// Si suma a los totales de gastos e ingresos (no, si es entre cuentas propias).
+  bool get cuentaEnTotales => !entreMisCuentas;
+
+  /// Gasto que suma a los totales.
+  bool get esGastoReal => esGasto && cuentaEnTotales;
+
+  /// Ingreso que suma a los totales.
+  bool get esIngresoReal => esIngreso && cuentaEnTotales;
+
+  /// Cargo en otra moneda (dólares).
+  bool get esEnOtraMoneda => moneda != null && montoOriginal != null;
 
   Movimiento copyWith({
     String? id,
@@ -129,6 +160,10 @@ class Movimiento {
     String? textoOriginal,
     bool quitarUbicacion = false,
     String? categoriaPropia,
+    bool? entreMisCuentas,
+    String? moneda,
+    double? montoOriginal,
+    double? tipoCambio,
   }) {
     return Movimiento(
       id: id ?? this.id,
@@ -149,6 +184,10 @@ class Movimiento {
       textoOriginal: textoOriginal ?? this.textoOriginal,
       // Elegir una categoría de siempre quita la propia; elegir una propia la pone.
       categoriaPropia: categoriaPropia ?? (category != null ? null : this.categoriaPropia),
+      entreMisCuentas: entreMisCuentas ?? this.entreMisCuentas,
+      moneda: moneda ?? this.moneda,
+      montoOriginal: montoOriginal ?? this.montoOriginal,
+      tipoCambio: tipoCambio ?? this.tipoCambio,
     );
   }
 

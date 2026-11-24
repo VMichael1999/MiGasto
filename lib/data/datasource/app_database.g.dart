@@ -180,6 +180,52 @@ class $MovimientosTable extends Movimientos
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
   );
+  static const VerificationMeta _entreMisCuentasMeta = const VerificationMeta(
+    'entreMisCuentas',
+  );
+  @override
+  late final GeneratedColumn<bool> entreMisCuentas = GeneratedColumn<bool>(
+    'entre_mis_cuentas',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("entre_mis_cuentas" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _monedaMeta = const VerificationMeta('moneda');
+  @override
+  late final GeneratedColumn<String> moneda = GeneratedColumn<String>(
+    'moneda',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _montoOriginalMeta = const VerificationMeta(
+    'montoOriginal',
+  );
+  @override
+  late final GeneratedColumn<double> montoOriginal = GeneratedColumn<double>(
+    'monto_original',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _tipoCambioMeta = const VerificationMeta(
+    'tipoCambio',
+  );
+  @override
+  late final GeneratedColumn<double> tipoCambio = GeneratedColumn<double>(
+    'tipo_cambio',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     uuid,
@@ -198,6 +244,10 @@ class $MovimientosTable extends Movimientos
     precision,
     lugar,
     textoOriginal,
+    entreMisCuentas,
+    moneda,
+    montoOriginal,
+    tipoCambio,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -325,6 +375,36 @@ class $MovimientosTable extends Movimientos
         ),
       );
     }
+    if (data.containsKey('entre_mis_cuentas')) {
+      context.handle(
+        _entreMisCuentasMeta,
+        entreMisCuentas.isAcceptableOrUnknown(
+          data['entre_mis_cuentas']!,
+          _entreMisCuentasMeta,
+        ),
+      );
+    }
+    if (data.containsKey('moneda')) {
+      context.handle(
+        _monedaMeta,
+        moneda.isAcceptableOrUnknown(data['moneda']!, _monedaMeta),
+      );
+    }
+    if (data.containsKey('monto_original')) {
+      context.handle(
+        _montoOriginalMeta,
+        montoOriginal.isAcceptableOrUnknown(
+          data['monto_original']!,
+          _montoOriginalMeta,
+        ),
+      );
+    }
+    if (data.containsKey('tipo_cambio')) {
+      context.handle(
+        _tipoCambioMeta,
+        tipoCambio.isAcceptableOrUnknown(data['tipo_cambio']!, _tipoCambioMeta),
+      );
+    }
     return context;
   }
 
@@ -398,6 +478,22 @@ class $MovimientosTable extends Movimientos
         DriftSqlType.string,
         data['${effectivePrefix}texto_original'],
       )!,
+      entreMisCuentas: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}entre_mis_cuentas'],
+      )!,
+      moneda: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}moneda'],
+      ),
+      montoOriginal: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}monto_original'],
+      ),
+      tipoCambio: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}tipo_cambio'],
+      ),
     );
   }
 
@@ -424,6 +520,10 @@ class MovimientoRow extends DataClass implements Insertable<MovimientoRow> {
   final double? precision;
   final String? lugar;
   final String textoOriginal;
+  final bool entreMisCuentas;
+  final String? moneda;
+  final double? montoOriginal;
+  final double? tipoCambio;
   const MovimientoRow({
     required this.uuid,
     required this.amount,
@@ -441,6 +541,10 @@ class MovimientoRow extends DataClass implements Insertable<MovimientoRow> {
     this.precision,
     this.lugar,
     required this.textoOriginal,
+    required this.entreMisCuentas,
+    this.moneda,
+    this.montoOriginal,
+    this.tipoCambio,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -471,6 +575,16 @@ class MovimientoRow extends DataClass implements Insertable<MovimientoRow> {
       map['lugar'] = Variable<String>(lugar);
     }
     map['texto_original'] = Variable<String>(textoOriginal);
+    map['entre_mis_cuentas'] = Variable<bool>(entreMisCuentas);
+    if (!nullToAbsent || moneda != null) {
+      map['moneda'] = Variable<String>(moneda);
+    }
+    if (!nullToAbsent || montoOriginal != null) {
+      map['monto_original'] = Variable<double>(montoOriginal);
+    }
+    if (!nullToAbsent || tipoCambio != null) {
+      map['tipo_cambio'] = Variable<double>(tipoCambio);
+    }
     return map;
   }
 
@@ -502,6 +616,16 @@ class MovimientoRow extends DataClass implements Insertable<MovimientoRow> {
           ? const Value.absent()
           : Value(lugar),
       textoOriginal: Value(textoOriginal),
+      entreMisCuentas: Value(entreMisCuentas),
+      moneda: moneda == null && nullToAbsent
+          ? const Value.absent()
+          : Value(moneda),
+      montoOriginal: montoOriginal == null && nullToAbsent
+          ? const Value.absent()
+          : Value(montoOriginal),
+      tipoCambio: tipoCambio == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tipoCambio),
     );
   }
 
@@ -527,6 +651,10 @@ class MovimientoRow extends DataClass implements Insertable<MovimientoRow> {
       precision: serializer.fromJson<double?>(json['precision']),
       lugar: serializer.fromJson<String?>(json['lugar']),
       textoOriginal: serializer.fromJson<String>(json['textoOriginal']),
+      entreMisCuentas: serializer.fromJson<bool>(json['entreMisCuentas']),
+      moneda: serializer.fromJson<String?>(json['moneda']),
+      montoOriginal: serializer.fromJson<double?>(json['montoOriginal']),
+      tipoCambio: serializer.fromJson<double?>(json['tipoCambio']),
     );
   }
   @override
@@ -549,6 +677,10 @@ class MovimientoRow extends DataClass implements Insertable<MovimientoRow> {
       'precision': serializer.toJson<double?>(precision),
       'lugar': serializer.toJson<String?>(lugar),
       'textoOriginal': serializer.toJson<String>(textoOriginal),
+      'entreMisCuentas': serializer.toJson<bool>(entreMisCuentas),
+      'moneda': serializer.toJson<String?>(moneda),
+      'montoOriginal': serializer.toJson<double?>(montoOriginal),
+      'tipoCambio': serializer.toJson<double?>(tipoCambio),
     };
   }
 
@@ -569,6 +701,10 @@ class MovimientoRow extends DataClass implements Insertable<MovimientoRow> {
     Value<double?> precision = const Value.absent(),
     Value<String?> lugar = const Value.absent(),
     String? textoOriginal,
+    bool? entreMisCuentas,
+    Value<String?> moneda = const Value.absent(),
+    Value<double?> montoOriginal = const Value.absent(),
+    Value<double?> tipoCambio = const Value.absent(),
   }) => MovimientoRow(
     uuid: uuid ?? this.uuid,
     amount: amount ?? this.amount,
@@ -586,6 +722,12 @@ class MovimientoRow extends DataClass implements Insertable<MovimientoRow> {
     precision: precision.present ? precision.value : this.precision,
     lugar: lugar.present ? lugar.value : this.lugar,
     textoOriginal: textoOriginal ?? this.textoOriginal,
+    entreMisCuentas: entreMisCuentas ?? this.entreMisCuentas,
+    moneda: moneda.present ? moneda.value : this.moneda,
+    montoOriginal: montoOriginal.present
+        ? montoOriginal.value
+        : this.montoOriginal,
+    tipoCambio: tipoCambio.present ? tipoCambio.value : this.tipoCambio,
   );
   MovimientoRow copyWithCompanion(MovimientosCompanion data) {
     return MovimientoRow(
@@ -613,6 +755,16 @@ class MovimientoRow extends DataClass implements Insertable<MovimientoRow> {
       textoOriginal: data.textoOriginal.present
           ? data.textoOriginal.value
           : this.textoOriginal,
+      entreMisCuentas: data.entreMisCuentas.present
+          ? data.entreMisCuentas.value
+          : this.entreMisCuentas,
+      moneda: data.moneda.present ? data.moneda.value : this.moneda,
+      montoOriginal: data.montoOriginal.present
+          ? data.montoOriginal.value
+          : this.montoOriginal,
+      tipoCambio: data.tipoCambio.present
+          ? data.tipoCambio.value
+          : this.tipoCambio,
     );
   }
 
@@ -634,7 +786,11 @@ class MovimientoRow extends DataClass implements Insertable<MovimientoRow> {
           ..write('longitud: $longitud, ')
           ..write('precision: $precision, ')
           ..write('lugar: $lugar, ')
-          ..write('textoOriginal: $textoOriginal')
+          ..write('textoOriginal: $textoOriginal, ')
+          ..write('entreMisCuentas: $entreMisCuentas, ')
+          ..write('moneda: $moneda, ')
+          ..write('montoOriginal: $montoOriginal, ')
+          ..write('tipoCambio: $tipoCambio')
           ..write(')'))
         .toString();
   }
@@ -657,6 +813,10 @@ class MovimientoRow extends DataClass implements Insertable<MovimientoRow> {
     precision,
     lugar,
     textoOriginal,
+    entreMisCuentas,
+    moneda,
+    montoOriginal,
+    tipoCambio,
   );
   @override
   bool operator ==(Object other) =>
@@ -677,7 +837,11 @@ class MovimientoRow extends DataClass implements Insertable<MovimientoRow> {
           other.longitud == this.longitud &&
           other.precision == this.precision &&
           other.lugar == this.lugar &&
-          other.textoOriginal == this.textoOriginal);
+          other.textoOriginal == this.textoOriginal &&
+          other.entreMisCuentas == this.entreMisCuentas &&
+          other.moneda == this.moneda &&
+          other.montoOriginal == this.montoOriginal &&
+          other.tipoCambio == this.tipoCambio);
 }
 
 class MovimientosCompanion extends UpdateCompanion<MovimientoRow> {
@@ -697,6 +861,10 @@ class MovimientosCompanion extends UpdateCompanion<MovimientoRow> {
   final Value<double?> precision;
   final Value<String?> lugar;
   final Value<String> textoOriginal;
+  final Value<bool> entreMisCuentas;
+  final Value<String?> moneda;
+  final Value<double?> montoOriginal;
+  final Value<double?> tipoCambio;
   final Value<int> rowid;
   const MovimientosCompanion({
     this.uuid = const Value.absent(),
@@ -715,6 +883,10 @@ class MovimientosCompanion extends UpdateCompanion<MovimientoRow> {
     this.precision = const Value.absent(),
     this.lugar = const Value.absent(),
     this.textoOriginal = const Value.absent(),
+    this.entreMisCuentas = const Value.absent(),
+    this.moneda = const Value.absent(),
+    this.montoOriginal = const Value.absent(),
+    this.tipoCambio = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   MovimientosCompanion.insert({
@@ -734,6 +906,10 @@ class MovimientosCompanion extends UpdateCompanion<MovimientoRow> {
     this.precision = const Value.absent(),
     this.lugar = const Value.absent(),
     this.textoOriginal = const Value.absent(),
+    this.entreMisCuentas = const Value.absent(),
+    this.moneda = const Value.absent(),
+    this.montoOriginal = const Value.absent(),
+    this.tipoCambio = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : uuid = Value(uuid),
        amount = Value(amount),
@@ -758,6 +934,10 @@ class MovimientosCompanion extends UpdateCompanion<MovimientoRow> {
     Expression<double>? precision,
     Expression<String>? lugar,
     Expression<String>? textoOriginal,
+    Expression<bool>? entreMisCuentas,
+    Expression<String>? moneda,
+    Expression<double>? montoOriginal,
+    Expression<double>? tipoCambio,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -777,6 +957,10 @@ class MovimientosCompanion extends UpdateCompanion<MovimientoRow> {
       if (precision != null) 'precision': precision,
       if (lugar != null) 'lugar': lugar,
       if (textoOriginal != null) 'texto_original': textoOriginal,
+      if (entreMisCuentas != null) 'entre_mis_cuentas': entreMisCuentas,
+      if (moneda != null) 'moneda': moneda,
+      if (montoOriginal != null) 'monto_original': montoOriginal,
+      if (tipoCambio != null) 'tipo_cambio': tipoCambio,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -798,6 +982,10 @@ class MovimientosCompanion extends UpdateCompanion<MovimientoRow> {
     Value<double?>? precision,
     Value<String?>? lugar,
     Value<String>? textoOriginal,
+    Value<bool>? entreMisCuentas,
+    Value<String?>? moneda,
+    Value<double?>? montoOriginal,
+    Value<double?>? tipoCambio,
     Value<int>? rowid,
   }) {
     return MovimientosCompanion(
@@ -817,6 +1005,10 @@ class MovimientosCompanion extends UpdateCompanion<MovimientoRow> {
       precision: precision ?? this.precision,
       lugar: lugar ?? this.lugar,
       textoOriginal: textoOriginal ?? this.textoOriginal,
+      entreMisCuentas: entreMisCuentas ?? this.entreMisCuentas,
+      moneda: moneda ?? this.moneda,
+      montoOriginal: montoOriginal ?? this.montoOriginal,
+      tipoCambio: tipoCambio ?? this.tipoCambio,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -872,6 +1064,18 @@ class MovimientosCompanion extends UpdateCompanion<MovimientoRow> {
     if (textoOriginal.present) {
       map['texto_original'] = Variable<String>(textoOriginal.value);
     }
+    if (entreMisCuentas.present) {
+      map['entre_mis_cuentas'] = Variable<bool>(entreMisCuentas.value);
+    }
+    if (moneda.present) {
+      map['moneda'] = Variable<String>(moneda.value);
+    }
+    if (montoOriginal.present) {
+      map['monto_original'] = Variable<double>(montoOriginal.value);
+    }
+    if (tipoCambio.present) {
+      map['tipo_cambio'] = Variable<double>(tipoCambio.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -897,6 +1101,10 @@ class MovimientosCompanion extends UpdateCompanion<MovimientoRow> {
           ..write('precision: $precision, ')
           ..write('lugar: $lugar, ')
           ..write('textoOriginal: $textoOriginal, ')
+          ..write('entreMisCuentas: $entreMisCuentas, ')
+          ..write('moneda: $moneda, ')
+          ..write('montoOriginal: $montoOriginal, ')
+          ..write('tipoCambio: $tipoCambio, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -932,6 +1140,10 @@ typedef $$MovimientosTableCreateCompanionBuilder =
       Value<double?> precision,
       Value<String?> lugar,
       Value<String> textoOriginal,
+      Value<bool> entreMisCuentas,
+      Value<String?> moneda,
+      Value<double?> montoOriginal,
+      Value<double?> tipoCambio,
       Value<int> rowid,
     });
 typedef $$MovimientosTableUpdateCompanionBuilder =
@@ -952,6 +1164,10 @@ typedef $$MovimientosTableUpdateCompanionBuilder =
       Value<double?> precision,
       Value<String?> lugar,
       Value<String> textoOriginal,
+      Value<bool> entreMisCuentas,
+      Value<String?> moneda,
+      Value<double?> montoOriginal,
+      Value<double?> tipoCambio,
       Value<int> rowid,
     });
 
@@ -1041,6 +1257,26 @@ class $$MovimientosTableFilterComposer
 
   ColumnFilters<String> get textoOriginal => $composableBuilder(
     column: $table.textoOriginal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get entreMisCuentas => $composableBuilder(
+    column: $table.entreMisCuentas,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get moneda => $composableBuilder(
+    column: $table.moneda,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get montoOriginal => $composableBuilder(
+    column: $table.montoOriginal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get tipoCambio => $composableBuilder(
+    column: $table.tipoCambio,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1133,6 +1369,26 @@ class $$MovimientosTableOrderingComposer
     column: $table.textoOriginal,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get entreMisCuentas => $composableBuilder(
+    column: $table.entreMisCuentas,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get moneda => $composableBuilder(
+    column: $table.moneda,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get montoOriginal => $composableBuilder(
+    column: $table.montoOriginal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get tipoCambio => $composableBuilder(
+    column: $table.tipoCambio,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$MovimientosTableAnnotationComposer
@@ -1199,6 +1455,24 @@ class $$MovimientosTableAnnotationComposer
     column: $table.textoOriginal,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get entreMisCuentas => $composableBuilder(
+    column: $table.entreMisCuentas,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get moneda =>
+      $composableBuilder(column: $table.moneda, builder: (column) => column);
+
+  GeneratedColumn<double> get montoOriginal => $composableBuilder(
+    column: $table.montoOriginal,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get tipoCambio => $composableBuilder(
+    column: $table.tipoCambio,
+    builder: (column) => column,
+  );
 }
 
 class $$MovimientosTableTableManager
@@ -1248,6 +1522,10 @@ class $$MovimientosTableTableManager
                 Value<double?> precision = const Value.absent(),
                 Value<String?> lugar = const Value.absent(),
                 Value<String> textoOriginal = const Value.absent(),
+                Value<bool> entreMisCuentas = const Value.absent(),
+                Value<String?> moneda = const Value.absent(),
+                Value<double?> montoOriginal = const Value.absent(),
+                Value<double?> tipoCambio = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => MovimientosCompanion(
                 uuid: uuid,
@@ -1266,6 +1544,10 @@ class $$MovimientosTableTableManager
                 precision: precision,
                 lugar: lugar,
                 textoOriginal: textoOriginal,
+                entreMisCuentas: entreMisCuentas,
+                moneda: moneda,
+                montoOriginal: montoOriginal,
+                tipoCambio: tipoCambio,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -1286,6 +1568,10 @@ class $$MovimientosTableTableManager
                 Value<double?> precision = const Value.absent(),
                 Value<String?> lugar = const Value.absent(),
                 Value<String> textoOriginal = const Value.absent(),
+                Value<bool> entreMisCuentas = const Value.absent(),
+                Value<String?> moneda = const Value.absent(),
+                Value<double?> montoOriginal = const Value.absent(),
+                Value<double?> tipoCambio = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => MovimientosCompanion.insert(
                 uuid: uuid,
@@ -1304,6 +1590,10 @@ class $$MovimientosTableTableManager
                 precision: precision,
                 lugar: lugar,
                 textoOriginal: textoOriginal,
+                entreMisCuentas: entreMisCuentas,
+                moneda: moneda,
+                montoOriginal: montoOriginal,
+                tipoCambio: tipoCambio,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

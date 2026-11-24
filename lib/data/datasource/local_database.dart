@@ -215,6 +215,10 @@ class DatabaseManager implements LocalDatabase {
           lugar: map['lugar'] as String?,
           textoOriginal: (map['textoOriginal'] as String?) ??
               (source == PaymentSource.manual ? '' : notes),
+          entreMisCuentas: map['entreMisCuentas'] == true,
+          moneda: map['moneda'] as String?,
+          montoOriginal: (map['montoOriginal'] as num?)?.toDouble(),
+          tipoCambio: (map['tipoCambio'] as num?)?.toDouble(),
         );
       }).toList();
     } catch (e) {
@@ -259,6 +263,10 @@ class DatabaseManager implements LocalDatabase {
       'precision': e.precision,
       'lugar': e.lugar,
       'textoOriginal': e.textoOriginal,
+      'entreMisCuentas': e.entreMisCuentas,
+      'moneda': e.moneda,
+      'montoOriginal': e.montoOriginal,
+      'tipoCambio': e.tipoCambio,
     }).toList();
     await _prefs.setString(_keyFallbackExpenses, jsonEncode(jsonList));
   }
@@ -282,6 +290,10 @@ class DatabaseManager implements LocalDatabase {
         precision: Value(e.precision),
         lugar: Value(e.lugar),
         textoOriginal: Value(e.textoOriginal),
+        entreMisCuentas: Value(e.entreMisCuentas),
+        moneda: Value(e.moneda),
+        montoOriginal: Value(e.montoOriginal),
+        tipoCambio: Value(e.tipoCambio),
       );
 
   Movimiento _fromRow(MovimientoRow r) {
@@ -304,6 +316,10 @@ class DatabaseManager implements LocalDatabase {
       precision: r.precision,
       lugar: r.lugar,
       textoOriginal: r.textoOriginal,
+      entreMisCuentas: r.entreMisCuentas,
+      moneda: r.moneda,
+      montoOriginal: r.montoOriginal,
+      tipoCambio: r.tipoCambio,
     );
   }
 }

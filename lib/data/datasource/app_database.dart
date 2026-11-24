@@ -22,6 +22,11 @@ class Movimientos extends Table {
   RealColumn get precision => real().nullable()();
   TextColumn get lugar => text().nullable()();
   TextColumn get textoOriginal => text().withDefault(const Constant(''))();
+  // Versión 2: transferencias entre cuentas propias y cargos en otra moneda.
+  BoolColumn get entreMisCuentas => boolean().withDefault(const Constant(false))();
+  TextColumn get moneda => text().nullable()();
+  RealColumn get montoOriginal => real().nullable()();
+  RealColumn get tipoCambio => real().nullable()();
 
   @override
   Set<Column> get primaryKey => {uuid};
@@ -32,7 +37,20 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.addColumn(movimientos, movimientos.entreMisCuentas);
+            await m.addColumn(movimientos, movimientos.moneda);
+            await m.addColumn(movimientos, movimientos.montoOriginal);
+            await m.addColumn(movimientos, movimientos.tipoCambio);
+          }
+        },
+      );
 
   Future<List<MovimientoRow>> allMovimientos() => select(movimientos).get();
 
