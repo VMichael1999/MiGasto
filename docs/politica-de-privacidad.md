@@ -32,11 +32,15 @@ En ambos casos **no lee** tus mensajes, fotos, contactos, contraseñas ni otras 
 
 Cuando MiGasto detecta un pago muestra una **ventana flotante** (si diste el permiso "Mostrar sobre otras apps") con el monto, el comercio y la categoría para que lo confirmes, lo edites o lo descartes. La ventana no guarda nada por su cuenta: el pago se guarda solo si tocas Guardar. Si la deslizas hacia arriba, queda en «Por confirmar». Cuando no se puede mostrar la ventana (pantalla bloqueada o sin el permiso), un gasto se guarda y te avisamos con una notificación; un ingreso espera tu confirmación, salvo que actives en Ajustes **Guardar ingresos automáticamente**; esa opción viene apagada.
 
-Cuando detecta un pago y no puede mostrar la ventana (por ejemplo, con la pantalla bloqueada), MiGasto muestra una **notificación en tu propio teléfono** con el monto y el nombre. No es un mensaje que venga de internet: se genera dentro del teléfono. En la pantalla bloqueada se oculta el monto y el nombre, salvo que tú lo actives en Ajustes. La notificación de un ingreso por confirmar trae los botones Guardar e Ignorar, que se resuelven dentro del teléfono sin abrir la app.
+Cuando detecta un pago y no puede mostrar la ventana (por ejemplo, con la pantalla bloqueada), MiGasto muestra una **notificación en tu propio teléfono** con el monto y el nombre. No es un mensaje que venga de internet: se genera dentro del teléfono. En la pantalla bloqueada se oculta el monto y el nombre, salvo que tú lo actives en Ajustes. La notificación de un pago por confirmar trae los botones Guardar e Ignorar, que se resuelven dentro del teléfono sin abrir la app.
 
 ## iPhone
 
 iOS no permite leer las notificaciones de otras apps. En iPhone, MiGasto recibe los datos de un pago con Apple Pay desde la acción "Registrar movimiento" de Atajos, que tú configuras. Los datos pasan solo entre Atajos y MiGasto, dentro de tu teléfono.
+
+## Tipo de cambio
+
+Si se detecta un cargo en dólares, MiGasto descarga una vez al día el precio del dólar en soles desde una fuente pública (currency-api, servida por jsDelivr o Cloudflare Pages). Es una descarga anónima: no se envía el monto, el comercio ni ningún dato tuyo; el servidor solo ve la dirección de internet de tu conexión, como al abrir cualquier página.
 
 ## Ubicación
 
