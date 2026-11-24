@@ -52,17 +52,23 @@ class MyAccessibilityService : AccessibilityService() {
             val capture = NativeQueue.captureEnabled(context)
             if (!isReceipt && !capture) return
             val result = rules.parse(text, app)
+            // Una constancia antigua abierta desde el historial de Yape se ve igual que la de un
+            // pago recién hecho; su fecha dice que no lo es.
+            val oldReceipt = origin == ORIGIN_SCREEN && isReceipt &&
+                ReceiptTime.isOld(text, System.currentTimeMillis())
             // Modo captura (Ajustes): se guarda el texto y lo que entendió el lector.
             if (capture) {
                 val reading = when {
                     !isReceipt -> "pantalla sin constancia" + (result?.let { " (habría leído ${describe(it)})" } ?: "")
                     result == null -> "sin pago"
+                    oldReceipt -> "constancia antigua (habría leído ${describe(result)})"
                     else -> describe(result)
                 }
                 CaptureLog.of(context).add(app, viaName(origin), text, reading)
             }
             if (!isReceipt) return
             if (result == null) { Log.d(TAG, "texto sin pago (largo=${text.length})"); return }
+            if (oldReceipt) { Log.d(TAG, "descartado: constancia antigua"); return }
             if (!NativeQueue.isProviderEnabled(context, result.provider)) {
                 Log.d(TAG, "descartado: ${result.provider} está apagado en Ajustes")
                 return
