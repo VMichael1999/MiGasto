@@ -16,6 +16,8 @@ final class PaymentReader {
     private let amountRegex: NSRegularExpression
     private let incomeRegexes: [NSRegularExpression]
     private let expenseRegexes: [NSRegularExpression]
+    /// Avisos con monto que no son un pago hecho: compra rechazada, código para confirmar, recordatorio.
+    private let ignoreRegexes: [NSRegularExpression]
 
     init?(rulesJSON data: Data) {
         guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -27,12 +29,15 @@ final class PaymentReader {
         amountRegex = amountRe
         incomeRegexes = income.compactMap { try? NSRegularExpression(pattern: $0, options: [.caseInsensitive]) }
         expenseRegexes = expense.compactMap { try? NSRegularExpression(pattern: $0, options: [.caseInsensitive]) }
+        ignoreRegexes = (obj["ignore"] as? [String] ?? [])
+            .compactMap { try? NSRegularExpression(pattern: $0, options: [.caseInsensitive]) }
     }
 
     // MARK: - Parseo
 
     /// Lee un texto en una sola línea (notificación).
     func parse(_ text: String) -> ParsedPayment? {
+        if ignoreRegexes.contains(where: { $0.firstMatch(in: text, range: fullRange(text)) != nil }) { return nil }
         guard let provider = provider(in: text),
               let match = amountRegex.firstMatch(in: text, range: fullRange(text)),
               let amountRange = Range(match.range(at: 1), in: text),

@@ -80,6 +80,22 @@
     "deposito recibido",
     "te (?:hizo|hicieron) un pago"
   ],
+  "ignore": [
+    "rechazad[oa]",
+    "denegad[oa]",
+    "no (?:se )?(?:pudo|pudimos) (?:procesar|completar|realizar|aprobar)",
+    "no fue (?:exitos[oa]|aprobad[oa]|procesad[oa])",
+    "(?:operaci[oó]n|transacci[oó]n|pago|compra) (?:fallid[oa]|no exitos[oa])",
+    "para (?:confirmar|autorizar|validar|aprobar|completar) (?:tu|la|el|esta|una)",
+    "clave din[aá]mica",
+    "c[oó]digo de verificaci[oó]n",
+    "recordatorio",
+    "recuerda (?:pagar|realizar)",
+    "por vencer",
+    "vencer[aá]? (?:hoy|mañana|manana|pronto)",
+    "vence (?:hoy|mañana|manana|pronto)"
+  ],
+  "_notaIgnore": "Avisos que traen un monto pero no son un pago hecho: compras rechazadas, códigos para confirmar una compra (luego llega el aviso real) y recordatorios de pagos por vencer. Si el texto coincide con alguno, no se registra nada.",
   "expense": [
     "yapeaste",
     "pagaste",

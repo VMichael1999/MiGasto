@@ -34,7 +34,8 @@ class PaymentReader {
       : _amount =
             RegExp(_rules['amount'] as String, caseSensitive: false, unicode: true),
         _income = _compileAll(_rules['income']),
-        _expense = _compileAll(_rules['expense']);
+        _expense = _compileAll(_rules['expense']),
+        _ignore = _compileAll(_rules['ignore'] ?? const []);
 
   factory PaymentReader.fromJson(String json) =>
       PaymentReader._(jsonDecode(json) as Map<String, dynamic>);
@@ -49,6 +50,10 @@ class PaymentReader {
   final List<RegExp> _income;
   final List<RegExp> _expense;
 
+  /// Avisos con monto que no son un pago hecho (compra rechazada, código para
+  /// confirmar una compra, recordatorio de un pago por vencer).
+  final List<RegExp> _ignore;
+
   static List<RegExp> _compileAll(dynamic list) => (list as List)
       .map((p) => RegExp(p as String, caseSensitive: false, unicode: true))
       .toList();
@@ -59,6 +64,7 @@ class PaymentReader {
   /// cuando el texto no la nombra (un yape con código de seguridad no dice
   /// «Yape» y Google Wallet nunca lo dice).
   ParsedPayment? parse(String text, {String? app}) {
+    if (_ignore.any((r) => r.hasMatch(text))) return null;
     final provider = _provider(text) ?? _providerByApp(app);
     if (provider == null) return null;
 

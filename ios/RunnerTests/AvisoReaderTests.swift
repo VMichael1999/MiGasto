@@ -59,4 +59,10 @@ final class AvisoReaderTests: XCTestCase {
         XCTAssertNil(item("Se realizó un pago recurrente de $26.19 en HOSTINGER con tu Tarjeta de Débito."))
         XCTAssertNil(item(""))
     }
+
+    func testAvisosConMontoQueNoSonUnPagoHecho() {
+        XCTAssertNil(item("Tu compra por S/ 250.00 con tu Tarjeta de Débito BCP en FALABELLA fue rechazada"))
+        XCTAssertNil(item("Usa el código 482913 para confirmar tu compra por S/ 250.00 con tu tarjeta en AMAZON"))
+        XCTAssertNil(item("Recuerda: tu pago de S/ 120.00 con Yape vence mañana"))
+    }
 }

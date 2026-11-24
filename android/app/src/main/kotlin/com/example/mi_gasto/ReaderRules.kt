@@ -27,6 +27,8 @@ class ReaderRules private constructor(
     private val amountRegex = Regex(rules.getString("amount"), options)
     private val incomeRegexes = compileAll(rules.getJSONArray("income"))
     private val expenseRegexes = compileAll(rules.getJSONArray("expense"))
+    /** Avisos con monto que no son un pago hecho: compra rechazada, código para confirmar, recordatorio. */
+    private val ignoreRegexes = rules.optJSONArray("ignore")?.let(::compileAll) ?: emptyList()
     private val prepositions = strings(rules.getJSONArray("peerPrepositions")).joinToString("|")
     private val cleanPhrases = strings(rules.getJSONArray("cleanPhrases")).sortedByDescending { it.length }
     private val stopWords = strings(rules.getJSONArray("peerStopWords"))
@@ -87,6 +89,7 @@ class ReaderRules private constructor(
      * seguridad no dice «Yape» y Google Wallet nunca lo dice).
      */
     fun parse(text: String, app: String? = null): ParseResult? {
+        if (ignoreRegexes.any { it.containsMatchIn(text) }) return null
         val provider = provider(text) ?: providerByApp(app) ?: return null
         val match = amountRegex.find(text) ?: return null
         val amount = parseAmount(match.groupValues[1]) ?: return null

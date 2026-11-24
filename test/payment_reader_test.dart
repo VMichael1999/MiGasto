@@ -289,6 +289,43 @@ void main() {
     });
   });
 
+  group('avisos con monto que no son un pago hecho', () {
+    const bcp = 'com.bcp.bank.bcp';
+
+    test('una compra rechazada no es un gasto', () {
+      expect(reader.parse('Tu compra por S/ 250.00 con tu Tarjeta de Débito BCP en FALABELLA fue rechazada',
+          app: bcp), isNull);
+      expect(reader.parse('Compra denegada: S/ 80.00 con tu tarjeta en TOTTUS', app: bcp), isNull);
+      expect(read('No se pudo procesar tu pago de S/ 20 con Yape'), isNull);
+      expect(read('Operación fallida: yapeaste S/ 15 a Juan'), isNull);
+    });
+
+    test('el código para confirmar una compra no es el gasto (el aviso real llega después)', () {
+      expect(reader.parse('Usa el código 482913 para confirmar tu compra por S/ 250.00 con tu tarjeta en AMAZON',
+          app: bcp), isNull);
+      expect(reader.parse('Tu clave dinámica es 551203. Compra por S/ 99.90 con tu tarjeta en RIPLEY', app: bcp),
+          isNull);
+    });
+
+    test('un recordatorio de pago no es un gasto', () {
+      expect(read('Recuerda: tu pago de S/ 120.00 con Yape vence mañana'), isNull);
+      expect(reader.parse('Recordatorio: pago de S/ 89.90 con tu tarjeta en CLARO', app: bcp), isNull);
+      expect(read('Tu cuota de S/ 300 por vencer: págala con Yape'), isNull);
+    });
+
+    test('un pago hecho que menciona el próximo vencimiento sí se lee', () {
+      final p = read('Yapeaste S/ 300.00 a Caja Arequipa. Tu próxima cuota vence el 10/12')!;
+      expect(p.isIncome, isFalse);
+      expect(p.amount, 300.0);
+    });
+
+    test('el yape recibido con código de seguridad sigue siendo un ingreso', () {
+      final p = reader.parse('Confirmación de Pago Sasha Sal* te envió un pago por S/ 5.5. El cód. de seguridad es: 667',
+          app: 'com.bcp.innovacxion.yapeapp')!;
+      expect(p.isIncome, isTrue);
+    });
+  });
+
   group('número de operación', () {
     final rules = jsonDecode(File('assets/reader_rules.json').readAsStringSync()) as Map<String, dynamic>;
     final regex = RegExp(rules['operationId'] as String, caseSensitive: false);
