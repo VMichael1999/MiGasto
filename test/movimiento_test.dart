@@ -163,6 +163,13 @@ void main() {
       expect(container.read(autoSaveIncomeProvider), isFalse);
     });
 
+    test('apagado por defecto: «Guardar gastos solos», con la clave que lee Android', () async {
+      expect(container.read(autoSaveExpenseProvider), isFalse);
+      container.read(autoSaveExpenseProvider.notifier).set(true);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool('migasto_auto_save_expense'), isTrue);
+    });
+
     test('con "Guardar ingresos automáticamente" el ingreso queda confirmado', () async {
       container.read(autoSaveIncomeProvider.notifier).set(true);
       final notifier = container.read(expensesStateProvider.notifier);

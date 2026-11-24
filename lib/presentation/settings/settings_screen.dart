@@ -489,6 +489,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
         ),
         _buildDivider(),
         _buildRow(
+          icon: Icons.lock_outline_rounded,
+          title: 'Guardar gastos solos',
+          subtitle: 'Con el teléfono bloqueado no se ve la ventana flotante. Apagado, el gasto queda «Por confirmar» y el aviso trae Guardar e Ignorar.',
+          trailing: Switch(
+            value: ref.watch(autoSaveExpenseProvider),
+            onChanged: (v) => ref.read(autoSaveExpenseProvider.notifier).set(v),
+          ),
+        ),
+        _buildDivider(),
+        _buildRow(
+          icon: Icons.south_west_rounded,
+          title: 'Guardar ingresos solos',
+          subtitle: 'Apagado, cada ingreso detectado espera que lo confirmes.',
+          trailing: Switch(
+            value: ref.watch(autoSaveIncomeProvider),
+            onChanged: (v) => ref.read(autoSaveIncomeProvider.notifier).set(v),
+          ),
+        ),
+        _buildDivider(),
+        _buildRow(
           icon: Icons.science_outlined,
           title: 'Modo captura',
           subtitle: 'Guarda en este teléfono el texto de las notificaciones y pantallas de tus apps de pago, para mejorar la lectura de tu banco. Al apagarlo se borra.',

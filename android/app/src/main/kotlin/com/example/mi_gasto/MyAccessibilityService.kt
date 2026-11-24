@@ -162,10 +162,14 @@ class MyAccessibilityService : AccessibilityService() {
                 }
             }
 
-            // Sin ventana visible (pantalla apagada o bloqueada, o sin el permiso): se guarda según
-            // las reglas de siempre (un gasto se guarda; un ingreso, solo si el usuario lo activó)
-            // y se avisa con una notificación.
-            val saved = result.type != "ingreso" || NativeQueue.autoSaveIncome(context)
+            // Sin ventana visible (pantalla apagada o bloqueada, o sin el permiso): queda por
+            // confirmar, salvo que el usuario haya activado «Guardar gastos solos» o «Guardar
+            // ingresos solos», y se avisa con una notificación (con Guardar e Ignorar si espera).
+            val saved = if (result.type == "ingreso") {
+                NativeQueue.autoSaveIncome(context)
+            } else {
+                NativeQueue.autoSaveExpense(context)
+            }
             Log.d(TAG, "sin ventana: se guarda=$saved y se avisa con notificación")
             val ref = java.util.UUID.randomUUID().toString()
             NativeQueue.enqueue(

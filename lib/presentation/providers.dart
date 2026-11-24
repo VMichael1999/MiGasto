@@ -89,6 +89,25 @@ class AutoSaveIncomeNotifier extends StateNotifier<bool> {
   }
 }
 
+/// "Guardar gastos solos" (Ajustes, Android). Apagado por defecto: un gasto detectado
+/// cuando no se puede mostrar la ventana flotante (pantalla bloqueada o apagada) queda
+/// «Por confirmar». El código nativo lee la misma clave (`flutter.migasto_auto_save_expense`).
+const keyAutoSaveExpense = 'migasto_auto_save_expense';
+
+final autoSaveExpenseProvider = StateNotifierProvider<AutoSaveExpenseNotifier, bool>((ref) {
+  return AutoSaveExpenseNotifier(ref.read(sharedPreferencesProvider));
+});
+
+class AutoSaveExpenseNotifier extends StateNotifier<bool> {
+  AutoSaveExpenseNotifier(this._prefs) : super(_prefs.getBool(keyAutoSaveExpense) ?? false);
+  final SharedPreferences _prefs;
+
+  void set(bool value) {
+    _prefs.setBool(keyAutoSaveExpense, value);
+    state = value;
+  }
+}
+
 /// Si el usuario ocultó los montos (botón del ojo en Resumen). Se recuerda entre aperturas.
 const keyBalanceHidden = 'migasto_balance_hidden';
 

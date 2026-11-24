@@ -20,8 +20,8 @@ import java.util.Locale
  * Avisos de MiGasto cuando la ventana flotante no se puede ver: pantalla apagada o
  * bloqueada, o sin el permiso "Mostrar sobre otras apps".
  *
- * - Ingreso por confirmar: canal con sonido ("Pagos detectados").
- * - Gasto o ingreso ya guardado: canal silencioso ("Pagos guardados").
+ * - Gasto o ingreso por confirmar: canal con sonido ("Pagos detectados").
+ * - Gasto o ingreso ya guardado (con «Guardar … solos»): canal silencioso ("Pagos guardados").
  * - En la pantalla bloqueada se oculta el monto y el nombre, salvo que el usuario lo permita.
  */
 object PaymentNotifier {
@@ -56,13 +56,13 @@ object PaymentNotifier {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL_DETECTED, "Pagos detectados", NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "Ingresos que esperan tu confirmación"
+                description = "Gastos e ingresos que esperan tu confirmación"
                 lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE
             },
         )
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL_SAVED, "Pagos guardados", NotificationManager.IMPORTANCE_LOW).apply {
-                description = "Gastos que MiGasto ya guardó, en silencio"
+                description = "Pagos que MiGasto ya guardó, en silencio"
                 lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE
             },
         )

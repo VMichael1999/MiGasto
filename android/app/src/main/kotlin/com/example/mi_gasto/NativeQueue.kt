@@ -15,6 +15,7 @@ object NativeQueue {
     private const val KEY_QUEUE = "flutter.migasto_native_queue"
     private const val KEY_PROVIDERS = "flutter.migasto_providers_enabled_v2"
     private const val KEY_AUTO_INCOME = "flutter.migasto_auto_save_income"
+    private const val KEY_AUTO_EXPENSE = "flutter.migasto_auto_save_expense"
     private const val KEY_CAPTURE = "flutter.migasto_capture_mode"
     private const val KEY_ALIASES = "flutter.migasto_aliases_v1"
     private const val KEY_OVERRIDES = "flutter.migasto_category_overrides_v2"
@@ -113,6 +114,13 @@ object NativeQueue {
     /** Si los ingresos se guardan solos (Ajustes; por defecto no). */
     fun autoSaveIncome(context: Context): Boolean =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_AUTO_INCOME, false)
+
+    /**
+     * Si los gastos se guardan solos cuando no se ve la ventana flotante (Ajustes; por defecto
+     * no: quedan por confirmar).
+     */
+    fun autoSaveExpense(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_AUTO_EXPENSE, false)
 
     /** Nombre con el que el usuario quiere ver a [merchant]; si no puso uno, el original. */
     fun displayName(context: Context, merchant: String): String {
