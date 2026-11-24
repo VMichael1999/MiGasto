@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show SystemUiOverlayStyle;
@@ -11,6 +13,7 @@ import 'core/widgets/keyboard_dismisser.dart';
 import 'core/theme/theme.dart';
 import 'firebase_options.dart';
 import 'core/navigation/navigation.dart';
+import 'data/services/home_widgets.dart';
 import 'data/services/nlp_classifier_service.dart';
 import 'presentation/lock/lock_gate.dart';
 import 'presentation/providers.dart';
@@ -54,11 +57,22 @@ class MyApp extends ConsumerStatefulWidget {
   ConsumerState<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends ConsumerState<MyApp> {
+class _MyAppState extends ConsumerState<MyApp> with WidgetsBindingObserver {
+  final _homeWidgets = HomeWidgets();
+  Timer? _widgetsDebounce;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initDatabase();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _widgetsDebounce?.cancel();
+    super.dispose();
   }
 
   Future<void> _initDatabase() async {
@@ -66,6 +80,24 @@ class _MyAppState extends ConsumerState<MyApp> {
     await NlpClassifierService.loadFromAsset();
     await db.init();
     ref.read(expensesStateProvider.notifier);
+    if (!mounted) return;
+    // Los widgets de la pantalla de inicio se actualizan cada vez que cambian los movimientos
+    // (se empieza después de cargar la base para no mostrar un mes vacío por un instante).
+    ref.listenManual(expensesStateProvider, (_, _) => _syncWidgets(), fireImmediately: true);
+  }
+
+  /// Al volver a la app puede haber cambiado el mes: el resumen se recalcula.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _syncWidgets();
+  }
+
+  void _syncWidgets() {
+    _widgetsDebounce?.cancel();
+    _widgetsDebounce = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      _homeWidgets.update(ref.read(expensesStateProvider), DateTime.now());
+    });
   }
 
   @override
