@@ -87,6 +87,10 @@ class MainActivity : FlutterFragmentActivity() {
                         result.success(true)
                     }
                 }
+                "autostartVendor" -> result.success(DeviceTweaks.autostartVendor())
+                "openAutostartSettings" -> result.success(DeviceTweaks.openAutostart(this))
+                "mayNeedRestrictedSettings" -> result.success(DeviceTweaks.mayNeedRestrictedSettings(this))
+                "openAppDetails" -> result.success(DeviceTweaks.openAppDetails(this))
                 "readCaptureLog" -> result.success(CaptureLog.of(this).read())
                 "clearCaptureLog" -> {
                     CaptureLog.of(this).clear()

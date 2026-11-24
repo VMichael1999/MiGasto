@@ -50,6 +50,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   bool _batteryOn = false;
   bool _alertsOn = false;
   bool _overlayOn = false;
+
+  /// Marca con su propio «inicio automático» (Xiaomi, Huawei, Oppo, Vivo), o `null`.
+  String? _autostartVendor;
+
+  /// Instalada desde un archivo en Android 13 o más (puede pedir «Permitir ajustes restringidos»).
+  bool _maybeRestricted = false;
   final _simController = TextEditingController();
 
   bool get _isAndroid => defaultTargetPlatform == TargetPlatform.android;
@@ -82,8 +88,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     final battery = await permissions.isBatteryUnrestricted();
     final alerts = await permissions.isPostNotificationsGranted();
     final overlay = await permissions.isOverlayGranted();
+    final vendor = await permissions.autostartVendor();
+    final restricted = await permissions.mayNeedRestrictedSettings();
     if (!mounted) return;
     setState(() {
+      _autostartVendor = vendor;
+      _maybeRestricted = restricted;
       _alertsOn = alerts;
       _batteryOn = battery;
       _notificationsOn = notifications;
@@ -449,6 +459,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
     );
   }
 
+  static String _vendorName(String vendor) => switch (vendor) {
+        'xiaomi' => 'Xiaomi, Redmi y POCO',
+        'huawei' => 'Huawei y Honor',
+        'oppo' => 'Oppo, Realme y OnePlus',
+        'vivo' => 'Vivo e iQOO',
+        _ => 'tu teléfono',
+      };
+
   /// Grupo Android: Permisos automáticos
   Widget _buildAndroidGroup(BuildContext context, dynamic permissions) {
     return _buildGroup(
@@ -489,6 +507,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
           onTap: () => permissions.openBatterySettings(),
         ),
         _buildDivider(),
+        if (_autostartVendor != null) ...[
+          _buildRow(
+            icon: Icons.restart_alt_rounded,
+            title: 'Inicio automático',
+            subtitle: 'En ${_vendorName(_autostartVendor!)} también hay que permitir que MiGasto se inicie solo. Si no, el teléfono apaga la lectura y se pierden pagos.',
+            tag: 'Revisar',
+            onTap: () => permissions.openAutostartSettings(),
+          ),
+          _buildDivider(),
+        ],
+        if (_maybeRestricted && (!_notificationsOn || !_screenOn)) ...[
+          _buildRow(
+            icon: Icons.lock_open_rounded,
+            title: 'Permitir ajustes restringidos',
+            subtitle: 'Instalaste MiGasto desde un archivo, no desde Google Play. Si Android dice «Ajuste restringido» al activar la lectura, abre esto, toca ⋮ y «Permitir ajustes restringidos», y vuelve a activarla.',
+            tag: 'Abrir',
+            onTap: () => permissions.openAppDetails(),
+          ),
+          _buildDivider(),
+        ],
         _buildRow(
           icon: Icons.lock_outline_rounded,
           title: 'Guardar gastos solos',

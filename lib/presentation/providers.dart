@@ -798,6 +798,38 @@ class PermissionsChecker {
     }
   }
 
+  /// Marca con su propio «inicio automático» (`xiaomi`, `huawei`, `oppo`, `vivo`), o `null`.
+  Future<String?> autostartVendor() async {
+    try {
+      return await _channel.invokeMethod<String>('autostartVendor');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Abre el inicio automático de la marca (o la ficha de la app si no lo encuentra).
+  Future<void> openAutostartSettings() async {
+    try {
+      await _channel.invokeMethod('openAutostartSettings');
+    } catch (_) {}
+  }
+
+  /// La app se instaló desde un archivo en Android 13 o más: puede que haya que «Permitir
+  /// ajustes restringidos» para activar la lectura.
+  Future<bool> mayNeedRestrictedSettings() async {
+    try {
+      return await _channel.invokeMethod<bool>('mayNeedRestrictedSettings') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> openAppDetails() async {
+    try {
+      await _channel.invokeMethod('openAppDetails');
+    } catch (_) {}
+  }
+
   Future<void> openBatterySettings() async {
     try {
       await _channel.invokeMethod('openBatterySettings');
