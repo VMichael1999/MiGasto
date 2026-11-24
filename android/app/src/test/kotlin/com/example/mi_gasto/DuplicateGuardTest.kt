@@ -85,6 +85,39 @@ class DuplicateGuardTest {
         assertFalse(dup(listener, banco, "pe.com.interbank.mobilebanking"))
     }
 
+    @Test fun dosYapesIgualesCuandoLaAccesibilidadSeAdelantaValenLosDos() {
+        val yape = "com.bcp.innovacxion.yapeapp"
+        assertFalse(dup(access, app = yape)) // 1.º yape, por accesibilidad
+        assertTrue(dup(listener, app = yape)) // el mismo, por el servicio
+        now += 20_000
+        assertTrue(dup(access, app = yape)) // 2.º yape, por accesibilidad: lo trae el servicio
+        assertFalse(dup(listener, app = yape)) // 2.º yape, por el servicio: vale
+    }
+
+    @Test fun dosYapesIgualesConLasDosVueltasDeAccesibilidadPrimero() {
+        val yape = "com.bcp.innovacxion.yapeapp"
+        assertFalse(dup(access, app = yape))
+        now += 5_000
+        assertTrue(dup(access, app = yape))
+        assertTrue(dup(listener, app = yape))
+        assertFalse(dup(listener, app = yape))
+    }
+
+    @Test fun laConstanciaEnPantallaYLuegoDosNotificacionesIguales() {
+        val yape = "com.bcp.innovacxion.yapeapp"
+        assertFalse(dup(screen, app = yape))
+        assertTrue(dup(listener, app = yape))
+        now += 30_000
+        assertFalse(dup(listener, app = yape))
+    }
+
+    @Test fun otraAppNoHeredaElAvisoDeLaAccesibilidad() {
+        val banco = DuplicateGuard.key("tarjeta", "gasto", 35.0)
+        assertFalse(dup(access, banco, "com.google.android.apps.walletnfcrel"))
+        assertTrue(dup(listener, banco, "pe.com.interbank.mobilebanking"))
+        assertTrue(dup(listener, banco, "pe.com.interbank.mobilebanking"))
+    }
+
     @Test fun laClaveUsaPuntoDecimalSinImportarElIdioma() {
         assertTrue(DuplicateGuard.key("yape", "ingreso", 1.0) == "yape|ingreso|1.00")
     }

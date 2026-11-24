@@ -24,7 +24,15 @@ class DuplicateGuard(
         val previous = recent[key]
         val sameAppFromListener = previous != null && previous.origin == listenerOrigin &&
             origin == listenerOrigin && previous.app == app
-        if (previous != null && !sameAppFromListener) return true
+        if (previous != null && !sameAppFromListener) {
+            // La accesibilidad (o la pantalla) a veces se adelanta al servicio de notificaciones.
+            // Este aviso es el mismo pago, pero desde ahora cuenta como leído por el servicio:
+            // así un segundo pago igual de la misma app, que llega también por el servicio, vale.
+            if (origin == listenerOrigin && previous.origin != listenerOrigin && previous.app == app) {
+                recent[key] = previous.copy(origin = listenerOrigin)
+            }
+            return true
+        }
         recent[key] = Seen(now, origin, app)
         return false
     }
