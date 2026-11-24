@@ -33,6 +33,7 @@ import '../../core/widgets/adaptive_sheet.dart';
 import '../../shared/dispose_later.dart';
 import '../payments/scheduled_payments_providers.dart';
 import '../plan/plan_providers.dart';
+import '../permissions/reading_disclosure.dart';
 import 'widgets/connected_accounts_sheet.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -457,14 +458,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
           icon: Icons.notifications_active_outlined,
           title: 'Lectura de notificaciones',
           tag: _notificationsOn ? 'Activo' : 'Activar',
-          onTap: () => permissions.openNotificationListenerSettings(),
+          onTap: () => openReadingWithDisclosure(context, ref, ReadingKind.notificaciones),
         ),
         _buildDivider(),
         _buildRow(
           icon: Icons.touch_app_outlined,
           title: 'Lectura de pantalla',
           tag: _screenOn ? 'Activo' : 'Activar',
-          onTap: () => permissions.openAccessibilitySettings(),
+          onTap: () => openReadingWithDisclosure(context, ref, ReadingKind.pantalla),
         ),
         _buildDivider(),
         _buildRow(

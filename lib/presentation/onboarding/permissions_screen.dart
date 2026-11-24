@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/mg_colors.dart';
 import '../../core/widgets/mg_card.dart';
+import '../permissions/reading_disclosure.dart';
 import '../providers.dart';
 
 /// Último paso de la bienvenida: privacidad y permisos.
@@ -86,6 +87,8 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen>
     }
     final permissions = ref.read(permissionsCheckerProvider);
     if (!_listenerOn) {
+      // Esta pantalla es el aviso destacado: tocar «Aceptar y activar la lectura» es aceptarlo.
+      await ref.read(sharedPreferencesProvider).setBool(consentKey(ReadingKind.notificaciones), true);
       await permissions.openNotificationListenerSettings();
     } else if (!_overlayOn) {
       await permissions.requestOverlayPermission();
