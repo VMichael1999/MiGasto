@@ -14,8 +14,37 @@ import android.util.Log
  */
 class PaymentNotificationListener : NotificationListenerService() {
 
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        // Lo que llegó mientras el lector estaba desconectado sigue en la barra: se lee ahora.
+        val now = System.currentTimeMillis()
+        val lastSeen = state().getLong(KEY_LAST_SEEN, 0L)
+        markListening(now)
+        val active = try {
+            activeNotifications ?: emptyArray()
+        } catch (e: Exception) {
+            Log.w(TAG, "no se pudieron leer las notificaciones de la barra", e)
+            return
+        }
+        val missed = active.filter { ListenerCatchUp.shouldRead(it.postTime, now, lastSeen) }.sortedBy { it.postTime }
+        if (missed.isNotEmpty()) Log.d(TAG, "revisando ${missed.size} notificaciones que llegaron sin lector")
+        for (sbn in missed) read(sbn, recovered = true)
+    }
+
+    override fun onListenerDisconnected() {
+        markListening(System.currentTimeMillis())
+        super.onListenerDisconnected()
+    }
+
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         if (sbn == null) return
+        // Cualquier notificación (de cualquier app) prueba que el lector estaba escuchando.
+        markListening(System.currentTimeMillis())
+        read(sbn, recovered = false)
+    }
+
+    /** [recovered]: la notificación se lee al reconectarse, no cuando llegó. */
+    private fun read(sbn: StatusBarNotification, recovered: Boolean) {
         // Las apps que se escuchan están en assets/reader_rules.json ("apps").
         val apps = ReaderRules.get(applicationContext)?.apps ?: return
         if (sbn.packageName !in apps) return
@@ -26,9 +55,10 @@ class PaymentNotificationListener : NotificationListenerService() {
             return
         }
         // Al reiniciar el servicio o reinstalar la app el sistema vuelve a entregar
-        // las notificaciones que siguen en la barra: no son pagos nuevos.
+        // las notificaciones que siguen en la barra: no son pagos nuevos. (Las que
+        // llegaron sin lector se recuperan en onListenerConnected.)
         val age = System.currentTimeMillis() - sbn.postTime
-        if (age > STALE_MS) {
+        if (age > STALE_MS && !recovered) {
             Log.d(TAG, "ignorada: notificación antigua (${age / 1000} s)")
             return
         }
@@ -47,19 +77,29 @@ class PaymentNotificationListener : NotificationListenerService() {
             Log.d(TAG, "ignorada: la misma notificación actualizada")
             return
         }
-        Log.d(TAG, "notificación de ${sbn.packageName}, llegó ${System.currentTimeMillis() - sbn.postTime} ms después de publicarse")
+        Log.d(TAG, "notificación de ${sbn.packageName}, llegó $age ms después de publicarse")
         MyAccessibilityService.handleText(
             applicationContext,
             "$title $text $bigText".trim(),
             MyAccessibilityService.ORIGIN_LISTENER,
             sbn.packageName,
+            // Recién llegada, aunque se lea al reconectarse, va como cualquier otra.
+            recoveredAt = if (age > STALE_MS) sbn.postTime else null,
         )
+    }
+
+    private fun state() = applicationContext.getSharedPreferences(STATE_PREFS, MODE_PRIVATE)
+
+    private fun markListening(now: Long) {
+        state().edit().putLong(KEY_LAST_SEEN, now).apply()
     }
 
     companion object {
         private const val TAG = "PaymentNotifListener"
         private const val STALE_MS = 3 * 60 * 1000L
         private const val UPDATE_WINDOW_MS = 60 * 1000L
+        private const val STATE_PREFS = "migasto_native_state"
+        private const val KEY_LAST_SEEN = "listener_last_seen"
 
         fun isGroupSummary(notification: Notification): Boolean =
             notification.flags and Notification.FLAG_GROUP_SUMMARY != 0

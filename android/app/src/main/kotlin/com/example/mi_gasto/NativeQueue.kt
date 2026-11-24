@@ -20,6 +20,15 @@ object NativeQueue {
     private const val KEY_OVERRIDES = "flutter.migasto_category_overrides_v2"
     private val lock = Any()
 
+    /** Pago leído al momento: ya pasó por los frenos de duplicados nativos. */
+    const val ORIGIN_ANDROID = "android"
+
+    /**
+     * Pago recuperado al reconectarse el lector de notificaciones: pudo llegar antes por
+     * accesibilidad, así que Flutter lo compara con lo que ya está guardado.
+     */
+    const val ORIGIN_RECOVERED = "android_recuperado"
+
     /** Agrega un pago. `confirmed` false lo deja pendiente. */
     fun enqueue(
         context: Context,
@@ -30,6 +39,8 @@ object NativeQueue {
         rawText: String,
         confirmed: Boolean,
         ref: String? = null,
+        at: Long = System.currentTimeMillis(),
+        origin: String = ORIGIN_ANDROID,
     ) {
         val item = JSONObject().apply {
             // Con `ref`, Flutter usa ese id para el movimiento y la notificación puede referirse a él.
@@ -41,8 +52,8 @@ object NativeQueue {
             put("rawText", rawText)
             put("confirmed", confirmed)
             // Lo que llega de Android ya pasó por los frenos de duplicados nativos.
-            put("origin", "android")
-            put("at", System.currentTimeMillis())
+            put("origin", origin)
+            put("at", at)
         }
         synchronized(lock) {
             val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

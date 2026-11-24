@@ -338,6 +338,49 @@ void main() {
       expect(c.read(expensesStateProvider), hasLength(2));
     });
 
+    test('un pago recuperado al reconectarse el lector queda por confirmar con su hora', () async {
+      final at = DateTime.now().subtract(const Duration(hours: 2)).millisecondsSinceEpoch;
+      final c = await containerWithQueue(jsonEncode([
+        {
+          'id': 'rec-1',
+          'amount': 18,
+          'peer': 'Bodega Rosita',
+          'provider': 'yape',
+          'type': 'gasto',
+          'rawText': 'Yapeaste S/ 18.00 a Bodega Rosita',
+          'confirmed': false,
+          'origin': 'android_recuperado',
+          'at': at,
+        },
+      ]));
+      addTearDown(c.dispose);
+
+      final m = c.read(expensesStateProvider).single;
+      expect(m.estado, EstadoMovimiento.pendiente);
+      expect(m.date.millisecondsSinceEpoch, at);
+    });
+
+    test('un pago recuperado que ya llegó por accesibilidad no se repite', () async {
+      final at = DateTime.now().subtract(const Duration(hours: 2)).millisecondsSinceEpoch;
+      Map<String, dynamic> yape(String origin, int when) => {
+            'amount': 18,
+            'peer': 'Bodega Rosita',
+            'provider': 'yape',
+            'type': 'gasto',
+            'rawText': 'Yapeaste S/ 18.00 a Bodega Rosita',
+            'confirmed': origin == 'android',
+            'origin': origin,
+            'at': when,
+          };
+      final c = await containerWithQueue(
+          jsonEncode([yape('android', at), yape('android_recuperado', at + 20000)]));
+      addTearDown(c.dispose);
+
+      final list = c.read(expensesStateProvider);
+      expect(list, hasLength(1));
+      expect(list.single.estado, EstadoMovimiento.confirmado);
+    });
+
     Map<String, dynamic> pendingIncome(String id, int at) => {
           'id': id,
           'amount': 15,

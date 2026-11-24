@@ -43,7 +43,14 @@ class MyAccessibilityService : AccessibilityService() {
             duplicates.isDuplicate(DuplicateGuard.key(result.provider, result.type, result.amount), origin, ORIGIN_LISTENER, app)
 
         /** Lee un texto (notificación o pantalla) y, si es un pago, lo entrega. */
-        fun handleText(context: Context, text: String, origin: String = ORIGIN_ACCESS, app: String? = null) {
+        fun handleText(
+            context: Context,
+            text: String,
+            origin: String = ORIGIN_ACCESS,
+            app: String? = null,
+            /** Hora en que se publicó la notificación, si se lee tarde (recuperada). */
+            recoveredAt: Long? = null,
+        ) {
             val rules = ReaderRules.get(context)
             if (rules == null) { Log.d(TAG, "reglas no cargadas"); return }
             // De una pantalla solo cuenta la constancia: el inicio de Yape (saldo, movimientos)
@@ -97,7 +104,26 @@ class MyAccessibilityService : AccessibilityService() {
 
             // No se registra el texto completo: puede traer datos personales.
             Log.d(TAG, "Pago detectado: ${result.type} ${result.provider}")
+            if (recoveredAt != null) {
+                deliverRecovered(context, result, text.take(MAX_SCREEN_TEXT), recoveredAt)
+                return
+            }
             deliver(context, result, text.take(MAX_SCREEN_TEXT))
+        }
+
+        /**
+         * Pago que llegó mientras el lector de notificaciones estaba desconectado: ya no es momento
+         * de la ventana flotante. Queda por confirmar, con la hora en que llegó, y se avisa.
+         */
+        private fun deliverRecovered(context: Context, result: ParseResult, rawText: String, at: Long) {
+            Log.d(TAG, "pago recuperado: queda por confirmar")
+            val ref = java.util.UUID.randomUUID().toString()
+            NativeQueue.enqueue(
+                context, result.amount, result.peer, result.provider, result.type, rawText,
+                confirmed = false, ref = ref, at = at, origin = NativeQueue.ORIGIN_RECOVERED,
+            )
+            notifyFlutterSaved()
+            PaymentNotifier.notify(context, result.amount, result.peer, result.provider, result.type, saved = false, ref = ref)
         }
 
         fun simulateNotification(text: String, context: Context) = handleText(context, text)

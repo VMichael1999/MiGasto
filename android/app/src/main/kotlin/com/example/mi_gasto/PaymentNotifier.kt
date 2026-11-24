@@ -101,7 +101,8 @@ object PaymentNotifier {
         val title = when {
             isIncome && saved -> "Ingreso guardado: $money"
             isIncome -> "Ingreso por confirmar: $money"
-            else -> "Gasto guardado: $money"
+            saved -> "Gasto guardado: $money"
+            else -> "Gasto por confirmar: $money"
         }
         val name = NativeQueue.displayName(context, peer)
         val text = "${if (isIncome) "de" else "a"} $name · ${sourceName(provider)}"
