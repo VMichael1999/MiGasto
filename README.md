@@ -85,7 +85,7 @@
   - **Accesibilidad** (`MyAccessibilityService`): la constancia de Yape cuando envías o pagas («¡Yapeaste!»), porque Yape no avisa al que paga. Es opcional; se activa en Ajustes > «Pagos que envías». De la pantalla **solo** se lee la constancia (la que trae «DATOS DE LA TRANSACCIÓN»): el inicio de Yape, con el saldo y los últimos movimientos, se ignora.
   - Ambas pasan por el mismo lector de reglas y la misma protección contra duplicados.
   - **Modo captura** (Ajustes, apagado por defecto): guarda en el teléfono el texto de las notificaciones y pantallas de las apps de pago, con lo que entendió el lector, y lo comparte como archivo de texto. Sirve para escribir reglas con textos reales (por ejemplo, las constancias de BCP, BBVA o Interbank). Guarda las últimas 100 entradas y, al apagarlo, las borra.
-- **🎈 Ventana flotante.** Aparece sobre cualquier app con el monto, el comercio, la fuente y la categoría. El botón **Guardar** es la cuenta regresiva: se vacía de color fuerte a tenue en 4 segundos y guarda al terminar; tocar la ventana la pausa; deslizarla hacia arriba la descarta. Un ingreso espera tu confirmación, salvo que hayas activado el guardado automático.
+- **🎈 Ventana flotante.** Aparece sobre cualquier app con el monto, el comercio, la fuente y la categoría, con el mismo diseño oscuro y violeta de la app. No se cierra sola ni guarda nada por su cuenta: tú eliges **Guardar**, **Editar** o **Descartar** (en un ingreso, **Guardar ingreso** o **Ignorar**). Deslizarla hacia arriba la quita y el pago queda en «Por confirmar».
 - **🔔 Notificación de cada pago.** Cuando la ventana flotante no se puede ver (pantalla apagada o bloqueada, o sin el permiso «Mostrar sobre otras apps») MiGasto guarda el pago según las reglas de siempre y te avisa con una notificación local (no hay servidor ni *push*):
   - un gasto queda guardado y avisa en silencio («Gasto guardado: S/ 3.00 · a Michael · Yape»);
   - un ingreso que espera confirmación avisa con sonido y trae los botones **Guardar** e **Ignorar** para resolverlo sin abrir la app (se ven al desbloquear y bajar la barra; en la pantalla bloqueada no, por privacidad);
@@ -163,7 +163,7 @@ Ubicada en `android/app/src/main/kotlin/com/example/mi_gasto/`:
 2. **`MyAccessibilityService`:** lee la pantalla de **constancia** de Yape (al enviar o pagar). Contiene el flujo común `handleText` → lector de reglas → filtros de duplicados → entrega.
 3. **`ReaderRules`:** lee `assets/reader_rules.json` y `assets/category_rules.json`: monto, tipo (gasto o ingreso), nombre de la persona o comercio, número de operación, fecha de la constancia y categoría.
 4. **`DuplicateGuard` y `HandledStore`:** el primero decide si un pago es el mismo que llegó por otra vía (solo entre vías distintas; Google Wallet y la app del banco avisan el mismo consumo y cuentan una vez); el segundo guarda en el teléfono lo ya leído (notificaciones y constancias) para sobrevivir a reinicios.
-5. **`OverlayService`:** la ventana flotante (`TYPE_APPLICATION_OVERLAY`) con la cuenta regresiva dentro de «Guardar», chips de categoría, gesto para descartar y animaciones.
+5. **`OverlayService`:** la ventana flotante (`TYPE_APPLICATION_OVERLAY`) con los colores de `MgColors`, sin cuenta regresiva: el usuario elige Guardar, Editar o Descartar; deslizarla hacia arriba deja el pago por confirmar.
 6. **`PaymentNotifier` y `PaymentActionReceiver`:** el aviso local cuando no se ve la ventana (canal con sonido para ingresos por confirmar, canal silencioso para gastos) y los botones **Guardar** / **Ignorar**, que dejan la orden en la cola.
 7. **`NativeQueue`:** la cola (en `SharedPreferences`) donde lo nativo deja pagos y órdenes; Flutter la vacía al abrir la app, al volver a ella y cada vez que se guarda algo, así no se pierde nada aunque la app esté cerrada.
 8. **`MainActivity`:** el canal con Flutter (permisos, estado de batería, reconexión del lector).
@@ -317,7 +317,7 @@ Para ver el flujo completo sin hacer un pago real, en una versión de **depuraci
 1. **Onboarding:** acepta y activa la lectura, o elige «Usar solo registro manual».
 2. **Permisos:** en Ajustes activa «Lectura de pagos» (Acceso a notificaciones) y, si quieres, «Ventana flotante», «Pagos que envías» y «Avisos de pagos».
 3. **Probar la lectura:** al final de Ajustes, en **Solo desarrollo**, escribe un texto como el de una notificación (por ejemplo `Yapeaste S/ 18.50 a una tienda` o `Ana te yapeó S/ 45.00`) y toca **Probar**. Pasa por el mismo camino que un pago real.
-4. **Segundo plano:** minimiza la app y repite: verás la **ventana flotante** (o, con la pantalla bloqueada, la **notificación**). Un gasto se guarda solo a los 4 segundos; un ingreso espera tu confirmación (botón **Guardar** o **Ignorar**).
+4. **Segundo plano:** minimiza la app y repite: verás la **ventana flotante** (o, con la pantalla bloqueada, la **notificación**). La ventana espera a que elijas: **Guardar** o **Descartar** en un gasto, **Guardar ingreso** o **Ignorar** en un ingreso.
 5. **Respaldo:** en Ajustes crea un respaldo cifrado y restáuralo para ver cómo no se duplica lo que ya tienes.
 
 ---
