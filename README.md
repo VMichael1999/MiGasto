@@ -73,7 +73,7 @@
 - **🎯 Plan.** Límites por categoría (con aviso al pasarte) y una meta de ahorro.
 - **📈 Stats.** Gastos por categoría (dona o anillos), saldo proyectado a 30 días, comparación con el período anterior y detalle de cada categoría por quincena, mes, trimestre o semestre.
 - **🏪 Logos de comercios.** El ícono de cada movimiento es el logo de Rappi, Uber, Spotify, Netflix, etc. Se pide por internet **solo con el sitio web del comercio** (nunca montos ni datos tuyos), se guarda en caché y se puede apagar en Perfil > «Logos de comercios». Sin logo, se usa el ícono de la categoría.
-- **🧩 Widgets (iPhone y Android).** Tres widgets para la pantalla de inicio, con los colores de la app: **Resumen del mes** (la tarjeta violeta de Inicio: disponible, barra del mes, ingresos y gastos), **Últimos movimientos** (3 o 6 según el tamaño, con cuántos esperan confirmación; cada fila abre su detalle) y **Registrar** (botones Gasto e Ingreso). Flutter les pasa un resumen ya calculado (`lib/shared/widget_snapshot.dart`) cada vez que cambian los movimientos, así muestran las mismas cifras que Inicio. En iPhone también hay versiones para la pantalla bloqueada y el control del Centro de control.
+- **🧩 Widgets (iPhone y Android).** Tres widgets para la pantalla de inicio, oscuros y violetas como la app: **Resumen del mes** (el saldo disponible con «S/» y decimales más chicos, el anillo con lo que queda del mes y, en el mediano, ingresos y gastos), **Últimos movimientos** (con el ícono de su categoría, lo que espera confirmación en ámbar y, en el grande, agrupados por día con su total; cada fila abre su detalle) y **Registrar** (lo que gastaste hoy y los botones Gasto e Ingreso). Flutter les pasa un resumen ya calculado (`lib/shared/widget_snapshot.dart`) cada vez que cambian los movimientos, así muestran las mismas cifras que Inicio. Contemplan el saldo negativo («Te pasaste»), el mes que quedó viejo («Toca para actualizar»), la lista vacía y el widget recién puesto. En iPhone van con Inter, como la app (los widgets de Android no pueden usar fuentes propias y usan la del sistema), y también hay versiones para la pantalla bloqueada y el control del Centro de control. El diseño parte de las maquetas aprobadas.
 - **🗺️ Dónde gasto.** Mapa con los pagos que tienen ubicación y un botón para centrarlo en dónde estás.
 - **📱 Modo horizontal.** Inicio, Stats, Buscar, Plan, Perfil, MiGastoIA, el detalle de un movimiento, la bienvenida y el acceso se reorganizan en zonas; las hojas se vuelven paneles laterales o menús compactos.
 - **⌨️ Teclado.** Tocar un espacio vacío lo baja, aparece un botón para ocultarlo, y en MiGastoIA se esconde la barra de navegación al escribir y la conversación baja al último mensaje.
@@ -275,7 +275,7 @@ flutter analyze
 flutter test
 ```
 
-Hay 308 pruebas: cuentas (invitado, vincular, crear, recuperar), carga y errores de acceso, MiGastoIA y su conversación, logos de comercios, teclado, modo horizontal de las pantallas, mapa, Apple Pay y la acción de Atajos, la guía de correos, SMS y constancias, el modo captura, además de cifrado de la base, lector (gasto o ingreso, montos, textos que no son pagos, compras rechazadas, códigos y recordatorios, y los textos reales de Yape, Plin en BBVA e Interbank, consumos con tarjeta de Interbank y Google Wallet), categorías y categorías propias, duplicados, migración de datos antiguos, cola nativa (incluidos los botones del aviso, los pagos recuperados, los cargos en dólares y las transferencias entre cuentas propias), tipo de cambio, migración de la base al esquema 2, aviso destacado de las lecturas, aviso de avisos ocultos, inicio automático y ajustes restringidos, ventana de pago, guardado automático de ingresos, registro manual, ocultar montos, respaldo, ubicación, bloqueo y los widgets (el resumen que reciben, que solo se envía si cambió algo, y sus enlaces).
+Hay 310 pruebas: cuentas (invitado, vincular, crear, recuperar), carga y errores de acceso, MiGastoIA y su conversación, logos de comercios, teclado, modo horizontal de las pantallas, mapa, Apple Pay y la acción de Atajos, la guía de correos, SMS y constancias, el modo captura, además de cifrado de la base, lector (gasto o ingreso, montos, textos que no son pagos, compras rechazadas, códigos y recordatorios, y los textos reales de Yape, Plin en BBVA e Interbank, consumos con tarjeta de Interbank y Google Wallet), categorías y categorías propias, duplicados, migración de datos antiguos, cola nativa (incluidos los botones del aviso, los pagos recuperados, los cargos en dólares y las transferencias entre cuentas propias), tipo de cambio, migración de la base al esquema 2, aviso destacado de las lecturas, aviso de avisos ocultos, inicio automático y ajustes restringidos, ventana de pago, guardado automático de ingresos, registro manual, ocultar montos, respaldo, ubicación, bloqueo y los widgets (el resumen que reciben, con «hoy gastaste», el saldo en partes, el ícono y el día de cada movimiento; que solo se envía si cambió algo, y sus enlaces).
 
 ### 2. Pruebas nativas de Android (JUnit)
 
@@ -301,7 +301,7 @@ El resto de lo nativo (lector de reglas, servicio de notificaciones, accesibilid
 ### Estado de las pruebas
 
 ```text
-Flutter:  308 passed, 0 failed
+Flutter:  310 passed, 0 failed
 JUnit:     41 passed, 0 failed
 XCTest:    15 passed, 0 failed
 Análisis: sin problemas
