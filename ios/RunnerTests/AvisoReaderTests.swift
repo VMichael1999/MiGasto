@@ -49,6 +49,16 @@ final class AvisoReaderTests: XCTestCase {
         XCTAssertEqual(i["peer"] as? String, "Adrian I Mamani Q")
     }
 
+    /// El atajo del disparador «Notificación» (iOS 27) pasa App, Título y Cuerpo.
+    func testIngresoDeLemonDesdeElAtajoDeNotificaciones() throws {
+        let i = try XCTUnwrap(item("Lemon Cash Recibiste S/ 1.5 🙌 ANA LUCIA PEREZ RIOS te envió dinero. Ya lo puedes encontrar en tu cuenta."))
+        XCTAssertEqual(i["amount"] as? Double, 1.5)
+        XCTAssertEqual(i["peer"] as? String, "ANA LUCIA PEREZ RIOS")
+        XCTAssertEqual(i["provider"] as? String, "lemon")
+        XCTAssertEqual(i["type"] as? String, "ingreso")
+        XCTAssertEqual(AvisoReader.body(for: i), "S/ 1.50 · ANA LUCIA PEREZ RIOS · Lemon")
+    }
+
     func testUnIngresoEsperaConfirmacion() throws {
         let i = try XCTUnwrap(item("Yape! ADRIAN MAMANI te envió un pago por S/ 1"))
         XCTAssertEqual(i["type"] as? String, "ingreso")

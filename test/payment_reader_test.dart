@@ -243,6 +243,32 @@ void main() {
     });
   });
 
+  group('Lemon Cash', () {
+    // Texto real de un teléfono; el nombre es inventado.
+    const title = 'Recibiste S/ 1.5 🙌';
+    const body = 'ANA LUCIA PEREZ RIOS te envió dinero. Ya lo puedes encontrar en tu cuenta.';
+
+    test('Android: el paquete dice que es Lemon y el nombre va después del monto', () {
+      final p = reader.parse('$title $body', app: 'com.applemoncash')!;
+      expect(p.isIncome, isTrue);
+      expect(p.amount, 1.5);
+      expect(p.peer, 'ANA LUCIA PEREZ RIOS');
+      expect(p.provider, 'lemon');
+    });
+
+    test('iPhone: el atajo antepone el nombre de la app («Lemon Cash»)', () {
+      final p = reader.parse('Lemon Cash $title $body')!;
+      expect(p.isIncome, isTrue);
+      expect(p.amount, 1.5);
+      expect(p.peer, 'ANA LUCIA PEREZ RIOS');
+      expect(p.provider, 'lemon');
+    });
+
+    test('sin saber que es Lemon no se adivina la fuente', () {
+      expect(reader.parse('$title $body'), isNull);
+    });
+  });
+
   group('Google Wallet real', () {
     const wallet = 'com.google.android.apps.walletnfcrel';
 
