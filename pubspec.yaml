@@ -104,6 +104,7 @@ flutter:
     - assets/brand/icon.svg
     - assets/brand/logo_3d.png
     - assets/icons/
+    - assets/wallets/
     - assets/avatars/
     - assets/tutorial/
 

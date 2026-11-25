@@ -184,6 +184,7 @@ class _MovementDetailScreenState extends ConsumerState<MovementDetailScreen> {
                           MerchantIcon(
                             merchant: m.merchant,
                             category: m.category,
+                            source: m.source,
                             size: 56,
                             radius: 19,
                             iconSize: 26,

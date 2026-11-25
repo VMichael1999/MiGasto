@@ -945,6 +945,7 @@ class _MovementItemRow extends StatelessWidget {
               MerchantIcon(
                 merchant: movement.merchant,
                 category: movement.category,
+                source: movement.source,
                 size: 38,
                 radius: 12,
               ),

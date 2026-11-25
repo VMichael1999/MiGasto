@@ -616,7 +616,7 @@ class _CategoryDetailScreenState extends ConsumerState<CategoryDetailScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                       child: Row(
                         children: [
-                          MerchantIcon(merchant: m.merchant, category: m.category, size: 38, radius: 12),
+                          MerchantIcon(merchant: m.merchant, category: m.category, source: m.source, size: 38, radius: 12),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
