@@ -54,6 +54,38 @@ void main() {
       expect(s['percent'], 97); // 4367.5 de 4500
       expect(s['negative'], false);
       expect(s['pending'], 1);
+      expect(s['monthShort'], 'NOV');
+      // El saldo en partes, para dibujar «S/» y los decimales más chicos.
+      expect(s['balanceSign'], '');
+      expect(s['balanceInt'], '4,367');
+      expect(s['balanceDec'], '.50');
+    });
+
+    test('«Hoy gastaste» suma solo lo confirmado de hoy', () {
+      final s = WidgetSnapshot.build([
+        _m('Tambo', 12.5, DateTime(2026, 11, 24, 9)),
+        _m('Luz', 120, DateTime(2026, 11, 24, 10), category: Categoria.servicios),
+        _m('Steam', 25.78, DateTime(2026, 11, 24, 11), pendiente: true),
+        _m('Ayer', 40, DateTime(2026, 11, 23, 20)),
+        _m('Sueldo', 3500, DateTime(2026, 11, 24, 8), ingreso: true),
+        _m('Mi otra cuenta', 50, DateTime(2026, 11, 24, 12), propia: true),
+      ], now);
+      expect(s['todaySpent'], 'S/ 132.50');
+    });
+
+    test('cada movimiento lleva su ícono y su día, y cada día su total', () {
+      final s = WidgetSnapshot.build([
+        _m('Sueldo', 3500, DateTime(2026, 11, 23, 9), ingreso: true),
+        _m('Uber', 38.2, DateTime(2026, 11, 23, 18), category: Categoria.transporte),
+        _m('Tambo', 12.5, DateTime(2026, 11, 24, 9)),
+        _m('Steam', 25.78, DateTime(2026, 11, 24, 11), pendiente: true),
+        _m('Mi otra cuenta', 50, DateTime(2026, 11, 24, 12), propia: true),
+      ], now);
+      final recent = (s['recent'] as List).cast<Map<String, dynamic>>();
+      expect(recent.map((r) => r['icon']), ['propia', 'compras', 'compras', 'transporte', 'sueldo']);
+      expect(recent.map((r) => r['day']), ['2026-11-24', '2026-11-24', '2026-11-24', '2026-11-23', '2026-11-23']);
+      // Hoy: solo Tambo cuenta (Steam espera y la transferencia propia no suma).
+      expect(s['days'], {'2026-11-24': '\u2212S/ 12.50', '2026-11-23': '+S/ 3,461.80'});
     });
 
     test('los movimientos van del más reciente al más antiguo, con signo y color', () {
@@ -65,7 +97,7 @@ void main() {
       final recent = (s['recent'] as List).cast<Map<String, dynamic>>();
 
       expect(recent.map((r) => r['title']), ['Steam', 'Mi otra cuenta', 'Sueldo']);
-      expect(recent[0]['amount'], '-S/ 25.78');
+      expect(recent[0]['amount'], '\u2212S/ 25.78');
       expect(recent[0]['pending'], true);
       expect(recent[0]['color'], '#FF8A3D');
       expect(recent[0]['subtitle'], 'Entretenimiento');
@@ -86,7 +118,9 @@ void main() {
 
     test('un saldo negativo lleva signo y la barra queda en 0', () {
       final s = WidgetSnapshot.build([_m('Alquiler', 800, DateTime(2026, 11, 2))], now);
-      expect(s['balance'], '-S/ 800.00');
+      expect(s['balance'], '\u2212S/ 800.00');
+      expect(s['balanceSign'], '\u2212');
+      expect(s['balanceInt'], '800');
       expect(s['negative'], true);
       expect(s['percent'], 0);
     });
