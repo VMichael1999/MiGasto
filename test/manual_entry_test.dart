@@ -75,4 +75,64 @@ void main() {
     expect(saved.canal, CanalMovimiento.manual);
     expect(find.textContaining('Ingreso de S/ 180.00 guardado'), findsOneWidget);
   });
+
+  testWidgets('el campo Comercio sugiere los comercios ya usados y se guarda con el elegido',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    );
+    addTearDown(container.dispose);
+    final notifier = container.read(expensesStateProvider.notifier);
+    for (final m in ['Tambo', 'Tambo', 'Uber']) {
+      await notifier.addManualMovimiento(
+          tipo: TipoMovimiento.gasto, amount: 5, merchant: m, category: Categoria.compras);
+    }
+
+    await tester.binding.setSurfaceSize(const Size(420, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final router = GoRouter(routes: [
+      GoRoute(
+        path: '/',
+        builder: (_, _) => Scaffold(
+          body: Builder(
+            builder: (context) =>
+                TextButton(onPressed: () => context.push('/new'), child: const Text('abrir')),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/new',
+        builder: (_, _) => const ManualEntryScreen(initialType: TipoMovimiento.gasto),
+      ),
+    ]);
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp.router(theme: ThemeData.dark(), routerConfig: router),
+    ));
+    await tester.tap(find.text('abrir'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Comercio', findRichText: true), findsWidgets);
+    expect(find.text('Tambo'), findsOneWidget);
+    expect(find.text('Uber'), findsOneWidget);
+
+    // Al escribir solo quedan los que coinciden.
+    await tester.enterText(find.byType(TextField), 'tam');
+    await tester.pump();
+    expect(find.text('Uber'), findsNothing);
+
+    await tester.tap(find.text('Tambo'));
+    await tester.pump();
+    expect(find.widgetWithText(TextField, 'Tambo'), findsOneWidget);
+
+    await tester.tap(find.text('2').last);
+    await tester.pump();
+    await tester.tap(find.text('Guardar · S/ 2.00'));
+    await tester.pumpAndSettle();
+    final saved = container.read(expensesStateProvider).first;
+    expect(saved.merchant, 'Tambo');
+    expect(saved.amount, 2.0);
+  });
 }
