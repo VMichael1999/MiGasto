@@ -243,6 +243,66 @@ void main() {
     });
   });
 
+  group('textos reales de BCP, Interbank y Yape', () {
+    // De proyectos que capturaron avisos reales (ver docs/investigacion-notificaciones-pagos.md);
+    // los nombres son inventados. En el iPhone el atajo antepone la app («Interbank»).
+    test('Interbank: el Plin que llega con «Interbank» o «Negocios» delante', () {
+      expect(reader.parse('Interbank Interbank Ana Pérez te ha plineado S/ 1.00')!.peer, 'Ana Pérez');
+      expect(reader.parse('Interbank Negocios Ana Pérez te ha plineado S/ 1.00')!.peer, 'Ana Pérez');
+    });
+
+    test('Interbank: las iniciales conservan la «A.»', () {
+      final p = reader.parse('Interbank Plineaste S/ 1.00 a A. R. C. N.')!;
+      expect(p.isIncome, isFalse);
+      expect(p.peer, 'A. R. C. N');
+    });
+
+    test('Interbank: «TRAN S/ 10.00 A ****534» es una transferencia enviada sin nombre', () {
+      final p = reader.parse('TRAN S/ 10.00\nA ****534\n(25/10 08:48:33)',
+          app: 'pe.com.interbank.mobilebanking')!;
+      expect(p.isIncome, isFalse);
+      expect(p.amount, 10.0);
+      expect(p.provider, 'transferencia');
+      expect(p.peer, 'Desconocido');
+    });
+
+    test('BCP: yapeo recibido por correo, con el nombre al final', () {
+      final p = reader.parse('Constancia de recepción de Yapeo a celular BCP '
+          'Recibiste un yapeo de S/ 1,157.00 de Ana Pérez.')!;
+      expect(p.isIncome, isTrue);
+      expect(p.amount, 1157.0);
+      expect(p.peer, 'Ana Pérez');
+      expect(p.provider, 'yape');
+    });
+
+    test('BCP: yapeo a celular enviado, que no dice a quién', () {
+      final p = reader.parse('Constancia de Pago con QR - Servicios de Notificaciones BCP '
+          'Realizaste un yapeo a celular de S/ 2.00 desde tu Clasica Soles.')!;
+      expect(p.isIncome, isFalse);
+      expect(p.peer, 'Desconocido');
+      expect(p.provider, 'yape');
+    });
+
+    test('BCP: transferencia a otro banco y entre tus cuentas', () {
+      final otro = reader.parse('Constancia de Transferencia a Otros Bancos - Servicio de Notificaciones BCP '
+          'Realizaste una transferencia de S/ 25.00 desde tu Cuenta digital.')!;
+      expect(otro.isIncome, isFalse);
+      expect(otro.amount, 25.0);
+      expect(otro.provider, 'transferencia');
+      const propia = 'Constancia de Transferencia Entre mis Cuentas - Servicio de Notificaciones BCP '
+          'Realizaste una transferencia de S/ 57.95 desde tu Clasica.';
+      expect(reader.parse(propia)!.provider, 'transferencia');
+      expect(reader.isOwnTransfer(propia), isTrue);
+    });
+
+    test('lo que trae un monto pero no es un pago', () {
+      expect(reader.parse('Se rechazó tu compra por fondos insuficientes - Servicio de Notificaciones BCP '
+          'Tu compra de S/ 30.00 con tu tarjeta no se realizó'), isNull);
+      expect(reader.parse('Yape Gana hasta S/3,000 en premios'), isNull);
+      expect(reader.parse('Interbank Participa en el sorteo de S/ 500 pagando con Plin'), isNull);
+    });
+  });
+
   group('Lemon Cash', () {
     // Texto real de un teléfono; el nombre es inventado.
     const title = 'Recibiste S/ 1.5 🙌';

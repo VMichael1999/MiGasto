@@ -582,6 +582,23 @@ void main() {
       expect(m.category, Categoria.compras);
     });
 
+    test('el mismo Plin que Interbank publica dos veces (iPhone) se guarda una sola vez', () async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      Map<String, Object> plin(int at) => {
+            'amount': 1.0,
+            'peer': 'Ana Pérez',
+            'provider': 'plin',
+            'type': 'ingreso',
+            'channel': 'aviso',
+            'rawText': 'Interbank Negocios Ana Pérez te ha plineado S/ 1.00',
+            'confirmed': false,
+            'at': at,
+          };
+      final c = await containerWithQueue(jsonEncode([plin(now), plin(now + 300)]));
+      addTearDown(c.dispose);
+      expect(c.read(expensesStateProvider), hasLength(1));
+    });
+
     test('una cola vacía no hace nada', () async {
       final c = await containerWithQueue('[]');
       addTearDown(c.dispose);

@@ -59,6 +59,38 @@ final class AvisoReaderTests: XCTestCase {
         XCTAssertEqual(AvisoReader.body(for: i), "S/ 1.50 · ANA LUCIA PEREZ RIOS · Lemon")
     }
 
+    /// Correo de Yape con la tabla del yapeo (automatización «Correo»); el nombre es inventado.
+    func testCorreoDeYapeAlYapearTomaElNombreDelBeneficiario() throws {
+        let mail = """
+        Por tu seguridad, te notificaremos por cada yapeo que realices
+        ¡Acabas de yapear exitosamente!
+        Monto de yapeo
+        S/ 25.00
+        Celular del Beneficiario
+        XXXXXXXXX261
+        Nombre del Beneficiario
+        Ana Pérez
+        """
+        let i = try XCTUnwrap(item(mail))
+        XCTAssertEqual(i["amount"] as? Double, 25)
+        XCTAssertEqual(i["type"] as? String, "gasto")
+        XCTAssertEqual(i["provider"] as? String, "yape")
+        XCTAssertEqual(i["peer"] as? String, "Ana Pérez")
+    }
+
+    func testCorreoDeYapeDeUnServicioTomaLaEmpresa() throws {
+        let i = try XCTUnwrap(item("Tu yapeo de servicio ha sido confirmado\nEmpresa: Luz del Sur\nServicio: Electricidad\nMonto: S/ 80.00"))
+        XCTAssertEqual(i["type"] as? String, "gasto")
+        XCTAssertEqual(i["peer"] as? String, "Luz del Sur")
+    }
+
+    func testTransferenciaDeInterbankSinNombre() throws {
+        let i = try XCTUnwrap(item("Interbank TRAN S/ 10.00\nA ****534\n(25/10 08:48:33)"))
+        XCTAssertEqual(i["provider"] as? String, "transferencia")
+        XCTAssertEqual(i["peer"] as? String, "Desconocido")
+        XCTAssertEqual(AvisoReader.body(for: i), "S/ 10.00 · Desconocido · Transferencia")
+    }
+
     func testUnIngresoEsperaConfirmacion() throws {
         let i = try XCTUnwrap(item("Yape! ADRIAN MAMANI te envió un pago por S/ 1"))
         XCTAssertEqual(i["type"] as? String, "ingreso")
