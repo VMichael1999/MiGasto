@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="@color/widget_acc" />
-    <corners android:radius="14dp" />
+<!-- Botón redondo de «Registrar». -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <gradient
+        android:angle="315"
+        android:startColor="#FF9B82FF"
+        android:endColor="#FF6A46F5"
+        android:type="linear" />
 </shape>

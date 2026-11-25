@@ -5,5 +5,5 @@
     <string name="widget_recent_name">Últimos movimientos</string>
     <string name="widget_recent_description">Tus últimos gastos e ingresos, y cuántos esperan que los confirmes.</string>
     <string name="widget_quick_add_name">Registrar</string>
-    <string name="widget_quick_add_description">Abre MiGasto para registrar un gasto o un ingreso en segundos.</string>
+    <string name="widget_quick_add_description">Registra un gasto o un ingreso en segundos, y mira cuánto gastaste hoy.</string>
 </resources>

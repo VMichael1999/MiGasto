@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Widget «Registrar» mediano: botones Gasto e Ingreso. -->
+<!-- «Registrar» mediano (4 × 2): lo gastado hoy y los botones Gasto e Ingreso, con el ícono y la
+     palabra centrados. El monto es de ejemplo para la galería; HomeWidgets.kt lo reemplaza. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/root"
+    android:id="@android:id/background"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_bg_card"
@@ -13,22 +14,29 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="10dp"
         android:gravity="center_vertical"
-        android:orientation="horizontal">
-
-        <ImageView
-            android:layout_width="22dp"
-            android:layout_height="22dp"
-            android:importantForAccessibility="no"
-            android:src="@drawable/widget_logo" />
+        android:orientation="horizontal"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp">
 
         <TextView
+            android:id="@+id/today_label"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:fontFamily="sans-serif-medium"
+            android:text="Hoy gastaste"
+            android:textColor="@color/widget_ink2"
+            android:textSize="12.5sp" />
+
+        <TextView
+            android:id="@+id/today"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
             android:fontFamily="sans-serif-medium"
-            android:text="Registrar"
+            android:fontFeatureSettings="tnum"
+            android:text="S/ 38.40"
             android:textColor="@color/widget_ink"
-            android:textSize="14sp" />
+            android:textSize="13.5sp" />
     </LinearLayout>
 
     <LinearLayout
@@ -43,82 +51,75 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:background="@drawable/widget_bg_button"
-            android:orientation="vertical"
-            android:padding="12dp">
+            android:gravity="center"
+            android:orientation="vertical">
 
             <FrameLayout
-                android:layout_width="28dp"
-                android:layout_height="28dp">
+                android:layout_width="40dp"
+                android:layout_height="40dp">
 
                 <ImageView
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:alpha="0.18"
+                    android:alpha="0.16"
                     android:importantForAccessibility="no"
                     android:src="@drawable/widget_dot"
                     android:tint="@color/widget_down" />
 
                 <ImageView
-                    android:layout_width="14dp"
-                    android:layout_height="14dp"
+                    android:layout_width="17dp"
+                    android:layout_height="17dp"
                     android:layout_gravity="center"
                     android:importantForAccessibility="no"
                     android:src="@drawable/widget_ic_down"
-                    android:tint="@color/widget_down" />
+                    android:tint="@color/widget_down_text" />
             </FrameLayout>
-
-            <FrameLayout
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
                 android:fontFamily="sans-serif-medium"
                 android:text="Gasto"
                 android:textColor="@color/widget_ink"
                 android:textSize="15sp" />
         </LinearLayout>
+
         <LinearLayout
             android:id="@+id/income"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:layout_weight="1"
             android:layout_marginStart="10dp"
+            android:layout_weight="1"
             android:background="@drawable/widget_bg_button"
-            android:orientation="vertical"
-            android:padding="12dp">
+            android:gravity="center"
+            android:orientation="vertical">
 
             <FrameLayout
-                android:layout_width="28dp"
-                android:layout_height="28dp">
+                android:layout_width="40dp"
+                android:layout_height="40dp">
 
                 <ImageView
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:alpha="0.18"
+                    android:alpha="0.16"
                     android:importantForAccessibility="no"
                     android:src="@drawable/widget_dot"
                     android:tint="@color/widget_up" />
 
                 <ImageView
-                    android:layout_width="14dp"
-                    android:layout_height="14dp"
+                    android:layout_width="17dp"
+                    android:layout_height="17dp"
                     android:layout_gravity="center"
                     android:importantForAccessibility="no"
                     android:src="@drawable/widget_ic_up"
-                    android:tint="@color/widget_up" />
+                    android:tint="@color/widget_up_text" />
             </FrameLayout>
-
-            <FrameLayout
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
                 android:fontFamily="sans-serif-medium"
                 android:text="Ingreso"
                 android:textColor="@color/widget_ink"

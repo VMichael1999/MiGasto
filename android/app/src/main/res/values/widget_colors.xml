@@ -12,6 +12,10 @@
     <color name="widget_up">#FF2FD98A</color>
     <color name="widget_down">#FFFF5C6E</color>
     <color name="widget_warn">#FFF5A524</color>
+    <!-- Montos de gastos e ingresos en las listas (más claros, para leerse sobre el fondo oscuro). -->
+    <color name="widget_down_text">#FFFF6B7A</color>
+    <color name="widget_up_text">#FF34D399</color>
+    <color name="widget_slate">#FF94A3B8</color>
     <color name="widget_white_72">#B8FFFFFF</color>
     <color name="widget_white_82">#D1FFFFFF</color>
 </resources>

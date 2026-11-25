@@ -7,5 +7,5 @@
         android:centerColor="#FF6A46F5"
         android:endColor="#FF5A36E8"
         android:type="linear" />
-    <corners android:radius="24dp" />
+    <corners android:radius="@dimen/widget_radius" />
 </shape>

@@ -2,5 +2,5 @@
 <!-- Fondo del ícono de cada movimiento: se tiñe con el color de la categoría. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
     <solid android:color="#FFFFFFFF" />
-    <corners android:radius="9dp" />
+    <corners android:radius="10dp" />
 </shape>

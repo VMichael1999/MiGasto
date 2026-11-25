@@ -1,37 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Widget «Últimos movimientos». Tiene 6 filas; en tamaño mediano se muestran 3. Los textos
-     son de ejemplo para la galería de widgets: al ponerlo, HomeWidgets.kt los reemplaza. -->
+<!-- «Últimos movimientos»: 3 filas en 4 × 2 y, al agrandarlo, las que quepan con el título de
+     cada día. Los textos son de ejemplo para la galería; HomeWidgets.kt los reemplaza. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/root"
+    android:id="@android:id/background"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_bg_card"
     android:orientation="vertical"
-    android:padding="14dp">
+    android:paddingStart="16dp"
+    android:paddingTop="14dp"
+    android:paddingEnd="16dp"
+    android:paddingBottom="14dp">
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="4dp"
+        android:layout_height="22dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
-        <ImageView
-            android:layout_width="20dp"
-            android:layout_height="20dp"
-            android:importantForAccessibility="no"
-            android:src="@drawable/widget_logo" />
-
         <TextView
+            android:id="@+id/title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
             android:layout_weight="1"
             android:fontFamily="sans-serif-medium"
             android:maxLines="1"
             android:text="Movimientos"
             android:textColor="@color/widget_ink"
-            android:textSize="14sp" />
+            android:textSize="15sp" />
 
         <TextView
             android:id="@+id/pending"
@@ -44,561 +40,713 @@
             android:paddingTop="3dp"
             android:paddingEnd="8dp"
             android:paddingBottom="3dp"
-            android:textColor="@color/widget_acc2"
-            android:textSize="10.5sp"
-            android:visibility="gone" />
+            android:text="1 por confirmar"
+            android:textColor="@color/widget_warn"
+            android:textSize="11sp" />
     </LinearLayout>
 
-    <TextView
+    <LinearLayout
         android:id="@+id/empty"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:gravity="center"
-        android:text="Aún no hay movimientos"
-        android:textColor="@color/widget_ink2"
-        android:textSize="13sp"
-        android:visibility="gone" />
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/empty_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-medium"
+            android:gravity="center"
+            android:text="Aún no hay movimientos este mes"
+            android:textColor="@color/widget_ink2"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/empty_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/widget_bg_pill"
+            android:fontFamily="sans-serif-medium"
+            android:paddingStart="16dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="8dp"
+            android:text="Registrar el primero"
+            android:textColor="#FFFFFFFF"
+            android:textSize="13sp" />
+    </LinearLayout>
 
     <LinearLayout
-        android:id="@+id/row1"
+        android:id="@+id/list"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-
-        <FrameLayout
-            android:layout_width="30dp"
-            android:layout_height="30dp">
-
-            <ImageView
-                android:id="@+id/row1_tile"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:importantForAccessibility="no"
-                android:src="@drawable/widget_tile"
-                android:tint="@color/widget_acc_soft" />
-
-            <TextView
-                android:id="@+id/row1_letter"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:fontFamily="sans-serif"
-                android:gravity="center"
-                android:text="T"
-                android:textColor="@color/widget_acc2"
-                android:textSize="13sp"
-                android:textStyle="bold" />
-        </FrameLayout>
+        android:orientation="vertical">
 
         <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
-            android:layout_weight="1"
-            android:orientation="vertical">
+        android:id="@+id/slot1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:id="@+id/day1"
+            android:layout_width="match_parent"
+            android:layout_height="24dp"
+            android:gravity="bottom"
+            android:orientation="horizontal"
+            android:paddingBottom="4dp"
+            android:visibility="visible">
+
+            <TextView
+                android:id="@+id/day1_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.02"
+                android:text="HOY"
+                android:textColor="@color/widget_ink2"
+                android:textSize="11.5sp" />
+
+            <TextView
+                android:id="@+id/day1_total"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:fontFeatureSettings="tnum"
+                android:text="−S/ 110.90"
+                android:textColor="@color/widget_ink2"
+                android:textSize="11.5sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/row1"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <FrameLayout
+                android:layout_width="32dp"
+                android:layout_height="32dp">
+
+                <ImageView
+                    android:id="@+id/row1_tile"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:alpha="0.16"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/widget_tile"
+                    android:tint="#FFFF5C8A" />
+
+                <ImageView
+                    android:id="@+id/row1_icon"
+                    android:layout_width="17dp"
+                    android:layout_height="17dp"
+                    android:layout_gravity="center"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/widget_cat_compras"
+                    android:tint="#FFFF5C8A" />
+            </FrameLayout>
 
             <LinearLayout
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
 
                 <TextView
                     android:id="@+id/row1_title"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
                     android:fontFamily="sans-serif-medium"
                     android:maxLines="1"
                     android:text="Tambo"
                     android:textColor="@color/widget_ink"
-                    android:textSize="13sp" />
+                    android:textSize="13.5sp" />
 
-                <ImageView
-                    android:id="@+id/row1_dot"
-                    android:layout_width="6dp"
-                    android:layout_height="6dp"
-                    android:layout_marginStart="5dp"
-                    android:importantForAccessibility="no"
-                    android:src="@drawable/widget_dot"
-                    android:tint="@color/widget_warn"
-                    android:visibility="gone" />
+                <TextView
+                    android:id="@+id/row1_sub"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:fontFamily="sans-serif-medium"
+                    android:maxLines="1"
+                    android:text="Compras"
+                    android:textColor="@color/widget_ink2"
+                    android:textSize="11.5sp" />
             </LinearLayout>
 
             <TextView
-                android:id="@+id/row1_sub"
-                android:layout_width="match_parent"
+                android:id="@+id/row1_amount"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:fontFamily="sans-serif"
+                android:layout_marginStart="6dp"
+                android:fontFamily="sans-serif-medium"
+                android:fontFeatureSettings="tnum"
                 android:maxLines="1"
-                android:text="Compras"
-                android:textColor="@color/widget_ink2"
-                android:textSize="11sp" />
+                android:text="−S/ 12.50"
+                android:textColor="@color/widget_down_text"
+                android:textSize="13.5sp" />
         </LinearLayout>
-
-        <TextView
-            android:id="@+id/row1_amount"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:fontFamily="sans-serif-medium"
-            android:maxLines="1"
-            android:text="-S/ 12.50"
-            android:textColor="@color/widget_down"
-            android:textSize="13sp" />
     </LinearLayout>
-    <LinearLayout
-        android:id="@+id/row2"
+        <LinearLayout
+        android:id="@+id/slot2"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-
-        <FrameLayout
-            android:layout_width="30dp"
-            android:layout_height="30dp">
-
-            <ImageView
-                android:id="@+id/row2_tile"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:importantForAccessibility="no"
-                android:src="@drawable/widget_tile"
-                android:tint="@color/widget_acc_soft" />
-
-            <TextView
-                android:id="@+id/row2_letter"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:fontFamily="sans-serif"
-                android:gravity="center"
-                android:text="S"
-                android:textColor="@color/widget_acc2"
-                android:textSize="13sp"
-                android:textStyle="bold" />
-        </FrameLayout>
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
 
         <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            android:id="@+id/day2"
+            android:layout_width="match_parent"
+            android:layout_height="24dp"
+            android:gravity="bottom"
+            android:orientation="horizontal"
+            android:paddingBottom="4dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/day2_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.02"
+                android:text="AYER"
+                android:textColor="@color/widget_ink2"
+                android:textSize="11.5sp" />
+
+            <TextView
+                android:id="@+id/day2_total"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:fontFeatureSettings="tnum"
+                android:text="+S/ 1,971.00"
+                android:textColor="@color/widget_ink2"
+                android:textSize="11.5sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/row2"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <FrameLayout
+                android:layout_width="32dp"
+                android:layout_height="32dp">
+
+                <ImageView
+                    android:id="@+id/row2_tile"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:alpha="0.16"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/widget_tile"
+                    android:tint="#FFFF8A3D" />
+
+                <ImageView
+                    android:id="@+id/row2_icon"
+                    android:layout_width="17dp"
+                    android:layout_height="17dp"
+                    android:layout_gravity="center"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/widget_cat_entretenimiento"
+                    android:tint="#FFFF8A3D" />
+            </FrameLayout>
 
             <LinearLayout
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
 
                 <TextView
                     android:id="@+id/row2_title"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
                     android:fontFamily="sans-serif-medium"
                     android:maxLines="1"
                     android:text="Spotify"
                     android:textColor="@color/widget_ink"
-                    android:textSize="13sp" />
-
-                <ImageView
-                    android:id="@+id/row2_dot"
-                    android:layout_width="6dp"
-                    android:layout_height="6dp"
-                    android:layout_marginStart="5dp"
-                    android:importantForAccessibility="no"
-                    android:src="@drawable/widget_dot"
-                    android:tint="@color/widget_warn"
-                    android:visibility="gone" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/row2_sub"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:fontFamily="sans-serif"
-                android:maxLines="1"
-                android:text="Entretenimiento"
-                android:textColor="@color/widget_ink2"
-                android:textSize="11sp" />
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/row2_amount"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:fontFamily="sans-serif-medium"
-            android:maxLines="1"
-            android:text="-S/ 19.90"
-            android:textColor="@color/widget_down"
-            android:textSize="13sp" />
-    </LinearLayout>
-    <LinearLayout
-        android:id="@+id/row3"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-
-        <FrameLayout
-            android:layout_width="30dp"
-            android:layout_height="30dp">
-
-            <ImageView
-                android:id="@+id/row3_tile"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:importantForAccessibility="no"
-                android:src="@drawable/widget_tile"
-                android:tint="@color/widget_acc_soft" />
-
-            <TextView
-                android:id="@+id/row3_letter"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:fontFamily="sans-serif"
-                android:gravity="center"
-                android:text="S"
-                android:textColor="@color/widget_acc2"
-                android:textSize="13sp"
-                android:textStyle="bold" />
-        </FrameLayout>
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
-            android:layout_weight="1"
-            android:orientation="vertical">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
+                    android:textSize="13.5sp" />
 
                 <TextView
-                    android:id="@+id/row3_title"
-                    android:layout_width="wrap_content"
+                    android:id="@+id/row2_sub"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
                     android:fontFamily="sans-serif-medium"
                     android:maxLines="1"
-                    android:text="Sueldo"
-                    android:textColor="@color/widget_ink"
-                    android:textSize="13sp" />
-
-                <ImageView
-                    android:id="@+id/row3_dot"
-                    android:layout_width="6dp"
-                    android:layout_height="6dp"
-                    android:layout_marginStart="5dp"
-                    android:importantForAccessibility="no"
-                    android:src="@drawable/widget_dot"
-                    android:tint="@color/widget_warn"
-                    android:visibility="gone" />
+                    android:text="Entretenimiento"
+                    android:textColor="@color/widget_ink2"
+                    android:textSize="11.5sp" />
             </LinearLayout>
 
             <TextView
-                android:id="@+id/row3_sub"
-                android:layout_width="match_parent"
+                android:id="@+id/row2_amount"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:fontFamily="sans-serif"
+                android:layout_marginStart="6dp"
+                android:fontFamily="sans-serif-medium"
+                android:fontFeatureSettings="tnum"
                 android:maxLines="1"
-                android:text="Sueldo"
-                android:textColor="@color/widget_ink2"
-                android:textSize="11sp" />
+                android:text="−S/ 19.90"
+                android:textColor="@color/widget_down_text"
+                android:textSize="13.5sp" />
         </LinearLayout>
-
-        <TextView
-            android:id="@+id/row3_amount"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:fontFamily="sans-serif-medium"
-            android:maxLines="1"
-            android:text="+S/ 2,000.00"
-            android:textColor="@color/widget_up"
-            android:textSize="13sp" />
     </LinearLayout>
-    <LinearLayout
-        android:id="@+id/row4"
+        <LinearLayout
+        android:id="@+id/slot3"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-
-        <FrameLayout
-            android:layout_width="30dp"
-            android:layout_height="30dp">
-
-            <ImageView
-                android:id="@+id/row4_tile"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:importantForAccessibility="no"
-                android:src="@drawable/widget_tile"
-                android:tint="@color/widget_acc_soft" />
-
-            <TextView
-                android:id="@+id/row4_letter"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:fontFamily="sans-serif"
-                android:gravity="center"
-                android:text="L"
-                android:textColor="@color/widget_acc2"
-                android:textSize="13sp"
-                android:textStyle="bold" />
-        </FrameLayout>
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
 
         <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            android:id="@+id/day3"
+            android:layout_width="match_parent"
+            android:layout_height="24dp"
+            android:gravity="bottom"
+            android:orientation="horizontal"
+            android:paddingBottom="4dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/day3_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.02"
+                android:text="AYER"
+                android:textColor="@color/widget_ink2"
+                android:textSize="11.5sp" />
+
+            <TextView
+                android:id="@+id/day3_total"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:fontFeatureSettings="tnum"
+                android:text="+S/ 1,971.00"
+                android:textColor="@color/widget_ink2"
+                android:textSize="11.5sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/row3"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <FrameLayout
+                android:layout_width="32dp"
+                android:layout_height="32dp">
+
+                <ImageView
+                    android:id="@+id/row3_tile"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:alpha="0.16"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/widget_tile"
+                    android:tint="#FF9B82FF" />
+
+                <ImageView
+                    android:id="@+id/row3_icon"
+                    android:layout_width="17dp"
+                    android:layout_height="17dp"
+                    android:layout_gravity="center"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/widget_cat_servicios"
+                    android:tint="#FF9B82FF" />
+            </FrameLayout>
 
             <LinearLayout
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
 
                 <TextView
-                    android:id="@+id/row4_title"
-                    android:layout_width="wrap_content"
+                    android:id="@+id/row3_title"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
                     android:fontFamily="sans-serif-medium"
                     android:maxLines="1"
                     android:text="Luz del Sur"
                     android:textColor="@color/widget_ink"
-                    android:textSize="13sp" />
+                    android:textSize="13.5sp" />
 
-                <ImageView
-                    android:id="@+id/row4_dot"
-                    android:layout_width="6dp"
-                    android:layout_height="6dp"
-                    android:layout_marginStart="5dp"
-                    android:importantForAccessibility="no"
-                    android:src="@drawable/widget_dot"
-                    android:tint="@color/widget_warn"
-                    android:visibility="gone" />
+                <TextView
+                    android:id="@+id/row3_sub"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:fontFamily="sans-serif-medium"
+                    android:maxLines="1"
+                    android:text="Servicios"
+                    android:textColor="@color/widget_ink2"
+                    android:textSize="11.5sp" />
             </LinearLayout>
 
             <TextView
-                android:id="@+id/row4_sub"
-                android:layout_width="match_parent"
+                android:id="@+id/row3_amount"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:fontFamily="sans-serif"
+                android:layout_marginStart="6dp"
+                android:fontFamily="sans-serif-medium"
+                android:fontFeatureSettings="tnum"
                 android:maxLines="1"
-                android:text="Servicios"
-                android:textColor="@color/widget_ink2"
-                android:textSize="11sp" />
+                android:text="−S/ 98.40"
+                android:textColor="@color/widget_down_text"
+                android:textSize="13.5sp" />
         </LinearLayout>
-
-        <TextView
-            android:id="@+id/row4_amount"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:fontFamily="sans-serif-medium"
-            android:maxLines="1"
-            android:text="-S/ 98.40"
-            android:textColor="@color/widget_down"
-            android:textSize="13sp" />
     </LinearLayout>
-    <LinearLayout
-        android:id="@+id/row5"
+        <LinearLayout
+        android:id="@+id/slot4"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-
-        <FrameLayout
-            android:layout_width="30dp"
-            android:layout_height="30dp">
-
-            <ImageView
-                android:id="@+id/row5_tile"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:importantForAccessibility="no"
-                android:src="@drawable/widget_tile"
-                android:tint="@color/widget_acc_soft" />
-
-            <TextView
-                android:id="@+id/row5_letter"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:fontFamily="sans-serif"
-                android:gravity="center"
-                android:text="U"
-                android:textColor="@color/widget_acc2"
-                android:textSize="13sp"
-                android:textStyle="bold" />
-        </FrameLayout>
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
 
         <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            android:id="@+id/day4"
+            android:layout_width="match_parent"
+            android:layout_height="24dp"
+            android:gravity="bottom"
+            android:orientation="horizontal"
+            android:paddingBottom="4dp"
+            android:visibility="visible">
+
+            <TextView
+                android:id="@+id/day4_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.02"
+                android:text="AYER"
+                android:textColor="@color/widget_ink2"
+                android:textSize="11.5sp" />
+
+            <TextView
+                android:id="@+id/day4_total"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:fontFeatureSettings="tnum"
+                android:text="+S/ 1,971.00"
+                android:textColor="@color/widget_ink2"
+                android:textSize="11.5sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/row4"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <FrameLayout
+                android:layout_width="32dp"
+                android:layout_height="32dp">
+
+                <ImageView
+                    android:id="@+id/row4_tile"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:alpha="0.16"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/widget_tile"
+                    android:tint="#FF2FD98A" />
+
+                <ImageView
+                    android:id="@+id/row4_icon"
+                    android:layout_width="17dp"
+                    android:layout_height="17dp"
+                    android:layout_gravity="center"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/widget_cat_sueldo"
+                    android:tint="#FF2FD98A" />
+            </FrameLayout>
 
             <LinearLayout
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/row4_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:fontFamily="sans-serif-medium"
+                    android:maxLines="1"
+                    android:text="Sueldo"
+                    android:textColor="@color/widget_ink"
+                    android:textSize="13.5sp" />
+
+                <TextView
+                    android:id="@+id/row4_sub"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:fontFamily="sans-serif-medium"
+                    android:maxLines="1"
+                    android:text="Sueldo"
+                    android:textColor="@color/widget_ink2"
+                    android:textSize="11.5sp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/row4_amount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:fontFamily="sans-serif-medium"
+                android:fontFeatureSettings="tnum"
+                android:maxLines="1"
+                android:text="+S/ 2,000.00"
+                android:textColor="@color/widget_up_text"
+                android:textSize="13.5sp" />
+        </LinearLayout>
+    </LinearLayout>
+        <LinearLayout
+        android:id="@+id/slot5"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:id="@+id/day5"
+            android:layout_width="match_parent"
+            android:layout_height="24dp"
+            android:gravity="bottom"
+            android:orientation="horizontal"
+            android:paddingBottom="4dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/day5_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.02"
+                android:text="AYER"
+                android:textColor="@color/widget_ink2"
+                android:textSize="11.5sp" />
+
+            <TextView
+                android:id="@+id/day5_total"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:fontFeatureSettings="tnum"
+                android:text="+S/ 1,971.00"
+                android:textColor="@color/widget_ink2"
+                android:textSize="11.5sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/row5"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <FrameLayout
+                android:layout_width="32dp"
+                android:layout_height="32dp">
+
+                <ImageView
+                    android:id="@+id/row5_tile"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:alpha="0.16"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/widget_tile"
+                    android:tint="#FF22D3EE" />
+
+                <ImageView
+                    android:id="@+id/row5_icon"
+                    android:layout_width="17dp"
+                    android:layout_height="17dp"
+                    android:layout_gravity="center"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/widget_cat_transporte"
+                    android:tint="#FF22D3EE" />
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
 
                 <TextView
                     android:id="@+id/row5_title"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
                     android:fontFamily="sans-serif-medium"
                     android:maxLines="1"
                     android:text="Uber"
                     android:textColor="@color/widget_ink"
-                    android:textSize="13sp" />
-
-                <ImageView
-                    android:id="@+id/row5_dot"
-                    android:layout_width="6dp"
-                    android:layout_height="6dp"
-                    android:layout_marginStart="5dp"
-                    android:importantForAccessibility="no"
-                    android:src="@drawable/widget_dot"
-                    android:tint="@color/widget_warn"
-                    android:visibility="gone" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/row5_sub"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:fontFamily="sans-serif"
-                android:maxLines="1"
-                android:text="Transporte"
-                android:textColor="@color/widget_ink2"
-                android:textSize="11sp" />
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/row5_amount"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:fontFamily="sans-serif-medium"
-            android:maxLines="1"
-            android:text="-S/ 15.00"
-            android:textColor="@color/widget_down"
-            android:textSize="13sp" />
-    </LinearLayout>
-    <LinearLayout
-        android:id="@+id/row6"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-
-        <FrameLayout
-            android:layout_width="30dp"
-            android:layout_height="30dp">
-
-            <ImageView
-                android:id="@+id/row6_tile"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:importantForAccessibility="no"
-                android:src="@drawable/widget_tile"
-                android:tint="@color/widget_acc_soft" />
-
-            <TextView
-                android:id="@+id/row6_letter"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:fontFamily="sans-serif"
-                android:gravity="center"
-                android:text="V"
-                android:textColor="@color/widget_acc2"
-                android:textSize="13sp"
-                android:textStyle="bold" />
-        </FrameLayout>
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
-            android:layout_weight="1"
-            android:orientation="vertical">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
+                    android:textSize="13.5sp" />
 
                 <TextView
-                    android:id="@+id/row6_title"
-                    android:layout_width="wrap_content"
+                    android:id="@+id/row5_sub"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
                     android:fontFamily="sans-serif-medium"
                     android:maxLines="1"
-                    android:text="Venta"
-                    android:textColor="@color/widget_ink"
-                    android:textSize="13sp" />
-
-                <ImageView
-                    android:id="@+id/row6_dot"
-                    android:layout_width="6dp"
-                    android:layout_height="6dp"
-                    android:layout_marginStart="5dp"
-                    android:importantForAccessibility="no"
-                    android:src="@drawable/widget_dot"
-                    android:tint="@color/widget_warn"
-                    android:visibility="gone" />
+                    android:text="Transporte"
+                    android:textColor="@color/widget_ink2"
+                    android:textSize="11.5sp" />
             </LinearLayout>
 
             <TextView
-                android:id="@+id/row6_sub"
-                android:layout_width="match_parent"
+                android:id="@+id/row5_amount"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:fontFamily="sans-serif"
+                android:layout_marginStart="6dp"
+                android:fontFamily="sans-serif-medium"
+                android:fontFeatureSettings="tnum"
                 android:maxLines="1"
-                android:text="Venta"
+                android:text="−S/ 15.00"
+                android:textColor="@color/widget_down_text"
+                android:textSize="13.5sp" />
+        </LinearLayout>
+    </LinearLayout>
+        <LinearLayout
+        android:id="@+id/slot6"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:id="@+id/day6"
+            android:layout_width="match_parent"
+            android:layout_height="24dp"
+            android:gravity="bottom"
+            android:orientation="horizontal"
+            android:paddingBottom="4dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/day6_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.02"
+                android:text="AYER"
                 android:textColor="@color/widget_ink2"
-                android:textSize="11sp" />
+                android:textSize="11.5sp" />
+
+            <TextView
+                android:id="@+id/day6_total"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:fontFeatureSettings="tnum"
+                android:text="+S/ 1,971.00"
+                android:textColor="@color/widget_ink2"
+                android:textSize="11.5sp" />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/row6_amount"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:fontFamily="sans-serif-medium"
-            android:maxLines="1"
-            android:text="+S/ 80.00"
-            android:textColor="@color/widget_up"
-            android:textSize="13sp" />
+        <LinearLayout
+            android:id="@+id/row6"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <FrameLayout
+                android:layout_width="32dp"
+                android:layout_height="32dp">
+
+                <ImageView
+                    android:id="@+id/row6_tile"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:alpha="0.16"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/widget_tile"
+                    android:tint="#FFF5A524" />
+
+                <ImageView
+                    android:id="@+id/row6_icon"
+                    android:layout_width="17dp"
+                    android:layout_height="17dp"
+                    android:layout_gravity="center"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/widget_cat_alimentacion"
+                    android:tint="#FFF5A524" />
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/row6_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:fontFamily="sans-serif-medium"
+                    android:maxLines="1"
+                    android:text="Menú del día"
+                    android:textColor="@color/widget_ink"
+                    android:textSize="13.5sp" />
+
+                <TextView
+                    android:id="@+id/row6_sub"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:fontFamily="sans-serif-medium"
+                    android:maxLines="1"
+                    android:text="Alimentación"
+                    android:textColor="@color/widget_ink2"
+                    android:textSize="11.5sp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/row6_amount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:fontFamily="sans-serif-medium"
+                android:fontFeatureSettings="tnum"
+                android:maxLines="1"
+                android:text="−S/ 14.00"
+                android:textColor="@color/widget_down_text"
+                android:textSize="13.5sp" />
+        </LinearLayout>
+    </LinearLayout>
     </LinearLayout>
 
     <TextView
@@ -606,10 +754,12 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
+        android:background="@drawable/widget_bg_more"
         android:fontFamily="sans-serif-medium"
         android:gravity="center"
+        android:paddingTop="9dp"
+        android:paddingBottom="9dp"
         android:text="Ver todos"
-        android:textColor="@color/widget_acc2"
-        android:textSize="12.5sp"
-        android:visibility="gone" />
+        android:textColor="#FFB8A6FF"
+        android:textSize="13sp" />
 </LinearLayout>
