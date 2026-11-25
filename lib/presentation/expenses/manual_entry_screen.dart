@@ -11,6 +11,8 @@ import '../../core/widgets/widgets.dart';
 import '../../domain/entities/movimiento.dart';
 import '../../shared/format.dart';
 import '../../shared/labels.dart';
+import '../../shared/merchant_suggestions.dart';
+import '../../shared/widgets/merchant_icon.dart';
 import '../providers.dart';
 import '../plan/plan_providers.dart';
 
@@ -566,25 +568,31 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
     );
   }
 
-  // 4. Campo de descripción (.field)
+  // 4. Campo del comercio (.field): en ingresos, de quién. Sugiere los que ya usaste.
   Widget _buildDescriptionField(BuildContext context) {
+    final suggestions = merchantSuggestions(
+      ref.watch(expensesStateProvider),
+      tipo: _tipo,
+      query: _concept.text,
+      limit: 8,
+    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           RichText(
-            text: const TextSpan(
+            text: TextSpan(
               children: [
                 TextSpan(
-                  text: 'Descripción ',
-                  style: TextStyle(
+                  text: _isIncome ? 'De quién ' : 'Comercio ',
+                  style: const TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w500,
                     color: MgColors.ink2,
                   ),
                 ),
-                TextSpan(
+                const TextSpan(
                   text: '(opcional)',
                   style: TextStyle(
                     fontSize: 11.5,
@@ -598,6 +606,8 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
           const SizedBox(height: 2),
           TextField(
             controller: _concept,
+            onChanged: (_) => setState(() {}),
+            textCapitalization: TextCapitalization.sentences,
             style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w500,
@@ -608,7 +618,7 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
             decoration: InputDecoration(
               filled: false,
               fillColor: Colors.transparent,
-              hintText: _isIncome ? 'De quién o por qué' : 'Para qué fue',
+              hintText: _isIncome ? 'Ej.: Ana Pérez, sueldo' : 'Ej.: Tambo, Uber, Netflix',
               hintStyle: const TextStyle(
                 fontSize: 15,
                 color: MgColors.ink3,
@@ -625,7 +635,67 @@ class _ManualEntryScreenState extends ConsumerState<ManualEntryScreen> {
               ),
             ),
           ),
+          if (suggestions.isNotEmpty) ...[
+            const SizedBox(height: 9),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              clipBehavior: Clip.none,
+              child: Row(
+                children: [
+                  for (final m in suggestions) ...[
+                    _merchantChip(m),
+                    const SizedBox(width: 7),
+                  ],
+                ],
+              ),
+            ),
+          ],
         ],
+      ),
+    );
+  }
+
+  /// Un comercio ya usado: al tocarlo queda escrito.
+  Widget _merchantChip(MerchantSuggestion m) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(11),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(11),
+        onTap: () => setState(() {
+          _concept.text = m.name;
+          _concept.selection = TextSelection.collapsed(offset: m.name.length);
+        }),
+        child: Container(
+          height: 32,
+          padding: const EdgeInsets.only(left: 5, right: 11),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(11),
+            border: Border.all(color: MgColors.line),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              MerchantIcon(
+                merchant: m.name,
+                category: m.category,
+                source: m.source,
+                size: 22,
+                radius: 7,
+                iconSize: 12,
+              ),
+              const SizedBox(width: 7),
+              Text(
+                m.name,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w500,
+                  color: MgColors.ink,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
