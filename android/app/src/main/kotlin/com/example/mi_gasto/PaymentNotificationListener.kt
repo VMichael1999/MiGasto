@@ -83,6 +83,14 @@ class PaymentNotificationListener : NotificationListenerService() {
             Log.d(TAG, "ignorada: la misma notificación actualizada")
             return
         }
+        // Interbank publica el mismo Plin dos veces, con el título «Interbank» y con «Negocios»:
+        // el mismo texto de la misma app en pocos segundos es un solo pago.
+        if (text.isNotBlank() &&
+            !HandledStore.markRecent(applicationContext, "t|${sbn.packageName}|${"$text|$bigText".hashCode()}", TWIN_WINDOW_MS)
+        ) {
+            Log.d(TAG, "ignorada: el mismo aviso publicado dos veces con otro título")
+            return
+        }
         Log.d(TAG, "notificación de ${sbn.packageName}, llegó $age ms después de publicarse")
         MyAccessibilityService.handleText(
             applicationContext,
@@ -126,6 +134,7 @@ class PaymentNotificationListener : NotificationListenerService() {
         private const val TAG = "PaymentNotifListener"
         private const val STALE_MS = 3 * 60 * 1000L
         private const val UPDATE_WINDOW_MS = 60 * 1000L
+        private const val TWIN_WINDOW_MS = 5 * 1000L
         private const val HIDDEN_GRACE_MS = 6 * 1000L
         private const val STATE_PREFS = "migasto_native_state"
         private const val KEY_LAST_SEEN = "listener_last_seen"
