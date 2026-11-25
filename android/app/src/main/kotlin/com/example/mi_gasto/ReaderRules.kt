@@ -39,7 +39,7 @@ class ReaderRules private constructor(
     private val unknownPeer = rules.getString("unknownPeer")
     private val titlePrefixRegex = rules.optJSONArray("titlePrefixes")?.let(::strings)
         ?.takeIf { it.isNotEmpty() }
-        ?.let { names -> Regex("^(?:" + names.joinToString("|") { Regex.escape(it) } + ")(?![\\p{L}\\p{N}])", options) }
+        ?.let { names -> Regex("^(?:(?:" + names.joinToString("|") { Regex.escape(it) } + ")(?![\\p{L}\\p{N}])\\s*)+", options) }
 
     private val gastoGroups = categoryGroups(categories.getJSONArray("gasto"))
     private val ingresoGroups = categoryGroups(categories.getJSONArray("ingreso"))
@@ -194,6 +194,8 @@ class ReaderRules private constructor(
      * Se toma hasta la primera cifra (la fecha) y se descarta si queda demasiado largo.
      */
     private fun fromAfterWithoutPreposition(after: String): String {
+        // «… S/ 2.00 desde tu Clasica Soles»: lo que sigue es tu cuenta, no a quién pagaste.
+        if (after.lowercase().startsWith("desde ")) return ""
         val cut = Regex("\\d").find(after)?.range?.first ?: after.length
         val name = clean(after.substring(0, cut))
         return if (name.length in 2..60) name else ""
@@ -211,12 +213,15 @@ class ReaderRules private constructor(
                 " ",
             )
         }
-        t = t.replace(Regex("^\\s*($prepositions)\\b", options), "")
+        // «a Ana» pierde la «a», pero «A. R. C. N.» (iniciales de Interbank) no.
+        t = t.replace(Regex("^\\s*($prepositions)\\b(?!\\.)", options), "")
         t = t.replace(Regex("\\b($prepositions)\\s*$", options), "")
         // Emojis de los títulos («¡Recibiste un Plin! 💸»).
         t = t.replace(Regex("\\p{So}"), " ")
         t = t.replace(Regex("\\s+"), " ")
-        return t.replace(Regex("^[\\s:,\\-¡!.*_]+|[\\s:,\\-¡!.*_]+$"), "")
+        t = t.replace(Regex("^[\\s:,\\-¡!.*_]+|[\\s:,\\-¡!.*_]+$"), "")
+        // Sin ninguna letra no es un nombre («****534», la cuenta de destino de Interbank).
+        return if (Regex("\\p{L}").containsMatchIn(t)) t else ""
     }
 
     /**

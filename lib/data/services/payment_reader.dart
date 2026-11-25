@@ -181,12 +181,13 @@ class PaymentReader {
     return _fromAfterWithoutPreposition(after);
   }
 
-  /// Quita el título que es solo el nombre del banco («Interbank Ana te ha plineado»).
+  /// Quita el título que es solo el nombre del banco («Interbank Ana te ha plineado»), también
+  /// repetido o con otro título detrás («Interbank Negocios Ana te ha plineado»).
   String _withoutTitlePrefix(String before) {
     final names = ((_rules['titlePrefixes'] as List?) ?? const []).cast<String>();
     if (names.isEmpty) return before;
     return before
-        .replaceFirst(RegExp('^(?:${names.map(RegExp.escape).join('|')})(?![\\p{L}\\p{N}])',
+        .replaceFirst(RegExp('^(?:(?:${names.map(RegExp.escape).join('|')})(?![\\p{L}\\p{N}])\\s*)+',
             caseSensitive: false, unicode: true), '')
         .trim();
   }
@@ -208,6 +209,8 @@ class PaymentReader {
   /// "de" ("¡Yapeaste! S/ 1 Juan Pérez 01 oct. 2026 09:48 a. m. DATOS DE LA ..."). Se
   /// toma hasta la primera cifra (la fecha) y se descarta si queda demasiado largo.
   String _fromAfterWithoutPreposition(String after) {
+    // «… S/ 2.00 desde tu Clasica Soles»: lo que sigue es tu cuenta, no a quién pagaste.
+    if (after.toLowerCase().startsWith('desde ')) return '';
     final digit = RegExp(r'\d').firstMatch(after);
     final name = _clean(digit == null ? after : after.substring(0, digit.start));
     return name.length >= 2 && name.length <= 60 ? name : '';
@@ -230,11 +233,14 @@ class PaymentReader {
       );
     }
     final preps = (_rules['peerPrepositions'] as List).cast<String>().join('|');
-    t = t.replaceAll(RegExp('^\\s*($preps)\\b', caseSensitive: false), '');
+    // «a Ana» pierde la «a», pero «A. R. C. N.» (iniciales de Interbank) no.
+    t = t.replaceAll(RegExp('^\\s*($preps)\\b(?!\\.)', caseSensitive: false), '');
     t = t.replaceAll(RegExp('\\b($preps)\\s*\$', caseSensitive: false), '');
     // Emojis de los títulos («¡Recibiste un Plin! 💸»).
     t = t.replaceAll(RegExp(r'\p{So}', unicode: true), ' ');
     t = t.replaceAll(RegExp(r'\s+'), ' ');
-    return t.replaceAll(RegExp(r'^[\s:,\-¡!.*_]+|[\s:,\-¡!.*_]+$'), '');
+    t = t.replaceAll(RegExp(r'^[\s:,\-¡!.*_]+|[\s:,\-¡!.*_]+$'), '');
+    // Sin ninguna letra no es un nombre («****534», la cuenta de destino de Interbank).
+    return RegExp(r'\p{L}', unicode: true).hasMatch(t) ? t : '';
   }
 }

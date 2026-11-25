@@ -167,7 +167,8 @@ final class PaymentReader {
         for (i, line) in lines.enumerated()
         where amountRegex.firstMatch(in: line, range: fullRange(line)) != nil {
             let candidates = lines.dropFirst(i + 1)
-            if let next = candidates.first(where: { isPeerLine($0) }) {
+            // «A ****534» (Interbank) no es un nombre: sin la «A» no le queda ninguna letra.
+            if let next = candidates.first(where: { isPeerLine($0) && !clean($0).isEmpty }) {
                 return ParsedPayment(amount: base.amount, peer: next.trimmingCharacters(in: .whitespaces),
                                      provider: base.provider, isIncome: base.isIncome, currency: base.currency)
             }
@@ -271,7 +272,8 @@ final class PaymentReader {
     private func withoutTitlePrefix(_ before: String) -> String {
         let names = rules["titlePrefixes"] as? [String] ?? []
         guard !names.isEmpty else { return before }
-        let pattern = "^(?:" + names.map { NSRegularExpression.escapedPattern(for: $0) }.joined(separator: "|") + ")(?![\\p{L}\\p{N}])"
+        // También repetido o con otro título detrás («Interbank Negocios Ana te ha plineado»).
+        let pattern = "^(?:(?:" + names.map { NSRegularExpression.escapedPattern(for: $0) }.joined(separator: "|") + ")(?![\\p{L}\\p{N}])\\s*)+"
         return before.replacingOccurrences(of: pattern, with: "", options: [.regularExpression, .caseInsensitive])
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
@@ -288,6 +290,8 @@ final class PaymentReader {
     /// Constancia de Yape al enviar: el nombre va justo después del monto, sin «a» ni «de».
     /// Se toma hasta la primera cifra (la fecha) y se descarta si queda demasiado largo.
     private func fromAfterWithoutPreposition(_ after: String) -> String {
+        // «… S/ 2.00 desde tu Clasica Soles»: lo que sigue es tu cuenta, no a quién pagaste.
+        if after.lowercased().hasPrefix("desde ") { return "" }
         let cut = after.firstIndex(where: { $0.isNumber }) ?? after.endIndex
         let name = clean(String(after[..<cut]))
         return (2...60).contains(name.count) ? name : ""
@@ -306,12 +310,15 @@ final class PaymentReader {
             t = t.replacingOccurrences(of: pattern, with: " ", options: [.regularExpression, .caseInsensitive])
         }
         let preps = (rules["peerPrepositions"] as? [String] ?? []).joined(separator: "|")
-        t = t.replacingOccurrences(of: "^\\s*(\(preps))\\b", with: "", options: [.regularExpression, .caseInsensitive])
+        // «a Ana» pierde la «a», pero «A. R. C. N.» (iniciales de Interbank) no.
+        t = t.replacingOccurrences(of: "^\\s*(\(preps))\\b(?!\\.)", with: "", options: [.regularExpression, .caseInsensitive])
         t = t.replacingOccurrences(of: "\\b(\(preps))\\s*$", with: "", options: [.regularExpression, .caseInsensitive])
         // Emojis de los títulos («¡Recibiste un Plin! 💸»).
         t = t.replacingOccurrences(of: "\\p{So}", with: " ", options: .regularExpression)
         t = t.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
-        return t.replacingOccurrences(of: "^[\\s:,\\-¡!.*_]+|[\\s:,\\-¡!.*_]+$", with: "", options: .regularExpression)
+        t = t.replacingOccurrences(of: "^[\\s:,\\-¡!.*_]+|[\\s:,\\-¡!.*_]+$", with: "", options: .regularExpression)
+        // Sin ninguna letra no es un nombre («****534», la cuenta de destino de Interbank).
+        return t.range(of: "\\p{L}", options: .regularExpression) != nil ? t : ""
     }
 
     private func fullRange(_ s: String) -> NSRange { NSRange(s.startIndex..., in: s) }
