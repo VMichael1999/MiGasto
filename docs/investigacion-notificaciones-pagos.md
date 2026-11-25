@@ -157,6 +157,19 @@ Pasé estas muestras por `PaymentReader` (Dart). Las reglas son las mismas de `r
    - Hacer un pago de S/ 1 por cada banco o billetera que se use, y convertir lo capturado en pruebas de `payment_reader_test.dart`.
    - Es la única forma de cubrir BCP, Scotiabank, BanBif, Ligo y Lemon.
 
+## 6b. Textos reales de BCP, Interbank, BBVA y Yape (24 de noviembre de 2026)
+
+Salen de proyectos abiertos que capturaron avisos reales de usuarios en Perú (el más confiable es [pagoOK](https://github.com/Sirveme/pagoOK), una app en producción; también [NotiPago](https://github.com/angel113-cmyk/NotiPago), [lyape](https://github.com/Reve7339/lyape), [cuadre](https://github.com/S-kkipie/cuadre), [luca](https://github.com/JosephRobles23/luca/blob/HEAD/docs/discovery/formatos-correos-bcp-yape.md) y [money-assistant](https://github.com/rgomeztinoco/money-assistant/tree/HEAD/resources/notification-formats)). Los nombres se reemplazaron.
+
+- **BCP avisa sobre todo por correo** (`notificaciones@notificacionesbcp.com.pe`); no hay textos públicos de la notificación de su app ni de sus SMS («BCPOFICIAL»). Consumo con tarjeta: «Realizaste un consumo de S/ 53.30 con tu Tarjeta de Débito BCP en CA012 AVIACION.»; yapeo a celular desde el BCP: «Realizaste un yapeo a celular de S/ 2.00 desde tu Clasica Soles.» (no dice a quién); recibido: «Recibiste un yapeo de S/ 1,157.00 de NOMBRE.»; transferencias: «Realizaste una transferencia de S/ 25.00 desde tu Cuenta digital.» (asunto «Constancia de Transferencia a Otros Bancos / Entre mis Cuentas / a Terceros BCP»); rechazos: «Se rechazó tu compra por fondos insuficientes».
+- **Yape no avisa al que paga** (0 «Yapeaste» en 142 avisos reales de pagoOK). Sí manda correo desde S/ 10: «¡Acabas de yapear exitosamente!» con la tabla Monto de yapeo, Celular del Beneficiario, Nombre del Beneficiario; y «Tu yapeo de servicio ha sido confirmado» (Empresa, Servicio).
+- **Interbank:** «Plineaste S/ 1.00 a A. R. C. N.» (iniciales), «NOMBRE te ha plineado S/ 1.00» publicado **dos veces** (títulos «Interbank» y «Negocios»), «Realizaste un consumo de S/.50.00 en COMERCIO con tu Tarjeta de Crédito.», «Se realizó un pago recurrente de $26.19 en …» y la transferencia «TRAN S/ 10.00 A ****534 (25/10 08:48:33)», sin título ni nombre.
+- **BBVA:** «¡Recibiste un Plin! 💵 NOMBRE te plineó S/16.80 .» y «Cobro con QR · NOMBRE  te hizo un pago de S/ 11.0».
+- **Sin ningún texto público:** Scotiabank, Ligo, Prex, Bim (Banco de la Nación dejó de emitirla y el BCP cierra sus cuentas), Sip (billetera de Intercorp con Oh! y Agora), Ripley, Falabella, BanBif, Banco de la Nación, Mibanco, cajas y Mercado Pago. Para ellas hay que capturar avisos propios.
+- **Circular 0024-2022-BCRP:** cada banco avisa a su cliente (el que envía y el que recibe) por el medio que elija; como mínimo, el nombre de la otra parte y el monto.
+
+Lo aplicado en `fix/lector-bcp-interbank-yape`: fuente «Transferencia», correos de Yape con su tabla (iPhone), nombres de Interbank, «TRAN», limpieza de los asuntos del BCP, rechazos y promociones, y el Plin repetido de Interbank (Android: mismo texto de la misma app en 5 s; iPhone: mismo monto y fuente en 2 min).
+
 ## 7. Riesgos de plataforma y de tienda
 
 - **Android 15 y 16:** las notificaciones con códigos de un solo uso (OTP) se marcan como «sensibles». Los lectores de notificaciones de terceros reciben el texto oculto. No afecta a los avisos de pago, pero sí a los mensajes de los bancos que traen una clave. No hay que depender de ellos.
