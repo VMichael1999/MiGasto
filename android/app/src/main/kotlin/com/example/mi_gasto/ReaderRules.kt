@@ -168,6 +168,7 @@ class ReaderRules private constructor(
         // En ingresos el nombre suele ir antes; en gastos, después.
         val first = if (isIncome) clean(before) else fromAfter()
         if (first.isNotEmpty()) return first
+        if (isIncome) nameBeforeIncomeVerb(after).takeIf { it.isNotEmpty() }?.let { return it }
         val second = if (isIncome) fromAfter() else clean(before)
         if (second.isNotEmpty() || isIncome) return second
         return fromAfterWithoutPreposition(after)
@@ -176,6 +177,16 @@ class ReaderRules private constructor(
     /** Quita el título que es solo el nombre del banco («Interbank Ana te ha plineado»). */
     private fun withoutTitlePrefix(before: String): String =
         titlePrefixRegex?.replaceFirst(before, "")?.trim() ?: before
+
+    /**
+     * Ingreso con el monto en el título y el nombre después: «Recibiste S/ 1.5 🙌 ANA PÉREZ
+     * te envió dinero.» (Lemon). Se toma lo que hay entre el monto y el verbo («te envió»).
+     */
+    private fun nameBeforeIncomeVerb(after: String): String {
+        val cut = incomeRegexes.mapNotNull { it.find(after)?.range?.first }.minOrNull() ?: return ""
+        val name = clean(after.substring(0, cut))
+        return if (name.length in 2..60) name else ""
+    }
 
     /**
      * Constancia de Yape al enviar: el nombre va justo después del monto, sin "a" ni "de"

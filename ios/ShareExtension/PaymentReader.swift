@@ -258,6 +258,10 @@ final class PaymentReader {
         // En ingresos el nombre suele ir antes; en gastos, después.
         let first = isIncome ? clean(before) : fromAfter()
         if !first.isEmpty { return first }
+        if isIncome {
+            let named = nameBeforeIncomeVerb(after)
+            if !named.isEmpty { return named }
+        }
         let second = isIncome ? fromAfter() : clean(before)
         if !second.isEmpty || isIncome { return second }
         return fromAfterWithoutPreposition(after)
@@ -270,6 +274,15 @@ final class PaymentReader {
         let pattern = "^(?:" + names.map { NSRegularExpression.escapedPattern(for: $0) }.joined(separator: "|") + ")(?![\\p{L}\\p{N}])"
         return before.replacingOccurrences(of: pattern, with: "", options: [.regularExpression, .caseInsensitive])
             .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Ingreso con el monto en el título y el nombre después: «Recibiste S/ 1.5 🙌 ANA PÉREZ
+    /// te envió dinero.» (Lemon). Se toma lo que hay entre el monto y el verbo («te envió»).
+    private func nameBeforeIncomeVerb(_ after: String) -> String {
+        let starts = incomeRegexes.compactMap { $0.firstMatch(in: after, range: fullRange(after))?.range.location }
+        guard let cut = starts.min() else { return "" }
+        let name = clean((after as NSString).substring(to: cut))
+        return (2...60).contains(name.count) ? name : ""
     }
 
     /// Constancia de Yape al enviar: el nombre va justo después del monto, sin «a» ni «de».

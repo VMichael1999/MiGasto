@@ -172,6 +172,10 @@ class PaymentReader {
     // después ("Yapeaste S/ 25 a Tambo"). Se prueba el otro lado si queda vacío.
     final first = isIncome ? _clean(before) : fromAfter();
     if (first.isNotEmpty) return first;
+    if (isIncome) {
+      final named = _nameBeforeIncomeVerb(after);
+      if (named.isNotEmpty) return named;
+    }
     final second = isIncome ? fromAfter() : _clean(before);
     if (second.isNotEmpty || isIncome) return second;
     return _fromAfterWithoutPreposition(after);
@@ -185,6 +189,19 @@ class PaymentReader {
         .replaceFirst(RegExp('^(?:${names.map(RegExp.escape).join('|')})(?![\\p{L}\\p{N}])',
             caseSensitive: false, unicode: true), '')
         .trim();
+  }
+
+  /// Ingreso con el monto en el título y el nombre después: «Recibiste S/ 1.5 🙌 ANA PÉREZ
+  /// te envió dinero.» (Lemon). Se toma lo que hay entre el monto y el verbo («te envió»).
+  String _nameBeforeIncomeVerb(String after) {
+    final starts = [
+      for (final r in _income)
+        if (r.firstMatch(after) case final m?) m.start,
+    ];
+    if (starts.isEmpty) return '';
+    final cut = starts.reduce((a, b) => a < b ? a : b);
+    final name = _clean(after.substring(0, cut));
+    return name.length >= 2 && name.length <= 60 ? name : '';
   }
 
   /// Constancia de Yape al enviar: el nombre va justo después del monto, sin "a" ni
