@@ -53,6 +53,68 @@ void main() {
     expect(find.byType(CategoryIcon), findsOneWidget);
   });
 
+  Future<void> pumpMovement(WidgetTester tester, Categoria category, PaymentSource source) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    await tester.pumpWidget(ProviderScope(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      child: MaterialApp(
+        home: Scaffold(
+          body: MerchantIcon(merchant: 'Ana Pérez', category: category, source: source),
+        ),
+      ),
+    ));
+  }
+
+  String? assetShown(WidgetTester tester) {
+    final images = tester.widgetList<Image>(find.byType(Image));
+    if (images.isEmpty) return null;
+    final provider = images.single.image;
+    return provider is AssetImage ? provider.assetName : null;
+  }
+
+  testWidgets('una transferencia recibida por Plin o Yape muestra la billetera, no las flechas',
+      (tester) async {
+    await pumpMovement(tester, Categoria.transferenciaRecibida, PaymentSource.plin);
+    expect(assetShown(tester), 'assets/wallets/plin.png');
+    expect(find.byType(CategoryIcon), findsNothing);
+
+    await pumpMovement(tester, Categoria.transferenciaRecibida, PaymentSource.yape);
+    expect(assetShown(tester), 'assets/wallets/yape.png');
+    expect(find.bySemanticsLabel('Yape'), findsOneWidget);
+  });
+
+  testWidgets('si el nombre es la billetera («Yape a Juan»), se ve su ícono aunque la categoría tenga uno',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({merchantLogosKey: true});
+    final prefs = await SharedPreferences.getInstance();
+    await tester.pumpWidget(ProviderScope(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      child: const MaterialApp(
+        home: Scaffold(
+          body: MerchantIcon(merchant: 'Yape a Juan Pérez', category: Categoria.alimentacion),
+        ),
+      ),
+    ));
+    expect(assetShown(tester), 'assets/wallets/yape.png');
+  });
+
+  testWidgets('en «Otros» también se ve la billetera (Lemon)', (tester) async {
+    await pumpMovement(tester, Categoria.otros, PaymentSource.lemon);
+    expect(assetShown(tester), 'assets/wallets/lemon.png');
+  });
+
+  testWidgets('una categoría con ícono propio lo conserva aunque se pague con Yape', (tester) async {
+    await pumpMovement(tester, Categoria.alimentacion, PaymentSource.yape);
+    expect(find.byType(CategoryIcon), findsOneWidget);
+    expect(assetShown(tester), isNull);
+  });
+
+  testWidgets('sin billetera (efectivo, tarjeta) quedan las flechas', (tester) async {
+    await pumpMovement(tester, Categoria.transferenciaRecibida, PaymentSource.efectivo);
+    expect(find.byType(CategoryIcon), findsOneWidget);
+  });
+
   test('el pedido de logo envía solo el dominio', () {
     final url = MerchantIcon.logoUrl('spotify.com');
     expect(Uri.parse(url).queryParameters.keys, containsAll(['domain', 'sz']));
