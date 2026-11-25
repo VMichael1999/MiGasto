@@ -22,9 +22,10 @@ final class ShareViewController: UIViewController {
 
     private func process() async {
         let image = await loadImage()
-        let lines = image == nil ? [] : await OCR.lines(in: image!)
+        let boxes = image == nil ? [] : await OCR.boxes(in: image!)
+        let lines = ReceiptLayout.lines(ReceiptLayout.rows(boxes))
         let reader = loadReader()
-        let parsed = reader?.parse(lines: lines)
+        let parsed = reader?.parse(receipt: boxes)
         let categories = CategoryRules.load()
         await MainActor.run { show(parsed: parsed, lines: lines, categories: categories) }
     }

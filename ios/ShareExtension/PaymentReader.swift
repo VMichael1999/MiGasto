@@ -11,6 +11,57 @@ struct ParsedPayment {
     var currency: String = "PEN"
 }
 
+/// Un texto leído de la captura y dónde está, en fracciones de la imagen como las da Vision
+/// (x desde la izquierda, y desde abajo).
+struct TextBox {
+    let text: String
+    let minX: Double
+    let maxX: Double
+    let midY: Double
+    let height: Double
+}
+
+/// Las constancias de los bancos son una tabla de dos columnas: «Contacto» a la izquierda y el
+/// nombre a la derecha. Vision entrega cada texto suelto y, en una misma fila, a veces el valor
+/// antes que la etiqueta; aquí se rearman las filas.
+enum ReceiptLayout {
+    /// Filas de arriba hacia abajo y, en cada una, los textos de izquierda a derecha. Dos textos
+    /// van en la misma fila si sus centros están a menos de media línea de altura.
+    static func rows(_ boxes: [TextBox]) -> [[TextBox]] {
+        var rows: [[TextBox]] = []
+        for box in boxes.sorted(by: { $0.midY > $1.midY }) {
+            if let first = rows.last?.first, abs(first.midY - box.midY) < min(first.height, box.height) / 2 {
+                rows[rows.count - 1].append(box)
+            } else {
+                rows.append([box])
+            }
+        }
+        return rows.map { $0.sorted { $0.minX < $1.minX } }
+    }
+
+    static func lines(_ rows: [[TextBox]]) -> [String] {
+        rows.map { $0.map(\.text).joined(separator: " ") }
+    }
+
+    /// Etiqueta y valor de cada fila de la tabla. El valor sigue en las filas de abajo que solo
+    /// tienen texto a la derecha de la etiqueta (un nombre largo partido: «… valdiviezo» y «maza»).
+    static func fields(_ rows: [[TextBox]]) -> [(label: String, value: String)] {
+        var fields: [(label: String, value: String)] = []
+        var labelEdge: Double?
+        for row in rows {
+            if row.count >= 2 {
+                fields.append((row[0].text, row.dropFirst().map(\.text).joined(separator: " ")))
+                labelEdge = row[0].maxX
+            } else if let edge = labelEdge, let only = row.first, only.minX > edge {
+                fields[fields.count - 1].value += " " + only.text
+            } else {
+                labelEdge = nil
+            }
+        }
+        return fields
+    }
+}
+
 /// Lector de pagos. Lee las mismas reglas que Dart y Kotlin
 /// (`assets/reader_rules.json`) para que reconozcan lo mismo.
 final class PaymentReader {
@@ -58,6 +109,35 @@ final class PaymentReader {
             amount: amount,
             peer: peer.isEmpty ? (rules["unknownPeer"] as? String ?? "Desconocido") : peer,
             provider: provider, isIncome: isIncome, currency: currency)
+    }
+
+    /// Lee una captura compartida, sabiendo dónde está cada texto. Además de lo que lee
+    /// `parse(lines:)`, toma el nombre de la tabla de la constancia («Contacto» → «Ana Pérez»).
+    func parse(receipt boxes: [TextBox]) -> ParsedPayment? {
+        let rows = ReceiptLayout.rows(boxes)
+        let lines = ReceiptLayout.lines(rows)
+        guard let base = parse(lines: lines) else { return nil }
+        guard let labeled = labeledPeer(ReceiptLayout.fields(rows)) else { return base }
+        return ParsedPayment(amount: base.amount, peer: labeled, provider: base.provider,
+                             isIncome: base.isIncome, currency: base.currency)
+    }
+
+    /// El valor de «Contacto», «Destinatario»… sin la cola de la cuenta («Ana Pérez • 0277»).
+    private func labeledPeer(_ fields: [(label: String, value: String)]) -> String? {
+        let labels = Set((rules["receiptPeerLabels"] as? [String] ?? []).map(Self.fold))
+        for field in fields where labels.contains(Self.fold(field.label)) {
+            var name = field.value.replacingOccurrences(of: "\\s*[•·].*$", with: "", options: .regularExpression)
+            name = name.replacingOccurrences(of: "\\s+\\**\\d{3,}$", with: "", options: .regularExpression)
+            name = clean(name)
+            if isPeerLine(name) { return name }
+        }
+        return nil
+    }
+
+    /// Minúsculas, sin tildes ni dos puntos: «Contacto:» y «contacto» son la misma etiqueta.
+    private static func fold(_ s: String) -> String {
+        s.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "es"))
+            .trimmingCharacters(in: CharacterSet(charactersIn: ": ").union(.whitespaces))
     }
 
     /// Lee el texto de una captura, línea por línea. En la constancia de Yape o Plin el

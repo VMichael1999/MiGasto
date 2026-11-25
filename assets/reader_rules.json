@@ -200,5 +200,17 @@
     "scotiabank"
   ],
   "_notaTitlePrefixes": "Títulos que son el nombre del banco («Interbank»): se quitan del inicio del nombre en los ingresos, donde el nombre va antes del monto.",
+  "receiptPeerLabels": [
+    "contacto",
+    "destinatario",
+    "beneficiario",
+    "nombre del destinatario",
+    "nombre del beneficiario",
+    "enviado a",
+    "para",
+    "remitente",
+    "enviado por"
+  ],
+  "_notaReceiptPeerLabels": "Constancias en forma de tabla (las del BBVA: «Contacto» a la izquierda y el nombre a la derecha): la etiqueta cuyo valor es la persona o el comercio. «Entidad de destino» no va: es el banco o la billetera, no a quién se pagó. Solo la usa la extensión para compartir del iPhone, que sabe dónde está cada texto en la captura.",
   "unknownPeer": "Desconocido"
 }
