@@ -9,6 +9,8 @@ String sourceLabel(PaymentSource source) {
       return 'Plin';
     case PaymentSource.googlePay:
       return 'Google Wallet';
+    case PaymentSource.lemon:
+      return 'Lemon';
     case PaymentSource.tarjeta:
       return 'Tarjeta';
     case PaymentSource.efectivo:

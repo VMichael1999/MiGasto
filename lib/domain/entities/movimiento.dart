@@ -48,6 +48,7 @@ enum PaymentSource {
   yape,
   plin,
   googlePay, // Tarjeta con Google Wallet (Android)
+  lemon, // Billetera Lemon Cash
   manual,
   tarjeta, // Tarjeta con Apple Pay u otra
   efectivo,
