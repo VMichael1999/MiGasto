@@ -73,6 +73,15 @@
         "lemon"
       ],
       "wordBoundary": true
+    },
+    {
+      "id": "transferencia",
+      "keywords": [
+        "realizaste una transferencia",
+        "constancia de transferencia",
+        "transferencia inmediata",
+        "tran s/"
+      ]
     }
   ],
   "amount": "(?:s/\\.?|(?<![\\p{L}])pen)\\s*(\\d{1,3}(?:,\\d{3})+(?:\\.\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?)",
@@ -95,6 +104,10 @@
   ],
   "ignore": [
     "rechazad[oa]",
+    "se rechaz[oó]",
+    "gana hasta",
+    "sorteo",
+    "aprovecha",
     "denegad[oa]",
     "no (?:se )?(?:pudo|pudimos) (?:procesar|completar|realizar|aprobar)",
     "no fue (?:exitos[oa]|aprobad[oa]|procesad[oa])",
@@ -129,7 +142,12 @@
     "pago exitoso",
     "pago recurrente",
     "se realiz[oó] un (?:pago|consumo|cargo)",
-    "(?:importe|monto) enviado"
+    "(?:importe|monto) enviado",
+    "realizaste una transferencia",
+    "realizaste un yapeo",
+    "acabas de yapear",
+    "yapeo de servicio",
+    "\\btran\\s+s/"
   ],
   "defaultTypeByProvider": {
     "googlePay": "gasto"
@@ -153,6 +171,23 @@
     "cobro con qr",
     "envío a contactos",
     "envio a contactos",
+    "constancia de recepción de yapeo a celular bcp",
+    "constancia de recepcion de yapeo a celular bcp",
+    "recibiste un yapeo de",
+    "recibiste un yapeo",
+    "constancia de pago con qr",
+    "servicio de notificaciones bcp",
+    "servicios de notificaciones bcp",
+    "realizaste un yapeo a celular de",
+    "realizaste una transferencia de",
+    "constancia de transferencia entre mis cuentas",
+    "constancia de transferencia a otros bancos",
+    "constancia de transferencia a terceros bcp",
+    "constancia de transferencia",
+    "por tu seguridad, te notificaremos por cada yapeo que realices",
+    "acabas de yapear exitosamente",
+    "tu yapeo de servicio ha sido confirmado",
+    "tran",
     "enviaste un plin",
     "recibiste un plin",
     "has recibido un yape de",
@@ -207,7 +242,8 @@
     "interbank",
     "bbva",
     "scotiabank",
-    "lemon cash"
+    "lemon cash",
+    "negocios"
   ],
   "_notaTitlePrefixes": "Títulos que son el nombre del banco («Interbank»), o el de la app que la acción de Atajos del iPhone pone delante del aviso («Lemon Cash Recibiste S/ 1.5…»): se quitan del inicio del nombre en los ingresos, donde el nombre va antes del monto.",
   "receiptPeerLabels": [
@@ -216,11 +252,12 @@
     "beneficiario",
     "nombre del destinatario",
     "nombre del beneficiario",
+    "empresa",
     "enviado a",
     "para",
     "remitente",
     "enviado por"
   ],
-  "_notaReceiptPeerLabels": "Constancias en forma de tabla (las del BBVA: «Contacto» a la izquierda y el nombre a la derecha): la etiqueta cuyo valor es la persona o el comercio. «Entidad de destino» no va: es el banco o la billetera, no a quién se pagó. Solo la usa la extensión para compartir del iPhone, que sabe dónde está cada texto en la captura.",
+  "_notaReceiptPeerLabels": "Constancias en forma de tabla (las del BBVA: «Contacto» a la izquierda y el nombre a la derecha): la etiqueta cuyo valor es la persona o el comercio. «Entidad de destino» no va: es el banco o la billetera, no a quién se pagó. Solo las usa el iPhone: la extensión para compartir (que sabe dónde está cada texto en la captura) y la acción de Atajos con los correos en tabla («Nombre del Beneficiario» del correo de Yape, «Empresa» del pago de un servicio).",
   "unknownPeer": "Desconocido"
 }
