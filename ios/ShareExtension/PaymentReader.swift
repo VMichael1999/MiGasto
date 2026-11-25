@@ -112,14 +112,30 @@ final class PaymentReader {
     }
 
     /// Lee una captura compartida, sabiendo dónde está cada texto. Además de lo que lee
-    /// `parse(lines:)`, toma el nombre de la tabla de la constancia («Contacto» → «Ana Pérez»).
+    /// `parse(lines:)`, toma el nombre de la tabla de la constancia («Contacto» → «Ana Pérez») y,
+    /// si no reconoce la app pero ve un monto, lo devuelve igual (`provider` «otro») para que el
+    /// formulario llegue relleno: el usuario lo revisa antes de guardar.
     func parse(receipt boxes: [TextBox]) -> ParsedPayment? {
         let rows = ReceiptLayout.rows(boxes)
         let lines = ReceiptLayout.lines(rows)
-        guard let base = parse(lines: lines) else { return nil }
+        guard let base = parse(lines: lines) ?? unnamedReceipt(lines.joined(separator: " ")) else { return nil }
         guard let labeled = labeledPeer(ReceiptLayout.fields(rows)) else { return base }
         return ParsedPayment(amount: base.amount, peer: labeled, provider: base.provider,
                              isIncome: base.isIncome, currency: base.currency)
+    }
+
+    /// Una constancia que no dice de qué app es: el monto y, si se sabe, si entró o salió.
+    /// Al compartir una constancia lo más común es lo que pagaste, así que sin pista es un gasto.
+    private func unnamedReceipt(_ text: String) -> ParsedPayment? {
+        let range = fullRange(text)
+        if ignoreRegexes.contains(where: { $0.firstMatch(in: text, range: range) != nil }) { return nil }
+        let solesMatch = amountRegex.firstMatch(in: text, range: range)
+        guard let match = solesMatch ?? usdAmountRegex?.firstMatch(in: text, range: range),
+              let amountRange = Range(match.range(at: 1), in: text),
+              let amount = parseAmount(String(text[amountRange])), amount > 0 else { return nil }
+        let isIncome = incomeRegexes.contains(where: { $0.firstMatch(in: text, range: range) != nil })
+        return ParsedPayment(amount: amount, peer: rules["unknownPeer"] as? String ?? "Desconocido",
+                             provider: "otro", isIncome: isIncome, currency: solesMatch == nil ? "USD" : "PEN")
     }
 
     /// El valor de «Contacto», «Destinatario»… sin la cola de la cuenta («Ana Pérez • 0277»).

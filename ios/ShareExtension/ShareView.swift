@@ -21,7 +21,7 @@ struct CategoryOption: Identifiable, Hashable {
     ]
 }
 
-/// "Guardar en MiGasto": confirma lo que se leyó de la captura de Yape o Plin.
+/// "Guardar en MiGasto": confirma lo que se leyó de la captura (Yape, Plin o la constancia de un banco).
 struct ShareView: View {
     let provider: String
     let rawText: String
@@ -39,7 +39,7 @@ struct ShareView: View {
 
     init(parsed: ParsedPayment?, rawText: String, categoryFor: (ParsedPayment) -> String,
          onSave: @escaping ([String: Any]) -> Void, onCancel: @escaping () -> Void) {
-        self.provider = parsed?.provider ?? "yape"
+        self.provider = parsed?.provider ?? "otro"
         self.rawText = rawText
         self.readOK = parsed != nil
         self.onSave = onSave
@@ -56,13 +56,14 @@ struct ShareView: View {
     private var canSave: Bool { (amount ?? 0) > 0 && !peer.trimmingCharacters(in: .whitespaces).isEmpty }
     private var options: [CategoryOption] { isIncome ? CategoryOption.ingresos : CategoryOption.gastos }
     private var providerName: String {
-        switch provider { case "plin": return "Plin"; case "googlePay": return "Google Wallet"; default: return "Yape" }
+        switch provider { case "yape": return "Yape"; case "plin": return "Plin"; case "googlePay": return "Google Wallet"; case "tarjeta": return "Tarjeta"; default: return "Otra app" }
     }
     private var providerColor: Color {
         switch provider {
         case "plin": return Color(red: 0.06, green: 0.75, blue: 0.69)
         case "googlePay": return Color(red: 0.35, green: 0.61, blue: 0.97)
-        default: return Color(red: 0.61, green: 0.31, blue: 0.84)
+        case "yape": return Color(red: 0.61, green: 0.31, blue: 0.84)
+        default: return Color.secondary
         }
     }
 
