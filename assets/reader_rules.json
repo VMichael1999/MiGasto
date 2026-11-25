@@ -44,7 +44,9 @@
         "plineaste",
         "plinearon",
         "plineado",
-        "cobro con qr"
+        "cobro con qr",
+        "envío a contactos",
+        "envio a contactos"
       ],
       "wordBoundary": true
     },
@@ -117,7 +119,8 @@
     "¡yapeaste!",
     "pago exitoso",
     "pago recurrente",
-    "se realiz[oó] un (?:pago|consumo|cargo)"
+    "se realiz[oó] un (?:pago|consumo|cargo)",
+    "(?:importe|monto) enviado"
   ],
   "defaultTypeByProvider": {
     "googlePay": "gasto"
@@ -139,6 +142,8 @@
     "te hizo un pago",
     "te hizo un pago de",
     "cobro con qr",
+    "envío a contactos",
+    "envio a contactos",
     "enviaste un plin",
     "recibiste un plin",
     "has recibido un yape de",
