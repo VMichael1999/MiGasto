@@ -73,6 +73,7 @@ object PaymentNotifier {
         "plin" -> "Plin"
         "googlePay" -> "Google Wallet"
         "lemon" -> "Lemon"
+        "transferencia" -> "Transferencia"
         "tarjeta" -> "Tarjeta"
         else -> "Manual"
     }

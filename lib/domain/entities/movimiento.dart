@@ -49,6 +49,7 @@ enum PaymentSource {
   plin,
   googlePay, // Tarjeta con Google Wallet (Android)
   lemon, // Billetera Lemon Cash
+  transferencia, // Transferencia bancaria que avisa el banco (BCP, Interbank…)
   manual,
   tarjeta, // Tarjeta con Apple Pay u otra
   efectivo,

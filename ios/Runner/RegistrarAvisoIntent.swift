@@ -123,6 +123,7 @@ enum AvisoReader {
         case "plin": source = "Plin"
         case "googlePay": source = "Google Wallet"
         case "lemon": source = "Lemon"
+        case "transferencia": source = "Transferencia"
         default: source = "Tarjeta"
         }
         return [amount, item["peer"] as? String ?? "", source].filter { !$0.isEmpty }.joined(separator: " · ")

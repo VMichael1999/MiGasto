@@ -56,7 +56,7 @@ struct ShareView: View {
     private var canSave: Bool { (amount ?? 0) > 0 && !peer.trimmingCharacters(in: .whitespaces).isEmpty }
     private var options: [CategoryOption] { isIncome ? CategoryOption.ingresos : CategoryOption.gastos }
     private var providerName: String {
-        switch provider { case "yape": return "Yape"; case "plin": return "Plin"; case "googlePay": return "Google Wallet"; case "lemon": return "Lemon"; case "tarjeta": return "Tarjeta"; default: return "Otra app" }
+        switch provider { case "yape": return "Yape"; case "plin": return "Plin"; case "googlePay": return "Google Wallet"; case "lemon": return "Lemon"; case "transferencia": return "Transferencia"; case "tarjeta": return "Tarjeta"; default: return "Otra app" }
     }
     private var providerColor: Color {
         switch provider {

@@ -69,6 +69,7 @@ class OverlayService : Service() {
             "plin" -> 0xFF00D1FF.toInt()
             "googlePay" -> 0xFF4285F4.toInt()
             "lemon" -> 0xFF00D06B.toInt()
+            "transferencia" -> 0xFF94A3B8.toInt()
             "tarjeta" -> 0xFFFF8A3D.toInt()
             else -> ACC2
         }
@@ -186,6 +187,7 @@ class OverlayService : Service() {
         "plin" -> "Plin"
         "googlePay" -> "Google Wallet"
         "lemon" -> "Lemon"
+        "transferencia" -> "Transferencia"
         "tarjeta" -> "Tarjeta"
         else -> "Manual"
     }

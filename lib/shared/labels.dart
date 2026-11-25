@@ -11,6 +11,8 @@ String sourceLabel(PaymentSource source) {
       return 'Google Wallet';
     case PaymentSource.lemon:
       return 'Lemon';
+    case PaymentSource.transferencia:
+      return 'Transferencia';
     case PaymentSource.tarjeta:
       return 'Tarjeta';
     case PaymentSource.efectivo:

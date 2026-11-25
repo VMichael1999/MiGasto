@@ -270,6 +270,8 @@ class _OverlayTimerWidgetState extends ConsumerState<OverlayTimerWidget>
         return const Color(0xFF4285F4);
       case PaymentSource.lemon:
         return const Color(0xFF00D06B);
+      case PaymentSource.transferencia:
+        return const Color(0xFF94A3B8);
       case PaymentSource.tarjeta:
         return const Color(0xFFFF8A3D);
       case PaymentSource.efectivo:
