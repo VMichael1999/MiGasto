@@ -207,6 +207,13 @@ void main() {
       expect(p.provider, 'plin');
     });
 
+    test('BBVA: constancia de «Envío a contactos» (Plin enviado, dice «Importe enviado»)', () {
+      final p = reader.parse('Tipo de operación Envío a contactos Importe enviado S/ 1.00')!;
+      expect(p.isIncome, isFalse);
+      expect(p.amount, 1.0);
+      expect(p.provider, 'plin');
+    });
+
     test('BBVA: cobro con QR', () {
       final p = reader.parse('Cobro con QR VICTOR RAUL MAMANI QUEA te hizo un pago de S/ 20.0', app: bbva)!;
       expect(p.isIncome, isTrue);
