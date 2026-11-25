@@ -161,6 +161,11 @@ final class PaymentReader {
     func parse(lines: [String]) -> ParsedPayment? {
         let joined = lines.joined(separator: " ")
         guard let base = parse(joined) else { return nil }
+        // Correo en tabla («Nombre del Beneficiario» del correo de Yape, «Empresa» de un servicio).
+        if let labeled = labeledPeer(Self.fields(lines: lines)) {
+            return ParsedPayment(amount: base.amount, peer: labeled, provider: base.provider,
+                                 isIncome: base.isIncome, currency: base.currency)
+        }
         if base.peer != (rules["unknownPeer"] as? String ?? "Desconocido") { return base }
 
         // Sin preposición: se toma la línea siguiente a la del monto.
@@ -174,6 +179,22 @@ final class PaymentReader {
             }
         }
         return base
+    }
+
+    /// Etiqueta y valor en un texto sin posiciones: «Etiqueta: valor», «Etiqueta⇥valor» o la
+    /// etiqueta sola en una línea y el valor en la siguiente.
+    static func fields(lines: [String]) -> [(label: String, value: String)] {
+        var fields: [(label: String, value: String)] = []
+        for (i, raw) in lines.enumerated() {
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            if let sep = line.firstIndex(where: { $0 == ":" || $0 == "\t" }) {
+                let value = line[line.index(after: sep)...].trimmingCharacters(in: .whitespaces)
+                if !value.isEmpty { fields.append((String(line[..<sep]), value)) }
+            } else if i + 1 < lines.count {
+                fields.append((line, lines[i + 1].trimmingCharacters(in: .whitespaces)))
+            }
+        }
+        return fields
     }
 
     /// Una línea que parece un nombre: sin monto, sin fecha ni códigos.
